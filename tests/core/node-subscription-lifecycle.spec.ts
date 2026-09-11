@@ -6,7 +6,7 @@ import {
   defineDerivedNode,
 } from "../../src/core";
 
-describe("node node subscription lifecycle", () => {
+describe("node subscription lifecycle", () => {
   it("releases exactly one subscription and is idempotent", () => {
     const root = defineContextNode({ key: "root", initialValue: 1 });
     const child = defineDerivedNode({ key: "child", dependencies: [root] as const, derive: () => 2 });

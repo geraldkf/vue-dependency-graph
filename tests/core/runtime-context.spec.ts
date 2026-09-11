@@ -44,4 +44,32 @@ describe("runtime context updates", () => {
     expect(runtime.getState(unrelated)).toMatchObject({ generation: 0, freshness: "fresh" });
     expect(childLoad).toHaveBeenCalledOnce();
   });
+
+  it("resolves equivalent context handles through the registered key", () => {
+    const registered = defineContextNode({ key: "context", initialValue: 1 });
+    const equivalent = defineContextNode({ key: "context", initialValue: 99 });
+    const runtime = createGraphRuntime(createGraph({ nodes: [registered] }));
+
+    runtime.setContext(equivalent, 2);
+
+    expect(runtime.getState(registered).data).toBe(2);
+  });
+
+  it("rejects invalid context handles without changing state or notifying", () => {
+    const context = defineContextNode({ key: "context", initialValue: 1 });
+    const missing = defineContextNode({ key: "missing", initialValue: 2 });
+    const data = defineDataNode({ key: "data", initialValue: 0, load: async () => 1 });
+    const contextShapedDataHandle = defineContextNode({ key: "data", initialValue: 0 });
+    const runtime = createGraphRuntime(createGraph({ nodes: [data, context] }));
+    const listener = vi.fn();
+    runtime.onChange(listener);
+
+    expect(() => runtime.setContext(missing, 3)).toThrow("missing");
+    expect(() => runtime.setContext(contextShapedDataHandle, 3)).toThrow("data");
+
+    expect(runtime.getState(context).data).toBe(1);
+    expect(runtime.getState(data).generation).toBe(0);
+    expect(listener).not.toHaveBeenCalled();
+  });
+
 });

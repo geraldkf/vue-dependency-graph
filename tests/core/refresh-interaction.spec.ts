@@ -61,4 +61,52 @@ describe("refresh interactions and races", () => {
     await runtime.whenSettled();
     expect(runtime.getState(data).data).toBe("loaded");
   });
+  it("shares overlapping refreshes regardless of target order and duplicates", async () => {
+    const leftResult = deferred<string>();
+    const rightResult = deferred<string>();
+    const leftLoad = vi.fn(() => leftResult.promise);
+    const rightLoad = vi.fn(() => rightResult.promise);
+    const left = defineDataNode({ key: "left", initialValue: "", load: leftLoad });
+    const right = defineDataNode({ key: "right", initialValue: "", load: rightLoad });
+    const runtime = createGraphRuntime(createGraph({ nodes: [left, right] }));
+
+    const first = runtime.refresh([left, right]);
+    const second = runtime.refresh([right, left, right]);
+    await waitForCondition(
+      () => leftLoad.mock.calls.length === 1 && rightLoad.mock.calls.length === 1,
+      "order-independent shared refresh"
+    );
+
+    leftResult.resolve("left");
+    rightResult.resolve("right");
+    await Promise.all([first, second]);
+
+    expect(leftLoad).toHaveBeenCalledOnce();
+    expect(rightLoad).toHaveBeenCalledOnce();
+  });
+
+  it("keeps distinct refresh target sets independent", async () => {
+    const leftResult = deferred<string>();
+    const rightResult = deferred<string>();
+    const leftLoad = vi.fn(() => leftResult.promise);
+    const rightLoad = vi.fn(() => rightResult.promise);
+    const left = defineDataNode({ key: "left", initialValue: "", load: leftLoad });
+    const right = defineDataNode({ key: "right", initialValue: "", load: rightLoad });
+    const runtime = createGraphRuntime(createGraph({ nodes: [left, right] }));
+
+    const leftRefresh = runtime.refresh([left]);
+    const rightRefresh = runtime.refresh([right]);
+    await waitForCondition(
+      () => leftLoad.mock.calls.length === 1 && rightLoad.mock.calls.length === 1,
+      "independent refresh operations"
+    );
+
+    leftResult.resolve("left");
+    rightResult.resolve("right");
+    await Promise.all([leftRefresh, rightRefresh]);
+
+    expect(runtime.getState(left).data).toBe("left");
+    expect(runtime.getState(right).data).toBe("right");
+  });
+
 });

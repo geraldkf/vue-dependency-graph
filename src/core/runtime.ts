@@ -97,6 +97,19 @@ interface ActiveAttempt {
   readonly promise: Promise<void>;
 }
 
+const hasFreshSuccessfulValue = (
+  state: MutableNodeRuntimeState
+): boolean =>
+  state.hasSuccessfulValue &&
+  state.status === "success" &&
+  state.freshness === "fresh";
+
+const isSchedulerOnlyAttempt = (attempt: ActiveAttempt): boolean =>
+  attempt.origins.size === 1 && attempt.origins.has("scheduler");
+
+const createRefreshOperationKey = (keys: ReadonlySet<string>): string =>
+  JSON.stringify([...keys].sort());
+
 class NodeAttemptFailure extends Error {
   public constructor(
     public readonly nodeKey: string,
@@ -250,6 +263,16 @@ export const createGraphRuntime = (graph: Graph): GraphRuntime => {
     return registered;
   };
 
+  const requireRegisteredContextNode = <TValue>(
+    node: ContextNodeDefinition<TValue>
+  ): ContextNodeDefinition<TValue> => {
+    const registered = requireRegisteredNode(node, "context update");
+    if (!isContextNode(registered)) {
+      throw new Error(`Context node "${node.key}" is not registered in this graph.`);
+    }
+    return registered as ContextNodeDefinition<TValue>;
+  };
+
   const requireSubscriptionState = (key: string): MutableNodeSubscriptionState => {
     const subscriptionState = subscriptionStates.get(key);
     if (!subscriptionState) {
@@ -332,10 +355,7 @@ export const createGraphRuntime = (graph: Graph): GraphRuntime => {
           const subscriptionState = requireSubscriptionState(key);
           if (
             subscriptionState.direct + subscriptionState.required === 0 &&
-            attempt.origins.has("scheduler") &&
-            !attempt.origins.has("explicit") &&
-            !attempt.origins.has("prefetch") &&
-            !attempt.origins.has("refresh")
+            isSchedulerOnlyAttempt(attempt)
           ) {
             attempt.controller.abort();
           }
@@ -378,12 +398,9 @@ export const createGraphRuntime = (graph: Graph): GraphRuntime => {
     node: ContextNodeDefinition<TValue>,
     value: TValue
   ): void => {
-    const registered = graph.getNode(node.key);
-    if (!registered || registered.kind !== "context") {
-      throw new Error(`Context node "${node.key}" is not registered in this graph.`);
-    }
+    const registered = requireRegisteredContextNode(node);
 
-    const contextState = requireState(node.key);
+    const contextState = requireState(registered.key);
     if (Object.is(contextState.data, value)) return;
 
     contextState.data = value;
@@ -415,11 +432,7 @@ export const createGraphRuntime = (graph: Graph): GraphRuntime => {
     origin: ExecutionOrigin
   ): Promise<void> => {
     const state = requireState(node.key);
-    if (
-      state.hasSuccessfulValue &&
-      state.status === "success" &&
-      state.freshness === "fresh"
-    ) {
+    if (hasFreshSuccessfulValue(state)) {
       return Promise.resolve();
     }
 
@@ -589,13 +602,9 @@ export const createGraphRuntime = (graph: Graph): GraphRuntime => {
       return promise;
     };
 
-    const registeredTargets = targets.map(target => {
-      const registered = graph.getNode(target.key);
-      if (!registered) {
-        throw new Error(`Execution target "${target.key}" is not registered.`);
-      }
-      return registered;
-    });
+    const registeredTargets = targets.map(target =>
+      requireRegisteredNode(target, "execution")
+    );
 
     await Promise.allSettled(registeredTargets.map(target => ensureNode(target)));
 
@@ -629,7 +638,7 @@ export const createGraphRuntime = (graph: Graph): GraphRuntime => {
       targets.push(registered as RefreshableNodeDefinition);
     }
 
-    const operationKey = [...keys].sort().join("\u0000");
+    const operationKey = createRefreshOperationKey(keys);
     const existing = refreshOperations.get(operationKey);
     if (existing) return existing;
 
@@ -658,11 +667,7 @@ export const createGraphRuntime = (graph: Graph): GraphRuntime => {
       if (node.kind === "context") return false;
       if (requireSubscriptionState(node.key).direct === 0) return false;
       const state = requireState(node.key);
-      return !(
-        state.hasSuccessfulValue &&
-        state.status === "success" &&
-        state.freshness === "fresh"
-      );
+      return !hasFreshSuccessfulValue(state);
     });
 
   flushScheduler = async (): Promise<void> => {

@@ -6,7 +6,7 @@ import {
   defineDerivedNode,
 } from "../../src/core";
 
-describe("node node subscription propagation", () => {
+describe("node subscription propagation", () => {
   it("propagates required subscription through transitive ancestors", () => {
     const root = defineContextNode({ key: "root", initialValue: 1 });
     const parent = defineDerivedNode({ key: "parent", dependencies: [root] as const, derive: () => 2 });

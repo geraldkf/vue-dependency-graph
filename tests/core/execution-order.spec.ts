@@ -87,4 +87,21 @@ describe("dependency-aware execution", () => {
     await execution;
     expect(runtime.getState(total).data).toBe(6);
   });
+
+  it("resolves equivalent targets and validates the full list before execution", async () => {
+    const load = vi.fn(async () => "registered");
+    const registered = defineDataNode({ key: "data", initialValue: "", load });
+    const equivalent = defineDataNode({ key: "data", initialValue: "other", load });
+    const missing = defineDataNode({ key: "missing", initialValue: "", load });
+    const runtime = createGraphRuntime(createGraph({ nodes: [registered] }));
+
+    await runtime.execute([equivalent]);
+    expect(runtime.getState(registered).data).toBe("registered");
+
+    const otherRuntime = createGraphRuntime(createGraph({ nodes: [registered] }));
+    await expect(otherRuntime.execute([registered, missing])).rejects.toThrow("missing");
+    expect(load).toHaveBeenCalledOnce();
+    expect(otherRuntime.getState(registered).status).toBe("idle");
+  });
+
 });

@@ -97,7 +97,7 @@ Status: Validated offline.
 
 ### Step 3C: Prefetch and manual refresh
 
-Status: Validation pending.
+Status: Validated offline.
 
 - [x] Prepare one-shot prefetch without persistent subscriptions
 - [x] Prepare manual refresh for data and derived nodes
@@ -107,9 +107,39 @@ Status: Validation pending.
 - [x] Prepare failure and recovery behaviour
 - [x] Prepare behavioural and type tests
 - [x] Update API and architecture documentation
-- [ ] Receive successful offline validation feedback
+- [x] Receive successful offline validation feedback
 
 Milestone exit criteria: creating subscription automatically loads exactly the required graph without a public `loadData()` call.
+
+
+Milestone 3 status: Complete.
+
+## Runtime composition refactor
+
+Status: R1A, R1B, and R1C validated offline; R1D prepared with offline validation pending.
+
+Implementation plan: `docs/implementation/11-runtime-composition-refactor-plan.md`
+
+This behavior-preserving refactor is scheduled before Milestone 4.
+
+- [x] R1A implementation: Documentation and repository cleanup
+- [x] R1A offline validation
+- [x] R1B implementation: Name existing runtime invariants
+- [x] R1B offline validation
+- [x] R1C implementation: Standardise registered-node validation
+- [x] R1C offline validation
+- [x] R1D implementation: Document notification ownership
+- [ ] R1D offline validation
+- [ ] R2: Extract runtime observation
+- [ ] R3: Extract runtime state and active-attempt storage
+- [ ] R4: Extract the execution controller
+- [ ] R5: Extract subscription storage and lifecycle
+- [ ] R6: Extract the automatic scheduler
+- [ ] R7: Extract invalidation and context updates
+- [ ] R8: Extract prefetch and refresh operations
+- [ ] R9: Simplify runtime assembly and document internal boundaries
+
+The public API and runtime behavior remain unchanged. Milestone 4 has not started.
 
 ## Milestone 4: Transactions and invalidation
 

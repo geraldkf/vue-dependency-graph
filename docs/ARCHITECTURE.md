@@ -42,7 +42,7 @@ The scheduler performs:
 
 - automatic execution
 - execution coalescing
-- demand based loading
+- subscription-driven loading
 
 ### Diagnostics
 

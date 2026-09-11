@@ -109,7 +109,7 @@ Logical boundaries are still important. Moving to multiple packages later remain
 - A node dependency means the loader requires the dependency's successful value.
 - An invalidation event means the node may be out of date. It is not a data value.
 - A transaction batches local graph changes. It does not provide backend atomicity.
-- Subscription controls whether stale data should be refreshed. Registration alone must not execute every node.
+- Node subscription controls whether stale data should be refreshed automatically. `subscribeNodes(...)` does not invoke loaders synchronously; a non-empty subscription requests a coalesced scheduler microtask.
 - Polling is a refresh policy, not a recursive loader implementation.
 
 ## Validation model

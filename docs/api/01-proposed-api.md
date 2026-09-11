@@ -66,7 +66,7 @@ Derived state data is `T | undefined` before its first success. Context and data
 runtime.setContext(JobSeekerId, 123);
 ```
 
-A changed value synchronously marks transitive descendants stale and aborts affected work. It does not execute stale nodes automatically.
+A changed value synchronously marks transitive descendants stale and aborts affected work. Affected subscribed descendants request automatic scheduler work; affected unsubscribed descendants remain stale without loading.
 
 ### Execute targets explicitly
 
@@ -100,7 +100,7 @@ Unsubscribe is idempotent. Listener errors are isolated.
 
 ## Proposed for later milestones
 
-The following APIs are not implemented yet:
+The following APIs remain proposed for later milestones:
 
 ```ts
 useNode(PointPeriods);
@@ -109,15 +109,13 @@ defineQuery(...);
 useQuery(...);
 graph.transaction(...);
 graph.publish(...);
-graph.prefetch(...);
-graph.refresh(...);
 ```
 
-Automatic subscription-driven execution is Milestone 3. Transactions are Milestone 4. Vue integration, query groups, events, polling, and mutations follow later milestones.
+Subscription-driven execution, prefetch, and manual refresh are implemented on `GraphRuntime`. Transactions are Milestone 4. Vue integration, query groups, events, polling, and mutations follow later milestones.
 
 ## Implemented node subscription lifecycle API
 
-Register subscription without executing:
+Register persistent node subscription ownership:
 
 ```ts
 const subscription = runtime.subscribeNodes([Targets, Credits] as const);
@@ -148,7 +146,7 @@ subscription.unsubscribe();
 
 The subscription exposes a frozen, deduplicated `nodes` collection. Release is idempotent. Empty subscription is a no-op. Registration uses key-based graph identity and rejects unregistered targets before applying any subscription.
 
-Node subscription alone does not call loaders, evaluate derived nodes, alter node runtime state, schedule work, or cancel execution.
+`subscribeNodes(...)` does not invoke loaders synchronously. A non-empty subscription requests a coalesced scheduler microtask; the scheduler then executes subscribed stale nodes and their required ancestors.
 
 ## Implemented automatic subscription scheduling
 
