@@ -1,0 +1,121 @@
+# Observability, Devtools, and Snapshots
+
+## Why observability is part of the architecture
+
+Automatic orchestration reduces consumer code but makes hidden execution possible. The framework must make it easy to answer:
+
+- Why did this node load?
+- Which context or event invalidated it?
+- Which dependencies blocked it?
+- Was the result discarded as obsolete?
+- How long did each execution take?
+- Why is polling still active?
+
+## Diagnostic event stream
+
+The core should emit structured diagnostic events through an optional observer:
+
+- Node registered
+- Demand added or removed
+- Node invalidated
+- Execution scheduled
+- Node execution started, succeeded, failed, aborted, or discarded
+- Transaction started, committed, or rolled back
+- Domain event published
+- Poll scheduled or stopped
+- Mutation started, committed, or rolled back
+
+Diagnostics must be bounded or stream-based so long-running applications do not leak memory.
+
+## Metrics
+
+Initial metrics:
+
+- Execution count
+- Node load count
+- Success, failure, abort, and discarded-result counts
+- Cache/fresh-value reuse count
+- Node execution duration
+- Query time-to-ready
+- Retry count
+- Poll attempt count and total polling duration
+- Active demand count
+- Transaction count and duration
+
+Metrics should use a pluggable sink. The core may provide an in-memory development collector, but production applications should be able to connect their telemetry provider.
+
+## Devtools views
+
+### Graph view
+
+- Nodes and dependency edges
+- Event invalidation edges
+- Node kind
+- Runtime status and freshness
+- Active demand
+
+### Node inspector
+
+- Current value with configurable redaction
+- Dependencies and descendants
+- Last execution
+- Last invalidation reason
+- Error
+- Refresh and retry policies
+- Metrics
+
+### Timeline
+
+- Scheduler flushes
+- Executions
+- Transactions
+- Events
+- Mutations
+- Poll cycles
+
+### Controls
+
+Development-only controls may:
+
+- Invalidate a node
+- Refresh a node
+- Publish a synthetic event
+- Simulate failure or delay through the playground adapter
+- Export a snapshot
+
+## Snapshot diagnostics
+
+A snapshot is a serialisable diagnostic representation, not a default cache-persistence mechanism.
+
+Include:
+
+- Schema version
+- Framework version
+- Timestamp
+- Registered topology
+- Node status and freshness
+- Redacted or omitted values
+- Errors in serialisable form
+- Last invalidation reason
+- Demand counts
+- Selected metrics
+
+## Redaction and privacy
+
+Node definitions should support diagnostic redaction:
+
+```ts
+diagnostics: {
+  includeValue: false,
+}
+```
+
+or a custom redactor. Devtools and snapshots must default to safe handling of potentially sensitive values.
+
+## Snapshot testing
+
+Tests should assert stable functional fields, not timestamps or incidental execution IDs. Provide a normaliser that excludes volatile fields.
+
+## Importing snapshots
+
+Snapshot import for visual inspection is useful. Restoring snapshots as live cache state is a separate persistence feature and should not be included initially.
