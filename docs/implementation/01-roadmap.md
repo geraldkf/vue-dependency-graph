@@ -116,7 +116,7 @@ Milestone 3 status: Complete.
 
 ## Runtime composition refactor
 
-Status: R1A through R3 validated offline; R4 prepared with offline validation pending.
+Status: R1A through R4 validated offline; R5 prepared with offline validation pending.
 
 Implementation plan: `docs/implementation/11-runtime-composition-refactor-plan.md`
 
@@ -135,8 +135,9 @@ This behavior-preserving refactor is scheduled before Milestone 4.
 - [x] R3 implementation: Extract runtime state and active-attempt storage
 - [x] R3 offline validation
 - [x] R4 implementation: Extract the execution controller
-- [ ] R4 offline validation
-- [ ] R5: Extract subscription storage and lifecycle
+- [x] R4 offline validation
+- [x] R5 implementation: Extract subscription storage and lifecycle
+- [ ] R5 offline validation
 - [ ] R6: Extract the automatic scheduler
 - [ ] R7: Extract invalidation and context updates
 - [ ] R8: Extract prefetch and refresh operations

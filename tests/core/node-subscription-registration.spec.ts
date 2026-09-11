@@ -60,4 +60,22 @@ describe("node subscription registration", () => {
     expect(load).toHaveBeenCalledOnce();
     expect(runtime.getState(data).data).toBe("loaded");
   });
+
+  it("returns independent frozen subscription snapshots", () => {
+    const node = defineContextNode({ key: "node", initialValue: 1 });
+    const runtime = createGraphRuntime(createGraph({ nodes: [node] }));
+
+    const before = runtime.getSubscriptionState(node);
+    const subscription = runtime.subscribeNodes([node]);
+    const after = runtime.getSubscriptionState(node);
+
+    expect(before.total).toBe(0);
+    expect(after.total).toBe(1);
+    expect(before).not.toBe(after);
+    expect(Object.isFrozen(before)).toBe(true);
+    expect(Object.isFrozen(after)).toBe(true);
+
+    subscription.unsubscribe();
+  });
+
 });

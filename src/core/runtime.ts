@@ -13,10 +13,15 @@ import {
 import type { RefreshableNodeDefinition } from "./operations";
 import { toError } from "./execution";
 import { createRuntimeExecutionController } from "./runtime-execution";
+import {
+  createRuntimeSubscriptionController,
+  type RuntimeSubscriptionController,
+} from "./runtime-subscriptions";
 import type {
   AnyNodeDefinition,
   ContextNodeDefinition,
   Graph,
+  NodeValue,
 } from "./types";
 
 export type NodeStatus =
@@ -73,11 +78,6 @@ export interface GraphRuntime {
   readonly onChange: (listener: RuntimeListener) => () => void;
 }
 
-interface MutableNodeSubscriptionState {
-  direct: number;
-  required: number;
-}
-
 const isSchedulerOnlyAttempt = (attempt: ActiveAttempt): boolean =>
   attempt.origins.size === 1 && attempt.origins.has("scheduler");
 
@@ -97,7 +97,6 @@ export const createGraphRuntime = (graph: Graph): GraphRuntime => {
     deleteActiveAttempt,
     getActiveAttempts,
   } = createRuntimeStateStore(graph);
-  const subscriptionStates = new Map<string, MutableNodeSubscriptionState>();
   const { notify, onChange } = createRuntimeObserver();
   const settlementWaiters = new Set<() => void>();
   const refreshOperations = new Map<string, Promise<void>>();
@@ -105,10 +104,6 @@ export const createGraphRuntime = (graph: Graph): GraphRuntime => {
   let schedulerRunning = false;
   let schedulerFollowUpRequired = false;
   let schedulerError: Error | null = null;
-
-  for (const node of graph.getNodes()) {
-    subscriptionStates.set(node.key, { direct: 0, required: 0 });
-  }
 
   const isSchedulerSettled = (): boolean =>
     !schedulerScheduled && !schedulerRunning && !schedulerFollowUpRequired;
@@ -153,6 +148,27 @@ export const createGraphRuntime = (graph: Graph): GraphRuntime => {
     return registered;
   };
 
+  let subscriptions!: RuntimeSubscriptionController;
+  subscriptions = createRuntimeSubscriptionController({
+    graph,
+    resolveRegisteredNode: requireRegisteredNode,
+    notify,
+    afterSubscribe: schedule,
+    afterUnsubscribe: () => {
+      for (const [key, attempt] of getActiveAttempts()) {
+        const node = graph.getNode(key);
+        if (
+          node &&
+          !subscriptions.hasSubscribers(node) &&
+          isSchedulerOnlyAttempt(attempt)
+        ) {
+          attempt.controller.abort();
+        }
+      }
+      resolveSettlementWaiters();
+    },
+  });
+
   const requireRegisteredContextNode = <TValue>(
     node: ContextNodeDefinition<TValue>
   ): ContextNodeDefinition<TValue> => {
@@ -161,100 +177,6 @@ export const createGraphRuntime = (graph: Graph): GraphRuntime => {
       throw new Error(`Context node "${node.key}" is not registered in this graph.`);
     }
     return registered as ContextNodeDefinition<TValue>;
-  };
-
-  const requireSubscriptionState = (key: string): MutableNodeSubscriptionState => {
-    const subscriptionState = subscriptionStates.get(key);
-    if (!subscriptionState) {
-      throw new Error(`Subscription state for node "${key}" was not found.`);
-    }
-    return subscriptionState;
-  };
-
-  const getSubscriptionState = (node: AnyNodeDefinition): NodeSubscriptionState => {
-    const registered = requireRegisteredNode(node, "subscription inspection");
-    const subscriptionState = requireSubscriptionState(registered.key);
-    return Object.freeze({
-      direct: subscriptionState.direct,
-      required: subscriptionState.required,
-      total: subscriptionState.direct + subscriptionState.required,
-    });
-  };
-
-  const subscribeNodes = (
-    requestedNodes: readonly AnyNodeDefinition[]
-  ): NodeSubscription => {
-    const directNodes: AnyNodeDefinition[] = [];
-    const directKeys = new Set<string>();
-
-    for (const requested of requestedNodes) {
-      const registered = requireRegisteredNode(requested, "node subscription");
-      if (directKeys.has(registered.key)) continue;
-      directKeys.add(registered.key);
-      directNodes.push(registered);
-    }
-
-    const frozenNodes = Object.freeze([...directNodes]);
-    if (directNodes.length === 0) {
-      return Object.freeze({
-        nodes: frozenNodes,
-        unsubscribe: () => undefined,
-      });
-    }
-
-    const visitedAncestors = new Set<string>();
-    const requiredKeys = new Set<string>();
-    const queue = directNodes.flatMap(node => graph.getParents(node));
-
-    while (queue.length > 0) {
-      const ancestor = queue.shift();
-      if (!ancestor || visitedAncestors.has(ancestor.key)) continue;
-      visitedAncestors.add(ancestor.key);
-
-      if (!directKeys.has(ancestor.key)) requiredKeys.add(ancestor.key);
-      queue.push(...graph.getParents(ancestor));
-    }
-
-    for (const key of directKeys) requireSubscriptionState(key).direct += 1;
-    for (const key of requiredKeys) requireSubscriptionState(key).required += 1;
-    notify();
-    schedule();
-
-    let active = true;
-    return Object.freeze({
-      nodes: frozenNodes,
-      unsubscribe: () => {
-        if (!active) return;
-
-        for (const key of directKeys) {
-          if (requireSubscriptionState(key).direct <= 0) {
-            throw new Error(`Direct subscription for node "${key}" cannot become negative.`);
-          }
-        }
-        for (const key of requiredKeys) {
-          if (requireSubscriptionState(key).required <= 0) {
-            throw new Error(`Required subscription for node "${key}" cannot become negative.`);
-          }
-        }
-
-        for (const key of directKeys) requireSubscriptionState(key).direct -= 1;
-        for (const key of requiredKeys) requireSubscriptionState(key).required -= 1;
-        active = false;
-
-        for (const [key, attempt] of getActiveAttempts()) {
-          const subscriptionState = requireSubscriptionState(key);
-          if (
-            subscriptionState.direct + subscriptionState.required === 0 &&
-            isSchedulerOnlyAttempt(attempt)
-          ) {
-            attempt.controller.abort();
-          }
-        }
-
-        notify();
-        resolveSettlementWaiters();
-      },
-    });
   };
 
   const invalidateDescendants = (node: AnyNodeDefinition): boolean => {
@@ -274,8 +196,7 @@ export const createGraphRuntime = (graph: Graph): GraphRuntime => {
       state.error = null;
       getActiveAttempt(descendant.key)?.controller.abort();
 
-      const subscriptionState = requireSubscriptionState(descendant.key);
-      if (subscriptionState.direct + subscriptionState.required > 0) {
+      if (subscriptions.hasSubscribers(descendant)) {
         subscribedDescendantChanged = true;
       }
       queue.push(...graph.getChildren(descendant));
@@ -373,7 +294,7 @@ export const createGraphRuntime = (graph: Graph): GraphRuntime => {
   const getSubscribedTargetsNeedingWork = (): readonly AnyNodeDefinition[] =>
     graph.getNodes().filter(node => {
       if (node.kind === "context") return false;
-      if (requireSubscriptionState(node.key).direct === 0) return false;
+      if (!subscriptions.hasDirectSubscribers(node)) return false;
       return execution.needsExecution(node);
     });
 
@@ -418,9 +339,9 @@ export const createGraphRuntime = (graph: Graph): GraphRuntime => {
     execute,
     prefetch,
     refresh,
-    subscribeNodes,
-    getSubscriptionState,
-    hasSubscribers: (node: AnyNodeDefinition) => getSubscriptionState(node).total > 0,
+    subscribeNodes: subscriptions.subscribeNodes,
+    getSubscriptionState: subscriptions.getSubscriptionState,
+    hasSubscribers: subscriptions.hasSubscribers,
     getSchedulerState,
     whenSettled,
     onChange,

@@ -42,13 +42,15 @@ Node-state and active-attempt maps now belong to one runtime-local closure store
 
 ### R4: Extract the execution controller
 
-Status: Prepared; offline validation pending.
+Status: Validated offline.
 
 The existing single execution engine now belongs to one closure-based controller. Explicit, scheduler, prefetch, and refresh work all delegate to that controller. Runtime state remains in the R3 store. Execution continues to own attempt-start, committed-success, and committed-failure notifications, while descendant invalidation and scheduling remain outside the controller.
 
 ### R5: Extract subscription storage and lifecycle
 
-Status: Planned.
+Status: Prepared; offline validation pending.
+
+Subscription counters and contribution accounting now belong to one runtime-local closure controller. Complete validation, target deduplication, ancestor collection, frozen snapshots, and idempotent unsubscribe belong to that controller. Scheduler triggering, active-attempt cancellation, and execution-origin policy remain outside it. Subscription notification ownership and ordering remain unchanged.
 
 ### R6: Extract the automatic scheduler
 
