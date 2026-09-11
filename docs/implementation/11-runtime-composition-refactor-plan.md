@@ -60,13 +60,15 @@ Scheduler flags, error state, microtask queueing, follow-up handling, frozen sna
 
 ### R7: Extract invalidation and context updates
 
-Status: Prepared; offline validation pending.
+Status: Validated offline.
 
 Context validation, context commits, and transitive descendant invalidation now belong to one runtime-local closure controller. The controller owns generation changes, stale-state commits, invalidation aborts, notification ordering, and scheduler requests. Changed refresh results reuse the same descendant invalidation capability after execution success. Refresh-operation preparation and ownership remain outside for R8.
 
 ### R8: Extract prefetch and refresh operations
 
-Status: Planned.
+Status: Prepared; offline validation pending.
+
+Prefetch and refresh orchestration now belong to one runtime-local closure controller. The controller owns refresh validation, normalized operation identity, operation-map lifecycle, generation preparation, supersession, preparation notification, and execution delegation. R4 remains the single executor, R7 remains responsible for changed-result descendant invalidation, and scheduler settlement remains scheduler-only.
 
 ### R9: Simplify runtime assembly and document internal boundaries
 

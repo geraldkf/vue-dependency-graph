@@ -15,6 +15,7 @@ import {
   type MutableNodeRuntimeState,
 } from "./runtime-state";
 import type { RefreshableNodeDefinition } from "./operations";
+import { createRuntimeOperationsController } from "./runtime-operations";
 import { createRuntimeExecutionController } from "./runtime-execution";
 import {
   createRuntimeInvalidationController,
@@ -88,9 +89,6 @@ export interface GraphRuntime {
 const isSchedulerOnlyAttempt = (attempt: ActiveAttempt): boolean =>
   attempt.origins.size === 1 && attempt.origins.has("scheduler");
 
-const createRefreshOperationKey = (keys: ReadonlySet<string>): string =>
-  JSON.stringify([...keys].sort());
-
 export const createGraphRuntime = (graph: Graph): GraphRuntime => {
   const {
     getMutableState,
@@ -101,7 +99,6 @@ export const createGraphRuntime = (graph: Graph): GraphRuntime => {
     getActiveAttempts,
   } = createRuntimeStateStore(graph);
   const { notify, onChange } = createRuntimeObserver();
-  const refreshOperations = new Map<string, Promise<void>>();
   const requireRegisteredNode = (
     node: AnyNodeDefinition,
     purpose: string
@@ -133,52 +130,6 @@ export const createGraphRuntime = (graph: Graph): GraphRuntime => {
 
   const execute = (targets: readonly AnyNodeDefinition[]): Promise<void> =>
     execution.execute(targets, "explicit");
-
-  const prefetch = (targets: readonly AnyNodeDefinition[]): Promise<void> =>
-    execution.execute(targets, "prefetch");
-
-  const refresh = (
-    requestedTargets: readonly RefreshableNodeDefinition[]
-  ): Promise<void> => {
-    if (requestedTargets.length === 0) return Promise.resolve();
-
-    const targets: RefreshableNodeDefinition[] = [];
-    const keys = new Set<string>();
-    for (const requested of requestedTargets) {
-      const registered = requireRegisteredNode(requested, "manual refresh");
-      if (registered.kind === "context") {
-        return Promise.reject(
-          new Error(`Context node "${registered.key}" cannot be refreshed.`)
-        );
-      }
-      if (keys.has(registered.key)) continue;
-      keys.add(registered.key);
-      targets.push(registered as RefreshableNodeDefinition);
-    }
-
-    const operationKey = createRefreshOperationKey(keys);
-    const existing = refreshOperations.get(operationKey);
-    if (existing) return existing;
-
-    for (const target of targets) {
-      const state = getMutableState(target.key);
-      const active = getActiveAttempt(target.key);
-      if (active?.origins.has("refresh")) continue;
-      state.generation += 1;
-      state.freshness = "stale";
-      state.status = state.hasSuccessfulValue ? "success" : "idle";
-      active?.controller.abort();
-    }
-    notify();
-
-    const operation = execution.execute(targets, "refresh").finally(() => {
-      if (refreshOperations.get(operationKey) === operation) {
-        refreshOperations.delete(operationKey);
-      }
-    });
-    refreshOperations.set(operationKey, operation);
-    return operation;
-  };
 
   const getSubscribedTargetsNeedingWork = (): readonly AnyNodeDefinition[] =>
     graph.getNodes().filter(node => {
@@ -225,13 +176,21 @@ export const createGraphRuntime = (graph: Graph): GraphRuntime => {
     schedule: scheduler.schedule,
   });
 
+  const operations = createRuntimeOperationsController({
+    getMutableState,
+    getActiveAttempt,
+    resolveRegisteredNode: requireRegisteredNode,
+    execute: (targets, origin) => execution.execute(targets, origin),
+    notify,
+  });
+
   return Object.freeze({
     getState: <TNode extends AnyNodeDefinition>(node: TNode) =>
       getSnapshot(node),
     setContext: invalidation.setContext,
     execute,
-    prefetch,
-    refresh,
+    prefetch: operations.prefetch,
+    refresh: operations.refresh,
     subscribeNodes: subscriptions.subscribeNodes,
     getSubscriptionState: subscriptions.getSubscriptionState,
     hasSubscribers: subscriptions.hasSubscribers,
