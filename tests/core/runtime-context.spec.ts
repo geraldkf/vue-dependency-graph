@@ -72,4 +72,33 @@ describe("runtime context updates", () => {
     expect(listener).not.toHaveBeenCalled();
   });
 
+
+  it("invalidates each descendant once across diamond paths", () => {
+    const context = defineContextNode({ key: "context", initialValue: 1 });
+    const left = defineDerivedNode({
+      key: "left",
+      dependencies: [context] as const,
+      derive: ({ get }) => get(context) + 1,
+    });
+    const right = defineDerivedNode({
+      key: "right",
+      dependencies: [context] as const,
+      derive: ({ get }) => get(context) + 2,
+    });
+    const leaf = defineDerivedNode({
+      key: "leaf",
+      dependencies: [left, right] as const,
+      derive: ({ get }) => get(left) + get(right),
+    });
+    const runtime = createGraphRuntime(
+      createGraph({ nodes: [leaf, right, left, context] })
+    );
+
+    runtime.setContext(context, 2);
+
+    expect(runtime.getState(left).generation).toBe(1);
+    expect(runtime.getState(right).generation).toBe(1);
+    expect(runtime.getState(leaf).generation).toBe(1);
+  });
+
 });

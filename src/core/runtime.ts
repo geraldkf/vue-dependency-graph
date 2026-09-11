@@ -17,6 +17,10 @@ import {
 import type { RefreshableNodeDefinition } from "./operations";
 import { createRuntimeExecutionController } from "./runtime-execution";
 import {
+  createRuntimeInvalidationController,
+  type RuntimeInvalidationController,
+} from "./runtime-invalidation";
+import {
   createRuntimeSubscriptionController,
   type RuntimeSubscriptionController,
 } from "./runtime-subscriptions";
@@ -87,10 +91,6 @@ const isSchedulerOnlyAttempt = (attempt: ActiveAttempt): boolean =>
 const createRefreshOperationKey = (keys: ReadonlySet<string>): string =>
   JSON.stringify([...keys].sort());
 
-const isContextNode = (
-  node: AnyNodeDefinition
-): node is ContextNodeDefinition<unknown> => node.kind === "context";
-
 export const createGraphRuntime = (graph: Graph): GraphRuntime => {
   const {
     getMutableState,
@@ -116,63 +116,7 @@ export const createGraphRuntime = (graph: Graph): GraphRuntime => {
   let subscriptions!: RuntimeSubscriptionController;
   let execution!: ReturnType<typeof createRuntimeExecutionController>;
   let scheduler!: RuntimeSchedulerController;
-
-  const requireRegisteredContextNode = <TValue>(
-    node: ContextNodeDefinition<TValue>
-  ): ContextNodeDefinition<TValue> => {
-    const registered = requireRegisteredNode(node, "context update");
-    if (!isContextNode(registered)) {
-      throw new Error(`Context node "${node.key}" is not registered in this graph.`);
-    }
-    return registered as ContextNodeDefinition<TValue>;
-  };
-
-  const invalidateDescendants = (node: AnyNodeDefinition): boolean => {
-    const visited = new Set<string>();
-    const queue = [...graph.getChildren(node)];
-    let subscribedDescendantChanged = false;
-
-    while (queue.length > 0) {
-      const descendant = queue.shift();
-      if (!descendant || visited.has(descendant.key)) continue;
-      visited.add(descendant.key);
-
-      const state = getMutableState(descendant.key);
-      state.generation += 1;
-      state.freshness = "stale";
-      state.status = state.hasSuccessfulValue ? "success" : "idle";
-      state.error = null;
-      getActiveAttempt(descendant.key)?.controller.abort();
-
-      if (subscriptions.hasSubscribers(descendant)) {
-        subscribedDescendantChanged = true;
-      }
-      queue.push(...graph.getChildren(descendant));
-    }
-
-    return subscribedDescendantChanged;
-  };
-
-  const setContext = <TValue>(
-    node: ContextNodeDefinition<TValue>,
-    value: TValue
-  ): void => {
-    const registered = requireRegisteredContextNode(node);
-
-    const contextState = getMutableState(registered.key);
-    if (Object.is(contextState.data, value)) return;
-
-    contextState.data = value;
-    contextState.status = "success";
-    contextState.freshness = "fresh";
-    contextState.error = null;
-    contextState.generation += 1;
-    contextState.hasSuccessfulValue = true;
-
-    const subscribedDescendantChanged = invalidateDescendants(registered);
-    notify();
-    if (subscribedDescendantChanged) scheduler.schedule();
-  };
+  let invalidation!: RuntimeInvalidationController;
 
   execution = createRuntimeExecutionController({
     graph,
@@ -183,11 +127,8 @@ export const createGraphRuntime = (graph: Graph): GraphRuntime => {
     resolveRegisteredNode: node =>
       requireRegisteredNode(node, "execution"),
     notify,
-    onChangedRefreshResult: node => {
-      const subscribedDescendantChanged = invalidateDescendants(node);
-      if (graph.getChildren(node).length > 0) notify();
-      if (subscribedDescendantChanged) scheduler.schedule();
-    },
+    onChangedRefreshResult: node =>
+      invalidation.invalidateChangedResultDescendants(node),
   });
 
   const execute = (targets: readonly AnyNodeDefinition[]): Promise<void> =>
@@ -274,10 +215,20 @@ export const createGraphRuntime = (graph: Graph): GraphRuntime => {
     },
   });
 
+  invalidation = createRuntimeInvalidationController({
+    graph,
+    getMutableState,
+    getActiveAttempt,
+    hasSubscribers: subscriptions.hasSubscribers,
+    resolveRegisteredNode: requireRegisteredNode,
+    notify,
+    schedule: scheduler.schedule,
+  });
+
   return Object.freeze({
     getState: <TNode extends AnyNodeDefinition>(node: TNode) =>
       getSnapshot(node),
-    setContext,
+    setContext: invalidation.setContext,
     execute,
     prefetch,
     refresh,

@@ -54,13 +54,15 @@ Subscription counters and contribution accounting now belong to one runtime-loca
 
 ### R6: Extract the automatic scheduler
 
-Status: Prepared; offline validation pending.
+Status: Validated offline.
 
 Scheduler flags, error state, microtask queueing, follow-up handling, frozen snapshots, and settlement now belong to one runtime-local closure controller. Scheduler target selection remains a narrow injected runtime query. All automatic work delegates to the R4 execution controller using the scheduler origin. Subscription, invalidation, and cancellation policy remain outside the scheduler, and scheduler notification ownership and timing remain unchanged.
 
 ### R7: Extract invalidation and context updates
 
-Status: Planned.
+Status: Prepared; offline validation pending.
+
+Context validation, context commits, and transitive descendant invalidation now belong to one runtime-local closure controller. The controller owns generation changes, stale-state commits, invalidation aborts, notification ordering, and scheduler requests. Changed refresh results reuse the same descendant invalidation capability after execution success. Refresh-operation preparation and ownership remain outside for R8.
 
 ### R8: Extract prefetch and refresh operations
 
