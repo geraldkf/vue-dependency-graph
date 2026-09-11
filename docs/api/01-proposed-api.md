@@ -1,19 +1,13 @@
 # Public API
 
-## Implemented in Milestone 1
-
-### Define context nodes
+## Implemented graph definitions and registry
 
 ```ts
 const JobSeekerId = defineContextNode<number | undefined>({
   key: "jobSeekerId",
   initialValue: undefined,
 });
-```
 
-### Define data nodes
-
-```ts
 const PointPeriods = defineDataNode({
   key: "pointPeriods",
   dependencies: [JobSeekerId] as const,
@@ -21,123 +15,102 @@ const PointPeriods = defineDataNode({
   load: ({ get, signal }) =>
     api.getPointPeriods(get(JobSeekerId), signal),
 });
-```
 
-The loader is only defined in Milestone 1. It is not executed by the registry.
-
-### Define derived nodes
-
-```ts
 const CurrentPointPeriod = defineDerivedNode({
   key: "currentPointPeriod",
   dependencies: [PointPeriods] as const,
   derive: ({ get }) => get(PointPeriods).find(period => period.isCurrent),
 });
-```
 
-Derived functions are synchronous.
-
-### Forward dependency references
-
-For definitions that cannot use an eagerly constructed tuple:
-
-```ts
-const First = defineDerivedNode({
-  key: "first",
-  dependencies: () => [Second] as const,
-  derive: () => "first",
-});
-```
-
-Dependency resolvers are evaluated during graph creation and must be synchronous, side-effect free, and stable.
-
-### Create and inspect a graph
-
-```ts
 const graph = createGraph({
   nodes: [CurrentPointPeriod, PointPeriods, JobSeekerId],
 });
-
-graph.getNode("pointPeriods");
-graph.hasNode("pointPeriods");
-graph.getParents(CurrentPointPeriod);
-graph.getChildren(JobSeekerId);
-graph.getNodes();
 ```
 
-Graph creation validates the complete topology regardless of registration order.
+Graph registration is order independent and validates keys, duplicate dependencies, missing dependencies, and cycles.
 
-### Validation errors
+## Implemented runtime API
+
+### Create a runtime
 
 ```ts
-try {
-  createGraph({ nodes });
-} catch (error) {
-  if (error instanceof GraphValidationError) {
-    console.log(error.code, error.message);
-  }
+const runtime = createGraphRuntime(graph);
+```
+
+Multiple runtimes created from one graph have independent state.
+
+### Read typed runtime state
+
+```ts
+const state = runtime.getState(PointPeriods);
+```
+
+State includes:
+
+```ts
+interface NodeRuntimeState<TData> {
+  readonly data: TData;
+  readonly status: "idle" | "loading" | "success" | "refreshing" | "error";
+  readonly freshness: "fresh" | "stale";
+  readonly error: Error | null;
+  readonly generation: number;
+  readonly hasSuccessfulValue: boolean;
 }
 ```
 
-Implemented error codes:
+Derived state data is `T | undefined` before its first success. Context and data nodes expose their declared value type because both have an initial value.
+
+### Set context
 
 ```ts
-type GraphValidationErrorCode =
-  | "INVALID_NODE_KEY"
-  | "DUPLICATE_NODE_KEY"
-  | "DUPLICATE_DEPENDENCY"
-  | "MISSING_DEPENDENCY"
-  | "CIRCULAR_DEPENDENCY";
+runtime.setContext(JobSeekerId, 123);
 ```
 
-### Result type extraction
+A changed value synchronously marks transitive descendants stale and aborts affected work. It does not execute stale nodes automatically.
+
+### Execute targets explicitly
 
 ```ts
-type PointPeriodsValue = NodeValue<typeof PointPeriods>;
+await runtime.execute([CurrentPointPeriod]);
 ```
+
+Execution includes required ancestors, skips fresh successful nodes, deduplicates active work, and permits independent branches to continue when another branch fails.
+
+Failures reject with:
+
+```ts
+class GraphExecutionError extends Error {
+  readonly failures: readonly NodeExecutionFailure[];
+}
+```
+
+Each record identifies a directly failed or dependency-blocked node.
+
+### Observe committed state changes
+
+```ts
+const unsubscribe = runtime.subscribe(() => {
+  const state = runtime.getState(CurrentPointPeriod);
+});
+
+unsubscribe();
+```
+
+Unsubscribe is idempotent. Listener errors are isolated.
 
 ## Proposed for later milestones
 
-The following APIs are not implemented yet.
-
-### Vue consumption
+The following APIs are not implemented yet:
 
 ```ts
-const { data, status, freshness, error, refresh } = useNode(PointPeriods);
+useNode(PointPeriods);
+useNodes({ periods: PointPeriods });
+defineQuery(...);
+useQuery(...);
+graph.transaction(...);
+graph.publish(...);
+graph.prefetch(...);
+graph.refresh(...);
 ```
 
-### Multiple nodes
-
-```ts
-const query = useNodes({
-  selectedPeriod: CurrentPointPeriod,
-  periods: PointPeriods,
-});
-```
-
-### Query groups
-
-```ts
-const ManageCreditsQuery = defineQuery({
-  key: "manageCredits",
-  nodes: {
-    selectedPointPeriod: SelectedPointPeriod,
-    credits: Credits,
-  },
-});
-```
-
-### Transactions, events, prefetch, and refresh
-
-```ts
-await graph.transaction(() => {
-  graph.set(JobSeekerId, jobSeekerId);
-  graph.set(PointPeriodId, pointPeriodId);
-});
-
-graph.publish(AppointmentBooked, event);
-await graph.prefetch(ManageCreditsQuery);
-await graph.refresh(Targets);
-```
-
-These examples describe direction only and must not be treated as stable until their milestones are implemented.
+Automatic demand-driven execution is Milestone 3. Transactions are Milestone 4. Vue integration, query groups, events, polling, and mutations follow later milestones.

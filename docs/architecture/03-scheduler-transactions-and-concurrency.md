@@ -1,101 +1,84 @@
-# Scheduler, Transactions, and Concurrency
+# Execution, Scheduling, Transactions, and Concurrency
 
-## Scheduler goals
+## Implemented in Milestone 2
 
-- Automatically load demanded stale nodes.
-- Coalesce multiple synchronous changes.
-- Respect dependency ordering.
-- Execute independent branches concurrently.
-- Deduplicate in-flight loads.
-- Prevent obsolete results from overwriting newer state.
-- Avoid infinite rescheduling loops.
-
-## Scheduling model
-
-Graph changes request a scheduled flush. Only one flush is queued for the current microtask.
-
-```text
-context update
-context update
-new demand
-        |
-        v
-one scheduled flush
-```
-
-A flush calculates the current execution plan from graph state. It must not use a stale plan captured before the transaction or queued changes completed.
-
-## Execution generations
-
-Each invalidation increments a node generation. A loader captures its generation when execution begins. Its result is committed only if the generation is still current.
-
-This prevents an older request from overwriting data loaded for a newer context.
-
-## Cancellation
-
-Each execution receives a scoped `AbortSignal`. Abort controllers must be created per execution, not once for the graph lifetime.
-
-When dependencies or context change:
-
-- Obsolete in-flight work should be aborted where possible.
-- An abort should not be treated as a business failure.
-- The loader result must still be generation-checked because not all APIs honour abort signals.
-
-## Transactions
-
-Transactions group graph changes into a single commit.
+Milestone 2 provides explicit dependency-aware execution:
 
 ```ts
-await graph.transaction(() => {
-  graph.set(JobSeekerId, 123);
-  graph.set(PointPeriodId, 456);
-});
+const runtime = createGraphRuntime(graph);
+await runtime.execute([Targets, Credits]);
 ```
 
-During the transaction:
+Execution starts from the requested targets, includes their transitive ancestors, skips fresh successful nodes, and runs independent ready branches concurrently.
 
-- Values may be staged.
-- Invalidations are collected.
-- Event publications are collected.
-- Scheduler flushes are deferred.
+Automatic scheduling remains unimplemented. Consumers must explicitly call `execute` until Milestone 3.
 
-At outermost commit:
+## Runtime separation
 
-1. Apply staged values.
-2. Calculate the union of affected nodes.
-3. Mark affected nodes stale once.
-4. Publish one state notification batch.
-5. Schedule one execution flush.
+Immutable node definitions and graph topology can be shared by multiple runtime instances. Each runtime owns its values, statuses, errors, generations, listeners, active promises, and abort controllers.
 
-## Nested transactions
+## Runtime state
 
-Nested transactions join the outer transaction. Only the outermost transaction commits.
+Execution status and freshness are independent:
 
-If a synchronous transaction callback throws, staged local changes are discarded.
+```ts
+type NodeStatus =
+  | "idle"
+  | "loading"
+  | "success"
+  | "refreshing"
+  | "error";
 
-For asynchronous callbacks, documentation must be explicit: the graph transaction protects local graph state only. Any completed remote side effects cannot be rolled back by the graph.
+type NodeFreshness = "fresh" | "stale";
+```
 
-## Automatic batching versus explicit transactions
+Context nodes begin successful and fresh. Data nodes begin with their initial value but without a successful execution. Derived nodes use `undefined` before their first successful derivation.
 
-Synchronous updates outside a transaction are naturally coalesced by the microtask scheduler, but their values may become visible individually.
+## Dependency execution
 
-Use explicit transactions when observers must see all related context changes atomically.
+The runtime recursively ensures all required parents before a child. Independent parent promises are awaited together, providing parallel execution without a separate wave abstraction.
 
-## Concurrent transactions
+Context nodes require no loader. Data nodes receive typed `get` and an attempt-scoped `AbortSignal`. Derived nodes execute synchronously after all parents are fresh and successful.
 
-Initial implementation should serialise explicit async transactions on a graph instance. Allowing overlapping mutable transactions creates ambiguous commit and rollback semantics.
+## Generations and cancellation
 
-## Execution planning
+Each node has a generation. Changing a context increments that context generation and increments each transitive descendant generation once. Affected active attempts are aborted.
 
-The planner should:
+Every attempt captures its starting generation and unique token. A result commits only when both still match. This prevents an API that ignores abort from overwriting newer state.
 
-1. Start with demanded nodes that need work.
-2. Include their required ancestors.
-3. Exclude fresh successful nodes.
-4. Detect blocked nodes.
-5. Group ready nodes into waves.
-6. Execute each wave concurrently subject to a configurable concurrency limit.
+Abort and superseded results are not stored as business errors.
 
-## Infinite loop protection
+## In-flight deduplication
 
-The scheduler should detect repeated no-progress flushes and polling policies that immediately reschedule without delay. Diagnostics must report the nodes and reasons involved.
+A runtime shares one active promise for the same node generation. Overlapping explicit executions therefore do not duplicate a loader. Different runtime instances never share attempts.
+
+## Branch failures
+
+Failure is branch scoped:
+
+- A directly failed node records an error.
+- Descendants are blocked and do not execute.
+- Independent branches continue.
+- The execution promise settles after executable branches finish.
+- It then rejects with `GraphExecutionError` containing failed and blocked node records.
+
+## Observation
+
+A small framework-agnostic graph-level subscription API notifies after committed state changes. Listener failures are isolated. Obsolete results do not notify.
+
+## Proposed for Milestone 3
+
+Milestone 3 will add:
+
+- Demand registration
+- Automatic microtask scheduling
+- Coalescing of synchronous graph changes
+- Demand release
+- Prefetch
+- Manual refresh
+
+It will use the explicit execution engine rather than replacing it.
+
+## Proposed for Milestone 4
+
+Transactions will batch related context changes, defer invalidation notifications, and request one scheduler flush. Multiple `setContext` calls are not atomic in Milestone 2.

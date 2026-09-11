@@ -45,16 +45,24 @@ Prepared exit criteria are met by static inspection. Milestone 1 remains incompl
 
 ## Milestone 2: Runtime state and execution
 
-- [ ] Status and freshness model
-- [ ] Dependency-aware planner
-- [ ] Concurrent independent branches
-- [ ] Per-execution abort controller
-- [ ] Generation-based stale result protection
-- [ ] In-flight deduplication
-- [ ] Initial and refresh error distinction
-- [ ] Branch-scoped failure
+Status: Validation pending.
 
-Exit criteria: deterministic graph execution under success, failure, cancellation, and racing context changes.
+- [x] Prepare separate runtime state
+- [x] Prepare status and freshness model
+- [x] Prepare typed context updates and descendant invalidation
+- [x] Prepare dependency-aware explicit execution
+- [x] Prepare concurrent independent branches
+- [x] Prepare per-attempt abort controllers
+- [x] Prepare generation-based obsolete-result protection
+- [x] Prepare in-flight deduplication
+- [x] Prepare initial and refresh error distinction
+- [x] Prepare branch-scoped failure handling
+- [x] Prepare runtime observation and read-only state inspection
+- [x] Prepare behavioural and type tests
+- [x] Update API and architecture documentation
+- [ ] Receive successful offline validation feedback
+
+Prepared exit criteria are met by static inspection. Milestone 2 remains incomplete until offline type checking, tests, build, boundary validation, and playground startup are reported successful.
 
 ## Milestone 3: Demand and scheduler
 

@@ -1,0 +1,115 @@
+﻿
+> vue-dependency-graph@0.0.0 test:run C:\Developer\git\vue-dependency-graph
+> vitest run "--reporter" "verbose" "--no-color"
+
+
+ RUN  v3.0.7 C:/Developer/git/vue-dependency-graph
+
+ Ô£ô tests/core/runtime-state.spec.ts > graph runtime state > creates accurate independent initial state
+ Ô£ô tests/core/runtime-state.spec.ts > graph runtime state > notifies committed changes and supports idempotent unsubscribe
+ Ô£ô tests/core/graph-registration.spec.ts > graph registration > exposes equivalent topology for each registration order
+ Ô£ô tests/core/graph-registration.spec.ts > graph registration > indexes roots, leaves, multiple relationships, diamonds, and disconnected nodes
+ Ô£ô tests/core/graph-registration.spec.ts > graph registration > preserves registration order and protects returned topology collections
+ Ô£ô tests/core/graph-validation.spec.ts > graph validation > rejects duplicate node keys
+ Ô£ô tests/core/graph-validation.spec.ts > graph validation > rejects duplicate dependencies
+ Ô£ô tests/core/graph-validation.spec.ts > graph validation > rejects missing dependencies in connected and disconnected components
+ Ô£ô tests/core/graph-validation.spec.ts > graph validation > rejects self cycles
+ Ô£ô tests/core/graph-validation.spec.ts > graph validation > rejects two-node cycles
+ Ô£ô tests/core/graph-validation.spec.ts > graph validation > rejects longer cycles in disconnected components
+ Ô£ô tests/core/graph-validation.spec.ts > graph validation > accepts a valid diamond graph
+ Ô£ô tests/core/execution-failure.spec.ts > execution failures > normalises initial and derived failures
+ Ô£ô tests/core/execution-failure.spec.ts > execution failures > blocks dependent nodes while allowing independent branches to settle
+ Ô£ô tests/core/execution-failure.spec.ts > execution failures > retains stale data after refresh failure and clears the error after recovery
+ Ô£ô tests/core/execution-order.spec.ts > dependency-aware execution > resolves an empty target list
+ Ô£ô tests/core/execution-order.spec.ts > dependency-aware execution > executes ancestors before descendants and skips unrelated nodes
+ Ô£ô tests/core/execution-order.spec.ts > dependency-aware execution > executes independent parents concurrently before their child
+ ├ù tests/core/runtime-races.spec.ts > runtime cancellation and races > aborts affected work, preserves unrelated work, and discards obsolete results
+   ÔåÆ expected undefined to be true // Object.is equality
+ ├ù tests/core/runtime-races.spec.ts > runtime cancellation and races > does not reuse an obsolete generation attempt
+   ÔåÆ expected "spy" to be called 2 times, but got 1 times
+ ├ù tests/core/runtime-deduplication.spec.ts > runtime in-flight deduplication > shares one attempt across overlapping executions
+   ÔåÆ expected "spy" to be called once, but got 0 times
+ ├ù tests/core/runtime-deduplication.spec.ts > runtime in-flight deduplication > loads a shared ancestor once for overlapping targets
+   ÔåÆ expected "spy" to be called once, but got 0 times
+ Ô£ô tests/core/runtime-deduplication.spec.ts > runtime in-flight deduplication > does not share work across runtime instances
+ Ô£ô tests/core/runtime-context.spec.ts > runtime context updates > invalidates transitive descendants once and preserves their data
+ Ô£ô tests/devtools/index.spec.ts > devtools public entry point > can consume the public core layer
+ Ô£ô tests/core/node-definitions.spec.ts > node definitions > defines immutable context, data, and derived descriptors without executing functions
+ Ô£ô tests/core/node-definitions.spec.ts > node definitions > rejects blank key ""
+ Ô£ô tests/core/node-definitions.spec.ts > node definitions > rejects blank key "   "
+ Ô£ô tests/core/node-definitions.spec.ts > node definitions > rejects blank key "\t\n"
+ Ô£ô tests/core/index.spec.ts > core public entry point > exposes the core layer placeholder
+ Ô£ô tests/vue/index.spec.ts > Vue public entry point > can consume the public core layer
+ Ô£ô tests/playground/App.spec.ts > playground > identifies the project and logical layers
+pnpm : 
+At line:1 char:1
++ pnpm test:run --reporter verbose --no-color 2>&1 |
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ» Failed Tests 4 ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»
+
+ FAIL  tests/core/runtime-deduplication.spec.ts > runtime in-flight deduplication > shares one attempt across overlapping executions
+AssertionError: expected "spy" to be called once, but got 0 times
+ ÔØ» tests/core/runtime-deduplication.spec.ts:20:18
+     18|     const second = runtime.execute([data]);
+     19|     await Promise.resolve();
+     20|     expect(load).toHaveBeenCalledOnce();
+       |                  ^
+     21| 
+     22|     result.resolve("loaded");
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[1/4]ÔÄ»
+
+ FAIL  tests/core/runtime-deduplication.spec.ts > runtime in-flight deduplication > loads a shared ancestor once for overlapping targets
+AssertionError: expected "spy" to be called once, but got 0 times
+ ÔØ» tests/core/runtime-deduplication.spec.ts:37:18
+     35|     const execution = runtime.execute([left, right]);
+     36|     await Promise.resolve();
+     37|     expect(load).toHaveBeenCalledOnce();
+       |                  ^
+     38|     result.resolve(3);
+     39|     await execution;
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[2/4]ÔÄ»
+
+ FAIL  tests/core/runtime-races.spec.ts > runtime cancellation and races > aborts affected work, preserves unrelated work, and discards 
+obsolete results
+AssertionError: expected undefined to be true // Object.is equality
+
+[32m- Expected:[39m 
+true
+
+[31m+ Received:[39m 
+undefined
+
+ ÔØ» tests/core/runtime-races.spec.ts:45:33
+     43|     runtime.setContext(context, 2);
+     44| 
+     45|     expect(signals[0]?.aborted).toBe(true);
+       |                                 ^
+     46|     expect(runtime.getState(affected)).toMatchObject({
+     47|       data: "initial",
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[3/4]ÔÄ»
+
+ FAIL  tests/core/runtime-races.spec.ts > runtime cancellation and races > does not reuse an obsolete generation attempt
+AssertionError: expected "spy" to be called 2 times, but got 1 times
+ ÔØ» tests/core/runtime-races.spec.ts:99:18
+     97|     await Promise.all([first, second]);
+     98| 
+     99|     expect(load).toHaveBeenCalledTimes(2);
+       |                  ^
+    100|     expect(runtime.getState(data).data).toBe(20);
+    101|   });
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[4/4]ÔÄ»
+
+
+ Test Files  2 failed | 11 passed (13)
+      Tests  4 failed | 28 passed (32)
+   Start at  11:08:24
+   Duration  36.51s (transform 569ms, setup 0ms, collect 12.37s, tests 207ms, environment 161.15s, prepare 9.33s)
+
+ÔÇëELIFECYCLEÔÇë Command failed with exit code 1.
