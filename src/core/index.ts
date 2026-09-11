@@ -1,3 +1,4 @@
+export type { RefreshableNodeDefinition } from "./operations";
 export type { SchedulerState } from "./scheduler";
 export type {
   NodeSubscription,

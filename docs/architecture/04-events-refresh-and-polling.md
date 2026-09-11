@@ -100,3 +100,15 @@ Consumers should read progress from node data. The polling engine should not req
 ## Event and transaction interaction
 
 Events published inside a graph transaction are applied at commit. Duplicate events may be coalesced for invalidation, but diagnostic history should preserve what was published.
+
+### Implemented manual refresh
+
+Step 3C provides explicit one-shot refresh:
+
+```ts
+await runtime.refresh([Targets]);
+```
+
+Manual refresh forces registered data and derived nodes to execute again. It is not a refresh policy and does not introduce timers, stale-time rules, focus handling, reconnect handling, polling, retries, or backoff. Context nodes are not refreshable because their values are changed through `setContext(...)`.
+
+A changed refresh result invalidates transitive descendants while preserving their data. Subscribed descendants are then handled by the automatic scheduler. An `Object.is` equal result does not invalidate descendants.

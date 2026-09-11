@@ -3,6 +3,7 @@ import type {
   NodeSubscriptionState,
 } from "./subscription";
 import type { SchedulerState } from "./scheduler";
+import type { RefreshableNodeDefinition } from "./operations";
 import {
   GraphExecutionError,
   type NodeExecutionFailure,
@@ -54,6 +55,12 @@ export interface GraphRuntime {
   readonly execute: (
     nodes: readonly AnyNodeDefinition[]
   ) => Promise<void>;
+  readonly prefetch: (
+    nodes: readonly AnyNodeDefinition[]
+  ) => Promise<void>;
+  readonly refresh: (
+    nodes: readonly RefreshableNodeDefinition[]
+  ) => Promise<void>;
   readonly subscribeNodes: (
     nodes: readonly AnyNodeDefinition[]
   ) => NodeSubscription;
@@ -80,7 +87,7 @@ interface MutableNodeSubscriptionState {
   required: number;
 }
 
-type ExecutionOrigin = "explicit" | "scheduler";
+type ExecutionOrigin = "explicit" | "scheduler" | "prefetch" | "refresh";
 
 interface ActiveAttempt {
   readonly generation: number;
@@ -173,6 +180,7 @@ export const createGraphRuntime = (graph: Graph): GraphRuntime => {
   const activeAttempts = new Map<string, ActiveAttempt>();
   const listeners = new Set<RuntimeListener>();
   const settlementWaiters = new Set<() => void>();
+  const refreshOperations = new Map<string, Promise<void>>();
   let schedulerScheduled = false;
   let schedulerRunning = false;
   let schedulerFollowUpRequired = false;
@@ -325,7 +333,9 @@ export const createGraphRuntime = (graph: Graph): GraphRuntime => {
           if (
             subscriptionState.direct + subscriptionState.required === 0 &&
             attempt.origins.has("scheduler") &&
-            !attempt.origins.has("explicit")
+            !attempt.origins.has("explicit") &&
+            !attempt.origins.has("prefetch") &&
+            !attempt.origins.has("refresh")
           ) {
             attempt.controller.abort();
           }
@@ -335,6 +345,33 @@ export const createGraphRuntime = (graph: Graph): GraphRuntime => {
         resolveSettlementWaiters();
       },
     });
+  };
+
+  const invalidateDescendants = (node: AnyNodeDefinition): boolean => {
+    const visited = new Set<string>();
+    const queue = [...graph.getChildren(node)];
+    let subscribedDescendantChanged = false;
+
+    while (queue.length > 0) {
+      const descendant = queue.shift();
+      if (!descendant || visited.has(descendant.key)) continue;
+      visited.add(descendant.key);
+
+      const state = requireState(descendant.key);
+      state.generation += 1;
+      state.freshness = "stale";
+      state.status = state.hasSuccessfulValue ? "success" : "idle";
+      state.error = null;
+      activeAttempts.get(descendant.key)?.controller.abort();
+
+      const subscriptionState = requireSubscriptionState(descendant.key);
+      if (subscriptionState.direct + subscriptionState.required > 0) {
+        subscribedDescendantChanged = true;
+      }
+      queue.push(...graph.getChildren(descendant));
+    }
+
+    return subscribedDescendantChanged;
   };
 
   const setContext = <TValue>(
@@ -356,27 +393,7 @@ export const createGraphRuntime = (graph: Graph): GraphRuntime => {
     contextState.generation += 1;
     contextState.hasSuccessfulValue = true;
 
-    const visited = new Set<string>();
-    const queue = [...graph.getChildren(node)];
-    let subscribedDescendantChanged = false;
-    while (queue.length > 0) {
-      const descendant = queue.shift();
-      if (!descendant || visited.has(descendant.key)) continue;
-      visited.add(descendant.key);
-
-      const state = requireState(descendant.key);
-      state.generation += 1;
-      state.freshness = "stale";
-      state.status = state.hasSuccessfulValue ? "success" : "idle";
-      state.error = null;
-
-      activeAttempts.get(descendant.key)?.controller.abort();
-      if (getSubscriptionState(descendant).total > 0) {
-        subscribedDescendantChanged = true;
-      }
-      queue.push(...graph.getChildren(descendant));
-    }
-
+    const subscribedDescendantChanged = invalidateDescendants(registered);
     notify();
     if (subscribedDescendantChanged) schedule();
   };
@@ -415,6 +432,8 @@ export const createGraphRuntime = (graph: Graph): GraphRuntime => {
     if (isContextNode(node)) return Promise.resolve();
 
     const generation = state.generation;
+    const previousData = state.data;
+    const hadSuccessfulValue = state.hasSuccessfulValue;
     const token = Symbol(node.key);
     const controller = new AbortController();
 
@@ -454,6 +473,16 @@ export const createGraphRuntime = (graph: Graph): GraphRuntime => {
         current.error = null;
         current.hasSuccessfulValue = true;
         notify();
+
+        if (
+          currentAttempt?.origins.has("refresh") &&
+          hadSuccessfulValue &&
+          !Object.is(previousData, value)
+        ) {
+          const subscribedDescendantChanged = invalidateDescendants(node);
+          if (graph.getChildren(node).length > 0) notify();
+          if (subscribedDescendantChanged) schedule();
+        }
       } catch (thrown) {
         const current = states.get(node.key);
         const currentAttempt = activeAttempts.get(node.key);
@@ -578,6 +607,52 @@ export const createGraphRuntime = (graph: Graph): GraphRuntime => {
   const execute = (targets: readonly AnyNodeDefinition[]): Promise<void> =>
     executeInternal(targets, "explicit");
 
+  const prefetch = (targets: readonly AnyNodeDefinition[]): Promise<void> =>
+    executeInternal(targets, "prefetch");
+
+  const refresh = (
+    requestedTargets: readonly RefreshableNodeDefinition[]
+  ): Promise<void> => {
+    if (requestedTargets.length === 0) return Promise.resolve();
+
+    const targets: RefreshableNodeDefinition[] = [];
+    const keys = new Set<string>();
+    for (const requested of requestedTargets) {
+      const registered = requireRegisteredNode(requested, "manual refresh");
+      if (registered.kind === "context") {
+        return Promise.reject(
+          new Error(`Context node "${registered.key}" cannot be refreshed.`)
+        );
+      }
+      if (keys.has(registered.key)) continue;
+      keys.add(registered.key);
+      targets.push(registered as RefreshableNodeDefinition);
+    }
+
+    const operationKey = [...keys].sort().join("\u0000");
+    const existing = refreshOperations.get(operationKey);
+    if (existing) return existing;
+
+    for (const target of targets) {
+      const state = requireState(target.key);
+      const active = activeAttempts.get(target.key);
+      if (active?.origins.has("refresh")) continue;
+      state.generation += 1;
+      state.freshness = "stale";
+      state.status = state.hasSuccessfulValue ? "success" : "idle";
+      active?.controller.abort();
+    }
+    notify();
+
+    const operation = executeInternal(targets, "refresh").finally(() => {
+      if (refreshOperations.get(operationKey) === operation) {
+        refreshOperations.delete(operationKey);
+      }
+    });
+    refreshOperations.set(operationKey, operation);
+    return operation;
+  };
+
   const getSubscribedTargetsNeedingWork = (): readonly AnyNodeDefinition[] =>
     graph.getNodes().filter(node => {
       if (node.kind === "context") return false;
@@ -629,6 +704,8 @@ export const createGraphRuntime = (graph: Graph): GraphRuntime => {
       snapshotState<RuntimeNodeData<TNode>>(requireState(node.key)),
     setContext,
     execute,
+    prefetch,
+    refresh,
     subscribeNodes,
     getSubscriptionState,
     hasSubscribers: (node: AnyNodeDefinition) => getSubscriptionState(node).total > 0,

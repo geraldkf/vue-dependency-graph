@@ -178,3 +178,23 @@ const scheduler = runtime.getSchedulerState();
 `whenSettled(): Promise<void>` resolves after queued, active, and follow-up scheduler work completes. It also resolves after execution failure, with the failure available from `getSchedulerState()`.
 
 Unsubscribing the final subscriber cancels scheduler-only work that is no longer required. It does not cancel an attempt also owned by an explicit `runtime.execute(...)` caller.
+
+### Implemented prefetch and manual refresh
+
+Prefetch one graph branch without creating subscriptions:
+
+```ts
+await runtime.prefetch([Targets]);
+```
+
+Prefetch includes required ancestors, skips successful fresh nodes, and rejects with `GraphExecutionError` on failure.
+
+Force data or derived nodes to execute again:
+
+```ts
+await runtime.refresh([Targets, Summary]);
+```
+
+`refresh(...)` accepts data and derived handles but not context handles. It preserves successful values while refreshing and invalidates descendants only when the committed result changes by `Object.is` comparison.
+
+Both APIs return `Promise<void>`. They are caller-owned one-shot operations and are awaited directly. `runtime.whenSettled()` continues to describe scheduler quiescence only.

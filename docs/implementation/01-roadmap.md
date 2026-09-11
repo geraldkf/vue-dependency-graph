@@ -82,7 +82,7 @@ Status: Validated offline.
 
 ### Step 3B: Automatic subscription scheduler
 
-Status: Validation pending.
+Status: Validated offline.
 
 - [x] Prepare microtask scheduling
 - [x] Prepare coalesced execution flushes
@@ -93,13 +93,21 @@ Status: Validation pending.
 - [x] Prepare scheduler settlement API
 - [x] Prepare behavioural and type tests
 - [x] Update API and architecture documentation
-- [ ] Receive successful offline validation feedback
+- [x] Receive successful offline validation feedback
 
 ### Step 3C: Prefetch and manual refresh
 
-- [ ] Temporary prefetch subscription
-- [ ] Manual refresh
-- [ ] Cleanup and cancellation semantics
+Status: Validation pending.
+
+- [x] Prepare one-shot prefetch without persistent subscriptions
+- [x] Prepare manual refresh for data and derived nodes
+- [x] Prepare caller-operation ownership and deduplication
+- [x] Prepare changed-result descendant invalidation
+- [x] Prepare scheduler interaction and cancellation semantics
+- [x] Prepare failure and recovery behaviour
+- [x] Prepare behavioural and type tests
+- [x] Update API and architecture documentation
+- [ ] Receive successful offline validation feedback
 
 Milestone exit criteria: creating subscription automatically loads exactly the required graph without a public `loadData()` call.
 

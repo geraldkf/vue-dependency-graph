@@ -131,3 +131,18 @@ A failed subscribed node remains settled without an automatic retry loop. A late
 ### Cancellation ownership
 
 Active attempts track whether they are owned by explicit execution, scheduler execution, or both. Unsubscribing the final subscriber aborts scheduler-only work that no longer has any direct or required subscription count. Shared work remains active while another subscriber requires it. Work also remains active when an explicit `execute` caller owns the same attempt.
+
+### Implemented in Step 3C: One-shot operations
+
+`prefetch(...)` and `refresh(...)` are caller-owned one-shot operations that reuse the existing dependency-aware executor.
+
+```ts
+await runtime.prefetch([Targets]);
+await runtime.refresh([Targets]);
+```
+
+Prefetch skips successful fresh nodes, creates no persistent subscription counts, and does not cause later context changes to reload prefetched nodes automatically. Manual refresh forces data or derived targets into a new generation while preserving successful data.
+
+Execution attempts can be owned by explicit execution, the scheduler, prefetch, refresh, or a combination. Final unsubscribe cancels scheduler-only work but preserves attempts still owned by a caller operation.
+
+`whenSettled()` remains intentionally limited to automatic scheduler work. Callers await the promise returned by `prefetch(...)` or `refresh(...)` for those operations.

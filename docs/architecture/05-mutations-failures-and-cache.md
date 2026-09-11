@@ -62,3 +62,9 @@ Step 3B captures automatic orchestration failures in `SchedulerState.error`. The
 Automatic failures do not create unhandled promise rejections and do not immediately retry. A new node subscription or context change provides a new external trigger. The scheduler clears its prior error when that pass starts, and successful node execution clears the node error through the existing runtime state machine.
 
 Cancellation caused by the final subscriber unsubscribing is not a business failure and is not stored as a node or scheduler error.
+
+### Prefetch and refresh failures
+
+Prefetch and manual refresh are caller-visible operations. They reject with the existing `GraphExecutionError` after independent executable branches settle. Their failures update normal per-node state and do not become scheduler errors unless the scheduler independently owns failing orchestration.
+
+A refresh failure retains a previous successful value, records the error, and leaves the node stale. A later successful refresh clears the node error. Prefetch creates no persistent subscription or cache-lifecycle ownership.
