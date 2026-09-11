@@ -5,11 +5,6 @@
 
  RUN  v3.0.7 C:/Developer/git/vue-dependency-graph
 
- Ô£ô tests/core/runtime-state.spec.ts > graph runtime state > creates accurate independent initial state
- Ô£ô tests/core/runtime-state.spec.ts > graph runtime state > notifies committed changes and supports idempotent unsubscribe
- Ô£ô tests/core/graph-registration.spec.ts > graph registration > exposes equivalent topology for each registration order
- Ô£ô tests/core/graph-registration.spec.ts > graph registration > indexes roots, leaves, multiple relationships, diamonds, and disconnected nodes
- Ô£ô tests/core/graph-registration.spec.ts > graph registration > preserves registration order and protects returned topology collections
  Ô£ô tests/core/graph-validation.spec.ts > graph validation > rejects duplicate node keys
  Ô£ô tests/core/graph-validation.spec.ts > graph validation > rejects duplicate dependencies
  Ô£ô tests/core/graph-validation.spec.ts > graph validation > rejects missing dependencies in connected and disconnected components
@@ -17,30 +12,104 @@
  Ô£ô tests/core/graph-validation.spec.ts > graph validation > rejects two-node cycles
  Ô£ô tests/core/graph-validation.spec.ts > graph validation > rejects longer cycles in disconnected components
  Ô£ô tests/core/graph-validation.spec.ts > graph validation > accepts a valid diamond graph
- Ô£ô tests/core/execution-failure.spec.ts > execution failures > normalises initial and derived failures
- Ô£ô tests/core/execution-failure.spec.ts > execution failures > blocks dependent nodes while allowing independent branches to settle
- Ô£ô tests/core/execution-failure.spec.ts > execution failures > retains stale data after refresh failure and clears the error after recovery
+ Ô£ô tests/core/graph-registration.spec.ts > graph registration > exposes equivalent topology for each registration order
+ Ô£ô tests/core/graph-registration.spec.ts > graph registration > indexes roots, leaves, multiple relationships, diamonds, and disconnected nodes
+ Ô£ô tests/core/graph-registration.spec.ts > graph registration > preserves registration order and protects returned topology collections
  Ô£ô tests/core/execution-order.spec.ts > dependency-aware execution > resolves an empty target list
  Ô£ô tests/core/execution-order.spec.ts > dependency-aware execution > executes ancestors before descendants and skips unrelated nodes
  Ô£ô tests/core/execution-order.spec.ts > dependency-aware execution > executes independent parents concurrently before their child
- ├ù tests/core/runtime-races.spec.ts > runtime cancellation and races > aborts affected work, preserves unrelated work, and discards obsolete results
-   ÔåÆ expected undefined to be true // Object.is equality
- ├ù tests/core/runtime-races.spec.ts > runtime cancellation and races > does not reuse an obsolete generation attempt
-   ÔåÆ expected "spy" to be called 2 times, but got 1 times
- ├ù tests/core/runtime-deduplication.spec.ts > runtime in-flight deduplication > shares one attempt across overlapping executions
-   ÔåÆ expected "spy" to be called once, but got 0 times
- ├ù tests/core/runtime-deduplication.spec.ts > runtime in-flight deduplication > loads a shared ancestor once for overlapping targets
-   ÔåÆ expected "spy" to be called once, but got 0 times
- Ô£ô tests/core/runtime-deduplication.spec.ts > runtime in-flight deduplication > does not share work across runtime instances
+ Ô£ô tests/core/execution-order.spec.ts > dependency-aware execution > resolves equivalent targets and validates the full list before execution
+ Ô£ô tests/core/runtime-races.spec.ts > runtime cancellation and races > aborts affected work, preserves unrelated work, and discards obsolete results
+ Ô£ô tests/core/runtime-races.spec.ts > runtime cancellation and races > does not reuse an obsolete generation attempt
+ ├ù tests/core/refresh-interaction.spec.ts > refresh interactions and races > supersedes active normal work and prevents its old result from committing
+   ÔåÆ refreshOperations is not defined
+ ├ù tests/core/refresh-interaction.spec.ts > refresh interactions and races > shares overlapping refresh calls and runs a later refresh again
+   ÔåÆ refreshOperations is not defined
+ ├ù tests/core/refresh-interaction.spec.ts > refresh interactions and races > does not let final unsubscribe cancel caller-owned refresh
+   ÔåÆ refreshOperations is not defined
+ ├ù tests/core/refresh-interaction.spec.ts > refresh interactions and races > shares overlapping refreshes regardless of target order and duplicates
+   ÔåÆ refreshOperations is not defined
+ ├ù tests/core/refresh-interaction.spec.ts > refresh interactions and races > keeps distinct refresh target sets independent
+   ÔåÆ refreshOperations is not defined
+ Ô£ô tests/core/execution-failure.spec.ts > execution failures > normalises initial and derived failures
+ Ô£ô tests/core/execution-failure.spec.ts > execution failures > blocks dependent nodes while allowing independent branches to settle
+ Ô£ô tests/core/execution-failure.spec.ts > execution failures > retains stale data after refresh failure and clears the error after recovery
+ ├ù tests/core/refresh.spec.ts > manual refresh > reloads fresh data and preserves its value while refreshing
+   ÔåÆ refreshOperations is not defined
+ ├ù tests/core/refresh.spec.ts > manual refresh > recomputes a derived node without reloading its fresh ancestor
+   ÔåÆ refreshOperations is not defined
+ ├ù tests/core/refresh.spec.ts > manual refresh > deduplicates targets and supports empty input
+   ÔåÆ refreshOperations is not defined
+ ├ù tests/core/refresh.spec.ts > manual refresh > resolves equivalent refreshable handles through registered keys
+   ÔåÆ refreshOperations is not defined
+ Ô£ô tests/core/refresh.spec.ts > manual refresh > validates the full refresh list before changing generations
+ Ô£ô tests/core/refresh.spec.ts > manual refresh > defensively rejects context-node refresh
+ Ô£ô tests/core/scheduler-cancellation.spec.ts > subscription-driven cancellation > aborts scheduler-owned work after the final subscriber unsubscribes
+ Ô£ô tests/core/scheduler-cancellation.spec.ts > subscription-driven cancellation > keeps shared work while another subscriber remains
+ Ô£ô tests/core/scheduler-cancellation.spec.ts > subscription-driven cancellation > does not cancel explicit caller-owned work when subscribers disappear
+ Ô£ô tests/core/node-subscription-registration.spec.ts > node subscription registration > starts every node at zero subscription counts with independent runtime state
+ Ô£ô tests/core/node-subscription-registration.spec.ts > node subscription registration > supports direct subscriptions for all node kinds and separate subscriptions
+ Ô£ô tests/core/node-subscription-registration.spec.ts > node subscription registration > does not execute synchronously when a subscription is created
+ Ô£ô tests/core/node-subscription-registration.spec.ts > node subscription registration > returns independent frozen subscription snapshots
+ Ô£ô tests/core/node-subscription-lifecycle.spec.ts > node subscription lifecycle > releases exactly one subscription and is idempotent
+ Ô£ô tests/core/node-subscription-lifecycle.spec.ts > node subscription lifecycle > supports an empty no-op subscription without notification
+ Ô£ô tests/core/node-subscription-lifecycle.spec.ts > node subscription lifecycle > validates all targets before applying subscription
+ Ô£ô tests/core/node-subscription-lifecycle.spec.ts > node subscription lifecycle > resolves a different handle through its registered key
+ Ô£ô tests/core/node-subscription-lifecycle.spec.ts > node subscription lifecycle > notifies once for add and active release while isolating listener failures
  Ô£ô tests/core/runtime-context.spec.ts > runtime context updates > invalidates transitive descendants once and preserves their data
- Ô£ô tests/devtools/index.spec.ts > devtools public entry point > can consume the public core layer
+ Ô£ô tests/core/runtime-context.spec.ts > runtime context updates > resolves equivalent context handles through the registered key
+ Ô£ô tests/core/runtime-context.spec.ts > runtime context updates > rejects invalid context handles without changing state or notifying
+ Ô£ô tests/core/scheduler-settlement.spec.ts > scheduler settlement > resolves immediately when idle and exposes a frozen state snapshot
+ Ô£ô tests/core/scheduler-settlement.spec.ts > scheduler settlement > waits for queued and active work and resolves multiple waiters
+ Ô£ô tests/core/scheduler-settlement.spec.ts > scheduler settlement > returns independent frozen scheduler snapshots
+ Ô£ô tests/core/scheduler-settlement.spec.ts > scheduler observation > exposes committed scheduler transitions without recursive scheduling
+ Ô£ô tests/core/node-subscription-propagation.spec.ts > node subscription propagation > propagates required subscription through transitive ancestors
+ Ô£ô tests/core/node-subscription-propagation.spec.ts > node subscription propagation > deduplicates a diamond ancestor per subscription
+ Ô£ô tests/core/node-subscription-propagation.spec.ts > node subscription propagation > uses subscription-level set semantics for parent and child targets
+ Ô£ô tests/core/runtime-state.spec.ts > graph runtime state > creates accurate independent initial state
+ Ô£ô tests/core/runtime-state.spec.ts > graph runtime state > notifies committed changes and supports idempotent unsubscribe
+ Ô£ô tests/core/runtime-state.spec.ts > graph runtime state > returns independent snapshots for each read
+ Ô£ô tests/core/scheduler-failure.spec.ts > scheduler failures > stores automatic execution failure and settles without retrying
+ Ô£ô tests/core/scheduler-failure.spec.ts > scheduler failures > retries after a new subscription and clears errors after success
+ Ô£ô tests/core/scheduler-failure.spec.ts > scheduler failures > retries a subscribed branch after context change
+ ├ù tests/core/refresh-descendants.spec.ts > refresh descendant invalidation > invalidates transitive descendants once when the value changes
+   ÔåÆ refreshOperations is not defined
+ ├ù tests/core/refresh-descendants.spec.ts > refresh descendant invalidation > does not invalidate descendants when the value is equal
+   ÔåÆ refreshOperations is not defined
+ ├ù tests/core/refresh-descendants.spec.ts > refresh descendant invalidation > automatically recomputes subscribed descendants only
+   ÔåÆ refreshOperations is not defined
+ Ô£ô tests/core/prefetch.spec.ts > prefetch > loads a target and required ancestors without subscriptions
+ Ô£ô tests/core/prefetch.spec.ts > prefetch > skips fresh nodes and satisfies a later subscription
+ Ô£ô tests/core/prefetch.spec.ts > prefetch > supports equivalent handles, empty input, and atomic validation
+ Ô£ô tests/core/runtime-deduplication.spec.ts > runtime in-flight deduplication > shares one attempt across overlapping executions
+ Ô£ô tests/core/runtime-deduplication.spec.ts > runtime in-flight deduplication > loads a shared ancestor once for overlapping targets
+ Ô£ô tests/core/runtime-deduplication.spec.ts > runtime in-flight deduplication > does not share work across runtime instances
+ Ô£ô tests/core/scheduler-subscription.spec.ts > automatic node subscription execution > loads a subscribed data node and settles
+ Ô£ô tests/core/scheduler-subscription.spec.ts > automatic node subscription execution > loads required ancestors and derives the subscribed target
+ Ô£ô tests/core/scheduler-subscription.spec.ts > automatic node subscription execution > settles a subscribed context without loading anything
+ Ô£ô tests/core/scheduler-coalescing.spec.ts > scheduler coalescing > coalesces synchronous subscriptions and shared ancestors
+ Ô£ô tests/core/scheduler-coalescing.spec.ts > scheduler coalescing > uses the latest context value from the synchronous change group
+ Ô£ô tests/core/scheduler-coalescing.spec.ts > scheduler coalescing > does not load when the subscription is removed before the flush
+ Ô£ô tests/core/prefetch-interaction.spec.ts > prefetch interactions > shares work with the scheduler and survives final unsubscribe
+ Ô£ô tests/core/prefetch-interaction.spec.ts > prefetch interactions > shares work with explicit execution
+ Ô£ô tests/core/prefetch-interaction.spec.ts > prefetch interactions > rejects caller-visible failure without setting scheduler error
+ Ô£ô tests/core/runtime-observer.spec.ts > runtime observation > defers listeners added during dispatch until a later transition
+ Ô£ô tests/core/runtime-observer.spec.ts > runtime observation > finishes the current dispatch snapshot when a listener is removed
+ Ô£ô tests/core/runtime-observer.spec.ts > runtime observation > keeps listeners isolated between runtime instances
+ Ô£ô tests/core/scheduler-context.spec.ts > scheduler context invalidation > runs one follow-up using the latest context and discards the obsolete result
+ Ô£ô tests/core/scheduler-context.spec.ts > scheduler context invalidation > does not load stale descendants without subscribers
  Ô£ô tests/core/node-definitions.spec.ts > node definitions > defines immutable context, data, and derived descriptors without executing functions
  Ô£ô tests/core/node-definitions.spec.ts > node definitions > rejects blank key ""
  Ô£ô tests/core/node-definitions.spec.ts > node definitions > rejects blank key "   "
  Ô£ô tests/core/node-definitions.spec.ts > node definitions > rejects blank key "\t\n"
+ ├ù tests/core/refresh-failure.spec.ts > refresh failures > retains successful data and allows later recovery
+   ÔåÆ refreshOperations is not defined
+ ├ù tests/core/refresh-failure.spec.ts > refresh failures > normalises derived refresh failures
+   ÔåÆ refreshOperations is not defined
+ Ô£ô tests/devtools/index.spec.ts > devtools public entry point > can consume the public core layer
  Ô£ô tests/core/index.spec.ts > core public entry point > exposes the core layer placeholder
- Ô£ô tests/vue/index.spec.ts > Vue public entry point > can consume the public core layer
  Ô£ô tests/playground/App.spec.ts > playground > identifies the project and logical layers
+ Ô£ô tests/vue/index.spec.ts > Vue public entry point > can consume the public core layer
 pnpm : 
 At line:1 char:1
 + pnpm test:run --reporter verbose --no-color 2>&1 |
@@ -48,68 +117,200 @@ At line:1 char:1
     + CategoryInfo          : NotSpecified: (:String) [], RemoteException
     + FullyQualifiedErrorId : NativeCommandError
  
-ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ» Failed Tests 4 ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ» Failed Tests 14 ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»
 
- FAIL  tests/core/runtime-deduplication.spec.ts > runtime in-flight deduplication > shares one attempt across overlapping executions
-AssertionError: expected "spy" to be called once, but got 0 times
- ÔØ» tests/core/runtime-deduplication.spec.ts:20:18
-     18|     const second = runtime.execute([data]);
-     19|     await Promise.resolve();
-     20|     expect(load).toHaveBeenCalledOnce();
-       |                  ^
-     21| 
-     22|     result.resolve("loaded");
+ FAIL  tests/core/refresh-descendants.spec.ts > refresh descendant invalidation > invalidates transitive descendants once when the 
+value changes
+ReferenceError: refreshOperations is not defined
+ ÔØ» Object.refresh src/core/runtime.ts:218:22
+    216| 
+    217|     const operationKey = createRefreshOperationKey(keys);
+    218|     const existing = refreshOperations.get(operationKey);
+       |                      ^
+    219|     if (existing) return existing;
+    220| 
+ ÔØ» tests/core/refresh-descendants.spec.ts:14:19
 
-ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[1/4]ÔÄ»
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[1/14]ÔÄ»
 
- FAIL  tests/core/runtime-deduplication.spec.ts > runtime in-flight deduplication > loads a shared ancestor once for overlapping targets
-AssertionError: expected "spy" to be called once, but got 0 times
- ÔØ» tests/core/runtime-deduplication.spec.ts:37:18
-     35|     const execution = runtime.execute([left, right]);
-     36|     await Promise.resolve();
-     37|     expect(load).toHaveBeenCalledOnce();
-       |                  ^
-     38|     result.resolve(3);
-     39|     await execution;
+ FAIL  tests/core/refresh-descendants.spec.ts > refresh descendant invalidation > does not invalidate descendants when the value is 
+equal
+ReferenceError: refreshOperations is not defined
+ ÔØ» Object.refresh src/core/runtime.ts:218:22
+    216| 
+    217|     const operationKey = createRefreshOperationKey(keys);
+    218|     const existing = refreshOperations.get(operationKey);
+       |                      ^
+    219|     if (existing) return existing;
+    220| 
+ ÔØ» tests/core/refresh-descendants.spec.ts:27:19
 
-ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[2/4]ÔÄ»
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[2/14]ÔÄ»
 
- FAIL  tests/core/runtime-races.spec.ts > runtime cancellation and races > aborts affected work, preserves unrelated work, and discards 
-obsolete results
-AssertionError: expected undefined to be true // Object.is equality
+ FAIL  tests/core/refresh-descendants.spec.ts > refresh descendant invalidation > automatically recomputes subscribed descendants only
+ReferenceError: refreshOperations is not defined
+ ÔØ» Object.refresh src/core/runtime.ts:218:22
+    216| 
+    217|     const operationKey = createRefreshOperationKey(keys);
+    218|     const existing = refreshOperations.get(operationKey);
+       |                      ^
+    219|     if (existing) return existing;
+    220| 
+ ÔØ» tests/core/refresh-descendants.spec.ts:44:19
 
-[32m- Expected:[39m 
-true
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[3/14]ÔÄ»
 
-[31m+ Received:[39m 
-undefined
+ FAIL  tests/core/refresh-failure.spec.ts > refresh failures > retains successful data and allows later recovery
+ReferenceError: refreshOperations is not defined
+ ÔØ» Object.refresh src/core/runtime.ts:218:22
+    216| 
+    217|     const operationKey = createRefreshOperationKey(keys);
+    218|     const existing = refreshOperations.get(operationKey);
+       |                      ^
+    219|     if (existing) return existing;
+    220| 
+ ÔØ» tests/core/refresh-failure.spec.ts:26:26
 
- ÔØ» tests/core/runtime-races.spec.ts:45:33
-     43|     runtime.setContext(context, 2);
-     44| 
-     45|     expect(signals[0]?.aborted).toBe(true);
-       |                                 ^
-     46|     expect(runtime.getState(affected)).toMatchObject({
-     47|       data: "initial",
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[4/14]ÔÄ»
 
-ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[3/4]ÔÄ»
+ FAIL  tests/core/refresh-failure.spec.ts > refresh failures > normalises derived refresh failures
+ReferenceError: refreshOperations is not defined
+ ÔØ» Object.refresh src/core/runtime.ts:218:22
+    216| 
+    217|     const operationKey = createRefreshOperationKey(keys);
+    218|     const existing = refreshOperations.get(operationKey);
+       |                      ^
+    219|     if (existing) return existing;
+    220| 
+ ÔØ» tests/core/refresh-failure.spec.ts:51:26
 
- FAIL  tests/core/runtime-races.spec.ts > runtime cancellation and races > does not reuse an obsolete generation attempt
-AssertionError: expected "spy" to be called 2 times, but got 1 times
- ÔØ» tests/core/runtime-races.spec.ts:99:18
-     97|     await Promise.all([first, second]);
-     98| 
-     99|     expect(load).toHaveBeenCalledTimes(2);
-       |                  ^
-    100|     expect(runtime.getState(data).data).toBe(20);
-    101|   });
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[5/14]ÔÄ»
 
-ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[4/4]ÔÄ»
+ FAIL  tests/core/refresh-interaction.spec.ts > refresh interactions and races > supersedes active normal work and prevents its old 
+result from committing
+ReferenceError: refreshOperations is not defined
+ ÔØ» Object.refresh src/core/runtime.ts:218:22
+    216| 
+    217|     const operationKey = createRefreshOperationKey(keys);
+    218|     const existing = refreshOperations.get(operationKey);
+       |                      ^
+    219|     if (existing) return existing;
+    220| 
+ ÔØ» tests/core/refresh-interaction.spec.ts:21:29
 
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[6/14]ÔÄ»
 
- Test Files  2 failed | 11 passed (13)
-      Tests  4 failed | 28 passed (32)
-   Start at  11:08:24
-   Duration  36.51s (transform 569ms, setup 0ms, collect 12.37s, tests 207ms, environment 161.15s, prepare 9.33s)
+ FAIL  tests/core/refresh-interaction.spec.ts > refresh interactions and races > shares overlapping refresh calls and runs a later 
+refresh again
+ReferenceError: refreshOperations is not defined
+ ÔØ» Object.refresh src/core/runtime.ts:218:22
+    216| 
+    217|     const operationKey = createRefreshOperationKey(keys);
+    218|     const existing = refreshOperations.get(operationKey);
+       |                      ^
+    219|     if (existing) return existing;
+    220| 
+ ÔØ» tests/core/refresh-interaction.spec.ts:37:25
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[7/14]ÔÄ»
+
+ FAIL  tests/core/refresh-interaction.spec.ts > refresh interactions and races > does not let final unsubscribe cancel caller-owned 
+refresh
+ReferenceError: refreshOperations is not defined
+ ÔØ» Object.refresh src/core/runtime.ts:218:22
+    216| 
+    217|     const operationKey = createRefreshOperationKey(keys);
+    218|     const existing = refreshOperations.get(operationKey);
+       |                      ^
+    219|     if (existing) return existing;
+    220| 
+ ÔØ» tests/core/refresh-interaction.spec.ts:55:29
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[8/14]ÔÄ»
+
+ FAIL  tests/core/refresh-interaction.spec.ts > refresh interactions and races > shares overlapping refreshes regardless of target 
+order and duplicates
+ReferenceError: refreshOperations is not defined
+ ÔØ» Object.refresh src/core/runtime.ts:218:22
+    216| 
+    217|     const operationKey = createRefreshOperationKey(keys);
+    218|     const existing = refreshOperations.get(operationKey);
+       |                      ^
+    219|     if (existing) return existing;
+    220| 
+ ÔØ» tests/core/refresh-interaction.spec.ts:73:27
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[9/14]ÔÄ»
+
+ FAIL  tests/core/refresh-interaction.spec.ts > refresh interactions and races > keeps distinct refresh target sets independent
+ReferenceError: refreshOperations is not defined
+ ÔØ» Object.refresh src/core/runtime.ts:218:22
+    216| 
+    217|     const operationKey = createRefreshOperationKey(keys);
+    218|     const existing = refreshOperations.get(operationKey);
+       |                      ^
+    219|     if (existing) return existing;
+    220| 
+ ÔØ» tests/core/refresh-interaction.spec.ts:97:33
+
+ Test Files  4 failed | 25 passed (29)
+      Tests  14 failed | 77 passed (91)
+   Start at  15:39:04
+   Duration  10.45s (transform 877ms, setup 0ms, collect 4.49s, tests 429ms, environment 42.73s, prepare 5.77s)
 
 ÔÇëELIFECYCLEÔÇë Command failed with exit code 1.
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[10/14]ÔÄ»
+
+ FAIL  tests/core/refresh.spec.ts > manual refresh > reloads fresh data and preserves its value while refreshing
+ReferenceError: refreshOperations is not defined
+ ÔØ» Object.refresh src/core/runtime.ts:218:22
+    216| 
+    217|     const operationKey = createRefreshOperationKey(keys);
+    218|     const existing = refreshOperations.get(operationKey);
+       |                      ^
+    219|     if (existing) return existing;
+    220| 
+ ÔØ» tests/core/refresh.spec.ts:24:29
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[11/14]ÔÄ»
+
+ FAIL  tests/core/refresh.spec.ts > manual refresh > recomputes a derived node without reloading its fresh ancestor
+ReferenceError: refreshOperations is not defined
+ ÔØ» Object.refresh src/core/runtime.ts:218:22
+    216| 
+    217|     const operationKey = createRefreshOperationKey(keys);
+    218|     const existing = refreshOperations.get(operationKey);
+       |                      ^
+    219|     if (existing) return existing;
+    220| 
+ ÔØ» tests/core/refresh.spec.ts:43:19
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[12/14]ÔÄ»
+
+ FAIL  tests/core/refresh.spec.ts > manual refresh > deduplicates targets and supports empty input
+ReferenceError: refreshOperations is not defined
+ ÔØ» Object.refresh src/core/runtime.ts:218:22
+    216| 
+    217|     const operationKey = createRefreshOperationKey(keys);
+    218|     const existing = refreshOperations.get(operationKey);
+       |                      ^
+    219|     if (existing) return existing;
+    220| 
+ ÔØ» tests/core/refresh.spec.ts:55:19
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[13/14]ÔÄ»
+
+ FAIL  tests/core/refresh.spec.ts > manual refresh > resolves equivalent refreshable handles through registered keys
+ReferenceError: refreshOperations is not defined
+ ÔØ» Object.refresh src/core/runtime.ts:218:22
+    216| 
+    217|     const operationKey = createRefreshOperationKey(keys);
+    218|     const existing = refreshOperations.get(operationKey);
+       |                      ^
+    219|     if (existing) return existing;
+    220| 
+ ÔØ» tests/core/refresh.spec.ts:77:19
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[14/14]ÔÄ»
+

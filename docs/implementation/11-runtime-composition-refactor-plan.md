@@ -48,13 +48,15 @@ The existing single execution engine now belongs to one closure-based controller
 
 ### R5: Extract subscription storage and lifecycle
 
-Status: Prepared; offline validation pending.
+Status: Validated offline.
 
 Subscription counters and contribution accounting now belong to one runtime-local closure controller. Complete validation, target deduplication, ancestor collection, frozen snapshots, and idempotent unsubscribe belong to that controller. Scheduler triggering, active-attempt cancellation, and execution-origin policy remain outside it. Subscription notification ownership and ordering remain unchanged.
 
 ### R6: Extract the automatic scheduler
 
-Status: Planned.
+Status: Prepared; offline validation pending.
+
+Scheduler flags, error state, microtask queueing, follow-up handling, frozen snapshots, and settlement now belong to one runtime-local closure controller. Scheduler target selection remains a narrow injected runtime query. All automatic work delegates to the R4 execution controller using the scheduler origin. Subscription, invalidation, and cancellation policy remain outside the scheduler, and scheduler notification ownership and timing remain unchanged.
 
 ### R7: Extract invalidation and context updates
 

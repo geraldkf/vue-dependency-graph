@@ -30,6 +30,21 @@ describe("scheduler settlement", () => {
     await Promise.all([first, second]);
     expect(runtime.getSchedulerState()).toEqual({ isScheduled: false, isRunning: false, error: null });
   });
+  it("returns independent frozen scheduler snapshots", () => {
+    const data = defineDataNode({ key: "data", initialValue: "", load: async () => "loaded" });
+    const runtime = createGraphRuntime(createGraph({ nodes: [data] }));
+
+    const before = runtime.getSchedulerState();
+    runtime.subscribeNodes([data]);
+    const queued = runtime.getSchedulerState();
+
+    expect(before.isScheduled).toBe(false);
+    expect(queued.isScheduled).toBe(true);
+    expect(before).not.toBe(queued);
+    expect(Object.isFrozen(before)).toBe(true);
+    expect(Object.isFrozen(queued)).toBe(true);
+  });
+
 });
 
 

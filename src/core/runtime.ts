@@ -3,6 +3,10 @@ import type {
   NodeSubscriptionState,
 } from "./subscription";
 import type { SchedulerState } from "./scheduler";
+import {
+  createRuntimeSchedulerController,
+  type RuntimeSchedulerController,
+} from "./runtime-scheduler";
 import { createRuntimeObserver } from "./runtime-observer";
 import {
   createRuntimeStateStore,
@@ -11,7 +15,6 @@ import {
   type MutableNodeRuntimeState,
 } from "./runtime-state";
 import type { RefreshableNodeDefinition } from "./operations";
-import { toError } from "./execution";
 import { createRuntimeExecutionController } from "./runtime-execution";
 import {
   createRuntimeSubscriptionController,
@@ -98,45 +101,7 @@ export const createGraphRuntime = (graph: Graph): GraphRuntime => {
     getActiveAttempts,
   } = createRuntimeStateStore(graph);
   const { notify, onChange } = createRuntimeObserver();
-  const settlementWaiters = new Set<() => void>();
   const refreshOperations = new Map<string, Promise<void>>();
-  let schedulerScheduled = false;
-  let schedulerRunning = false;
-  let schedulerFollowUpRequired = false;
-  let schedulerError: Error | null = null;
-
-  const isSchedulerSettled = (): boolean =>
-    !schedulerScheduled && !schedulerRunning && !schedulerFollowUpRequired;
-
-  const resolveSettlementWaiters = (): void => {
-    if (!isSchedulerSettled()) return;
-    for (const resolve of [...settlementWaiters]) resolve();
-    settlementWaiters.clear();
-  };
-
-  const getSchedulerState = (): SchedulerState =>
-    Object.freeze({
-      isScheduled: schedulerScheduled,
-      isRunning: schedulerRunning,
-      error: schedulerError,
-    });
-
-  let flushScheduler: () => Promise<void>;
-
-  const schedule = (): void => {
-    if (schedulerRunning) {
-      schedulerFollowUpRequired = true;
-      return;
-    }
-    if (schedulerScheduled) return;
-
-    schedulerScheduled = true;
-    notify();
-    queueMicrotask(() => {
-      void flushScheduler();
-    });
-  };
-
   const requireRegisteredNode = (
     node: AnyNodeDefinition,
     purpose: string
@@ -149,25 +114,8 @@ export const createGraphRuntime = (graph: Graph): GraphRuntime => {
   };
 
   let subscriptions!: RuntimeSubscriptionController;
-  subscriptions = createRuntimeSubscriptionController({
-    graph,
-    resolveRegisteredNode: requireRegisteredNode,
-    notify,
-    afterSubscribe: schedule,
-    afterUnsubscribe: () => {
-      for (const [key, attempt] of getActiveAttempts()) {
-        const node = graph.getNode(key);
-        if (
-          node &&
-          !subscriptions.hasSubscribers(node) &&
-          isSchedulerOnlyAttempt(attempt)
-        ) {
-          attempt.controller.abort();
-        }
-      }
-      resolveSettlementWaiters();
-    },
-  });
+  let execution!: ReturnType<typeof createRuntimeExecutionController>;
+  let scheduler!: RuntimeSchedulerController;
 
   const requireRegisteredContextNode = <TValue>(
     node: ContextNodeDefinition<TValue>
@@ -223,10 +171,10 @@ export const createGraphRuntime = (graph: Graph): GraphRuntime => {
 
     const subscribedDescendantChanged = invalidateDescendants(registered);
     notify();
-    if (subscribedDescendantChanged) schedule();
+    if (subscribedDescendantChanged) scheduler.schedule();
   };
 
-  const execution = createRuntimeExecutionController({
+  execution = createRuntimeExecutionController({
     graph,
     getMutableState,
     getActiveAttempt,
@@ -238,7 +186,7 @@ export const createGraphRuntime = (graph: Graph): GraphRuntime => {
     onChangedRefreshResult: node => {
       const subscribedDescendantChanged = invalidateDescendants(node);
       if (graph.getChildren(node).length > 0) notify();
-      if (subscribedDescendantChanged) schedule();
+      if (subscribedDescendantChanged) scheduler.schedule();
     },
   });
 
@@ -298,39 +246,33 @@ export const createGraphRuntime = (graph: Graph): GraphRuntime => {
       return execution.needsExecution(node);
     });
 
-  flushScheduler = async (): Promise<void> => {
-    if (!schedulerScheduled || schedulerRunning) return;
 
-    schedulerScheduled = false;
-    schedulerRunning = true;
-    schedulerFollowUpRequired = false;
-    schedulerError = null;
-    notify();
 
-    try {
-      const targets = getSubscribedTargetsNeedingWork();
-      if (targets.length > 0) {
-        await execution.execute(targets, "scheduler");
+  scheduler = createRuntimeSchedulerController({
+    getTargetsNeedingWork: getSubscribedTargetsNeedingWork,
+    execute: targets => execution.execute(targets, "scheduler"),
+    notify,
+  });
+
+  subscriptions = createRuntimeSubscriptionController({
+    graph,
+    resolveRegisteredNode: requireRegisteredNode,
+    notify,
+    afterSubscribe: scheduler.schedule,
+    afterUnsubscribe: () => {
+      for (const [key, attempt] of getActiveAttempts()) {
+        const node = graph.getNode(key);
+        if (
+          node &&
+          !subscriptions.hasSubscribers(node) &&
+          isSchedulerOnlyAttempt(attempt)
+        ) {
+          attempt.controller.abort();
+        }
       }
-    } catch (error) {
-      schedulerError = toError(error);
-    } finally {
-      schedulerRunning = false;
-      notify();
-
-      if (schedulerFollowUpRequired) {
-        schedulerFollowUpRequired = false;
-        schedule();
-      } else {
-        resolveSettlementWaiters();
-      }
-    }
-  };
-
-  const whenSettled = (): Promise<void> => {
-    if (isSchedulerSettled()) return Promise.resolve();
-    return new Promise(resolve => settlementWaiters.add(resolve));
-  };
+      scheduler.resolveSettlementIfIdle();
+    },
+  });
 
   return Object.freeze({
     getState: <TNode extends AnyNodeDefinition>(node: TNode) =>
@@ -342,8 +284,8 @@ export const createGraphRuntime = (graph: Graph): GraphRuntime => {
     subscribeNodes: subscriptions.subscribeNodes,
     getSubscriptionState: subscriptions.getSubscriptionState,
     hasSubscribers: subscriptions.hasSubscribers,
-    getSchedulerState,
-    whenSettled,
+    getSchedulerState: scheduler.getSchedulerState,
+    whenSettled: scheduler.whenSettled,
     onChange,
   });
 };
