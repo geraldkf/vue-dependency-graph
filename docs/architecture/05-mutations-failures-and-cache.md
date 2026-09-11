@@ -54,3 +54,11 @@ The following remain proposed:
 - Retry and backoff
 - Garbage collection of unused values
 - Persistent cache restoration
+
+## Automatic scheduler failures
+
+Step 3B captures automatic orchestration failures in `SchedulerState.error`. The scheduler waits for branch-scoped execution to settle before recording the error. The failed node retains its normal per-node error state.
+
+Automatic failures do not create unhandled promise rejections and do not immediately retry. A new node subscription or context change provides a new external trigger. The scheduler clears its prior error when that pass starts, and successful node execution clears the node error through the existing runtime state machine.
+
+Cancellation caused by the final subscriber unsubscribing is not a business failure and is not stored as a node or scheduler error.

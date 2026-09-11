@@ -27,7 +27,7 @@ const graph = createGraph({
 });
 ```
 
-Graph registration is order independent and validates keys, duplicate dependencies, missing dependencies, and cycles.
+Graph subscription is order independent and validates keys, duplicate dependencies, missing dependencies, and cycles.
 
 ## Implemented runtime API
 
@@ -89,7 +89,7 @@ Each record identifies a directly failed or dependency-blocked node.
 ### Observe committed state changes
 
 ```ts
-const unsubscribe = runtime.subscribe(() => {
+const unsubscribe = runtime.onChange(() => {
   const state = runtime.getState(CurrentPointPeriod);
 });
 
@@ -113,4 +113,68 @@ graph.prefetch(...);
 graph.refresh(...);
 ```
 
-Automatic demand-driven execution is Milestone 3. Transactions are Milestone 4. Vue integration, query groups, events, polling, and mutations follow later milestones.
+Automatic subscription-driven execution is Milestone 3. Transactions are Milestone 4. Vue integration, query groups, events, polling, and mutations follow later milestones.
+
+## Implemented node subscription lifecycle API
+
+Register subscription without executing:
+
+```ts
+const subscription = runtime.subscribeNodes([Targets, Credits] as const);
+```
+
+Inspect subscription:
+
+```ts
+runtime.getSubscriptionState(Targets);
+runtime.hasSubscribers(Targets);
+```
+
+Subscription state is read-only:
+
+```ts
+interface NodeSubscriptionState {
+  readonly direct: number;
+  readonly required: number;
+  readonly total: number;
+}
+```
+
+Release one consumer's ownership:
+
+```ts
+subscription.unsubscribe();
+```
+
+The subscription exposes a frozen, deduplicated `nodes` collection. Release is idempotent. Empty subscription is a no-op. Registration uses key-based graph identity and rejects unregistered targets before applying any subscription.
+
+Node subscription alone does not call loaders, evaluate derived nodes, alter node runtime state, schedule work, or cancel execution.
+
+## Implemented automatic subscription scheduling
+
+A node subscription now schedules loading automatically:
+
+```ts
+const subscription = runtime.subscribeNodes([Targets]);
+await runtime.whenSettled();
+
+const targets = runtime.getState(Targets);
+```
+
+`subscribeNodes` remains synchronous and does not invoke loaders before returning. The scheduler runs in a queued microtask and uses the existing `execute` engine for ancestors, ordering, concurrency, deduplication, cancellation, and failures.
+
+Inspect scheduler state:
+
+```ts
+interface SchedulerState {
+  readonly isScheduled: boolean;
+  readonly isRunning: boolean;
+  readonly error: Error | null;
+}
+
+const scheduler = runtime.getSchedulerState();
+```
+
+`whenSettled(): Promise<void>` resolves after queued, active, and follow-up scheduler work completes. It also resolves after execution failure, with the failure available from `getSchedulerState()`.
+
+Unsubscribing the final subscriber cancels scheduler-only work that is no longer required. It does not cancel an attempt also owned by an explicit `runtime.execute(...)` caller.

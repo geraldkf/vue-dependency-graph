@@ -70,10 +70,10 @@ A small framework-agnostic graph-level subscription API notifies after committed
 
 Milestone 3 will add:
 
-- Demand registration
+- Node subscription
 - Automatic microtask scheduling
 - Coalescing of synchronous graph changes
-- Demand release
+- Unsubscribe
 - Prefetch
 - Manual refresh
 
@@ -82,3 +82,52 @@ It will use the explicit execution engine rather than replacing it.
 ## Proposed for Milestone 4
 
 Transactions will batch related context changes, defer invalidation notifications, and request one scheduler flush. Multiple `setContext` calls are not atomic in Milestone 2.
+
+## Implemented in Step 3A: Node subscription lifecycle
+
+A runtime can now register lifecycle subscription without triggering execution:
+
+```ts
+const subscription = runtime.subscribeNodes([Targets]);
+```
+
+Subscription has three counters:
+
+- Direct subscription from explicit targets
+- Required subscription from directly subscribed descendants
+- Total subscription count as their sum
+
+One subscription contributes once to each transitive ancestor, including diamond graphs. Multiple targets in one subscription use set semantics: duplicate targets are removed, shared ancestors receive one contribution, and a directly requested parent does not also receive required subscription from a requested child.
+
+Separate subscriptions contribute independently. Releasing a subscription removes exactly its own direct and required contributions and is idempotent.
+
+Subscription changes notify existing runtime subscribers once after add and once after active release. Empty and failed subscriptions do not notify.
+
+Step 3A deliberately does not execute, schedule, refresh, or cancel nodes when subscription changes. Step 3B will connect total subscription count to automatic microtask scheduling through the existing execution engine.
+
+## Implemented in Step 3B: Automatic subscription scheduler
+
+Creating a non-empty node subscription queues one microtask scheduler flush. Multiple synchronous subscriptions and context changes coalesce into that flush. The scheduler recalculates the current directly subscribed targets at flush time and delegates execution to the existing dependency-aware execution engine.
+
+```ts
+const subscription = runtime.subscribeNodes([Targets]);
+await runtime.whenSettled();
+```
+
+Loaders never run synchronously inside `subscribeNodes` or `setContext`.
+
+Only one scheduler flush runs per runtime. Changes occurring while a flush is active request one follow-up pass, which recalculates current subscription and generation state rather than reusing an old target list.
+
+`whenSettled()` resolves when there is no queued flush, active flush, or required follow-up. It resolves after success, failure, or scheduler-owned cancellation. It does not imply that every subscribed node succeeded.
+
+Scheduler failures are captured in a read-only state:
+
+```ts
+runtime.getSchedulerState();
+```
+
+A failed subscribed node remains settled without an automatic retry loop. A later context change or new node subscription is an explicit retry trigger and clears the prior scheduler error when the new pass starts.
+
+### Cancellation ownership
+
+Active attempts track whether they are owned by explicit execution, scheduler execution, or both. Unsubscribing the final subscriber aborts scheduler-only work that no longer has any direct or required subscription count. Shared work remains active while another subscriber requires it. Work also remains active when an explicit `execute` caller owns the same attempt.

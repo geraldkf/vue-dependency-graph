@@ -58,7 +58,7 @@ Proposed policies:
 - Stale after duration
 - Refresh on window focus
 - Refresh on network reconnect
-- Fixed interval while demanded
+- Fixed interval while subscribed
 - Poll until a condition is satisfied
 
 Browser-specific triggers belong in the Vue/browser adapter, while the core receives lifecycle signals through an injectable environment abstraction.
@@ -83,13 +83,13 @@ const ReportProgress = defineDataNode({
 
 ## Polling requirements
 
-- Poll only while the node has demand, unless explicitly configured otherwise.
+- Poll only while the node has subscription, unless explicitly configured otherwise.
 - Stop when the completion condition succeeds.
 - Stop and expose an error when a failure condition succeeds.
 - Stop on timeout.
 - Pause when the browser is offline where browser integration is available.
 - Avoid overlapping polls.
-- Support abort when demand disappears or dependencies change.
+- Support abort when subscription disappears or dependencies change.
 - Add jitter or backoff options to avoid synchronised clients.
 - Record attempts and elapsed time in metrics.
 

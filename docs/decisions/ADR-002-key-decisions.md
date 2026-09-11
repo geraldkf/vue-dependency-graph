@@ -10,9 +10,9 @@ Proposed. Split decisions into separate ADRs when each design is implemented.
 
 Public consumer APIs use typed node and event handles. String keys remain for identity and diagnostics.
 
-### Demand-driven execution
+### Subscription-driven execution
 
-Registration does not load data. Consumer demand, prefetch, refresh, or an active refresh policy schedules execution.
+Registration does not load data. Consumer subscription, prefetch, refresh, or an active refresh policy schedules execution.
 
 ### Freshness is distinct from execution status
 
@@ -34,9 +34,9 @@ A failed node blocks dependent descendants but does not stop unrelated branches.
 
 Async work uses data nodes to retain one execution and error model.
 
-### Polling is demand aware
+### Polling is subscription aware
 
-Polling stops when demand disappears unless explicitly configured otherwise.
+Polling stops when subscription disappears unless explicitly configured otherwise.
 
 ### Snapshots are diagnostic first
 

@@ -17,7 +17,7 @@ Implement only:
 - Cycle validation
 - Read-only topology inspection
 
-Do not implement runtime node state, loading, scheduling, demand, subscriptions, Vue composables, transactions, events, polling, mutations, metrics, snapshots, or devtools UI.
+Do not implement runtime node state, loading, scheduling, subscription, subscriptions, Vue composables, transactions, events, polling, mutations, metrics, snapshots, or devtools UI.
 
 ## Required reading
 
@@ -479,7 +479,7 @@ Do not implement:
 - Dependency value resolution at runtime
 - Abort-controller creation or cancellation
 - Scheduling
-- Demand tracking
+- Subscription tracking
 - Subscriptions
 - Vue refs or composables
 - Context mutation

@@ -16,7 +16,7 @@ Automatic orchestration reduces consumer code but makes hidden execution possibl
 The core should emit structured diagnostic events through an optional observer:
 
 - Node registered
-- Demand added or removed
+- Subscription added or removed
 - Node invalidated
 - Execution scheduled
 - Node execution started, succeeded, failed, aborted, or discarded
@@ -39,7 +39,7 @@ Initial metrics:
 - Query time-to-ready
 - Retry count
 - Poll attempt count and total polling duration
-- Active demand count
+- Active subscription count
 - Transaction count and duration
 
 Metrics should use a pluggable sink. The core may provide an in-memory development collector, but production applications should be able to connect their telemetry provider.
@@ -52,7 +52,7 @@ Metrics should use a pluggable sink. The core may provide an in-memory developme
 - Event invalidation edges
 - Node kind
 - Runtime status and freshness
-- Active demand
+- Active subscriptions
 
 ### Node inspector
 
@@ -97,7 +97,7 @@ Include:
 - Redacted or omitted values
 - Errors in serialisable form
 - Last invalidation reason
-- Demand counts
+- Subscription counts
 - Selected metrics
 
 ## Redaction and privacy

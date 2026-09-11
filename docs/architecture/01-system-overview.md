@@ -39,7 +39,7 @@ Responsibilities:
 - Typed node and event definitions
 - Registry and graph indexes
 - Graph validation
-- Demand tracking
+- Node subscription tracking
 - Node state machine
 - Scheduling and execution
 - Transactions
@@ -58,7 +58,7 @@ Responsibilities:
 
 - Convert core observations into Vue refs
 - `useNode`, `useNodes`, and `useQuery`
-- Scope-aware demand registration and cleanup
+- Scope-aware node subscription and cleanup
 - Vue plugin and graph injection
 - Reactive aggregate loading and error state
 - Browser lifecycle integration where appropriate
@@ -96,20 +96,20 @@ Logical boundaries are still important. Moving to multiple packages later remain
 ## Core operating model
 
 1. Nodes and events are registered.
-2. A consumer creates demand for one or more nodes.
-3. The scheduler finds demanded nodes that are not fresh.
+2. A consumer creates subscription for one or more nodes.
+3. The scheduler finds subscribed nodes that are not fresh.
 4. Required ancestors are included automatically.
 5. Ready nodes execute concurrently where safe.
 6. Changes are published to observers.
 7. Context updates, events, mutations, or refresh policies may invalidate nodes.
-8. Only demanded stale nodes and required ancestors are scheduled again.
+8. Only subscribed stale nodes and required ancestors are scheduled again.
 
 ## Important boundaries
 
 - A node dependency means the loader requires the dependency's successful value.
 - An invalidation event means the node may be out of date. It is not a data value.
 - A transaction batches local graph changes. It does not provide backend atomicity.
-- Demand controls whether stale data should be refreshed. Registration alone must not execute every node.
+- Subscription controls whether stale data should be refreshed. Registration alone must not execute every node.
 - Polling is a refresh policy, not a recursive loader implementation.
 
 ## Validation model

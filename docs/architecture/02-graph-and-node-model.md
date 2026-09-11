@@ -142,7 +142,7 @@ Milestone 1 does not implement:
 - Status or freshness
 - Execution
 - Dependency-value resolution
-- Scheduling or demand
+- Scheduling or subscription
 - Context mutation
 - Invalidation
 - Events or transactions

@@ -47,10 +47,10 @@ describe("graph runtime state", () => {
     const context = defineContextNode({ key: "context", initialValue: 1 });
     const runtime = createGraphRuntime(createGraph({ nodes: [context] }));
     let safeCalls = 0;
-    runtime.subscribe(() => {
+    runtime.onChange(() => {
       throw new Error("listener failure");
     });
-    const unsubscribe = runtime.subscribe(() => {
+    const unsubscribe = runtime.onChange(() => {
       safeCalls += 1;
     });
 

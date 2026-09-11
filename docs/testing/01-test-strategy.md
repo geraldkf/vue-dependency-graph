@@ -39,7 +39,7 @@ The first bootstrap milestone may use a simple deterministic source scan. A dedi
 
 ### Registry
 
-- Any registration order
+- Any subscription order
 - Duplicate keys
 - Missing dependencies
 - Cycles
@@ -47,7 +47,7 @@ The first bootstrap milestone may use a simple deterministic source scan. A dedi
 
 ### Scheduler
 
-- Automatic execution from demand
+- Automatic execution from subscription
 - Coalesced synchronous changes
 - Independent concurrency
 - In-flight deduplication
@@ -92,7 +92,7 @@ Use fake timers.
 - Failure condition
 - Timeout
 - Backoff and jitter bounds
-- Demand removal cleanup
+- Subscription removal cleanup
 
 ### Mutations
 
@@ -115,8 +115,8 @@ Use Vitest 3.0.7 and Vue Testing Library.
 
 Verify:
 
-- Mount creates demand
-- Unmount releases demand
+- Mount creates subscription
+- Unmount releases subscription
 - Two consumers share one load
 - Reactive status and data changes
 - `useNodes` alias typing and runtime values

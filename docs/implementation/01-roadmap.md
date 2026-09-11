@@ -31,7 +31,7 @@ Status: Validation pending.
 
 - [x] Prepare typed node handles
 - [x] Prepare context, data, and derived definitions
-- [x] Prepare order-independent registration
+- [x] Prepare order-independent subscription
 - [x] Prepare parent and child indexes
 - [x] Prepare duplicate detection
 - [x] Prepare missing dependency detection
@@ -64,17 +64,44 @@ Status: Validation pending.
 
 Prepared exit criteria are met by static inspection. Milestone 2 remains incomplete until offline type checking, tests, build, boundary validation, and playground startup are reported successful.
 
-## Milestone 3: Demand and scheduler
+## Milestone 3: Subscription and scheduler
 
-- [ ] Demand registration
-- [ ] Microtask scheduling
-- [ ] Coalesced execution flushes
-- [ ] Demand release
-- [ ] Prefetch
+### Step 3A: Node subscription and lifecycle
+
+Status: Validated offline.
+
+- [x] Prepare direct node subscription
+- [x] Prepare reference-counted subscription ownership
+- [x] Prepare transitive required subscription
+- [x] Prepare subscription-level deduplication
+- [x] Prepare idempotent release
+- [x] Prepare subscription inspection and observation
+- [x] Prepare behavioural and type tests
+- [x] Update API and architecture documentation
+- [x] Receive successful offline validation feedback
+
+### Step 3B: Automatic subscription scheduler
+
+Status: Validation pending.
+
+- [x] Prepare microtask scheduling
+- [x] Prepare coalesced execution flushes
+- [x] Prepare automatic execution for subscribed stale nodes
+- [x] Prepare active-flush follow-up handling
+- [x] Prepare subscription-driven cancellation ownership
+- [x] Prepare scheduler failure inspection
+- [x] Prepare scheduler settlement API
+- [x] Prepare behavioural and type tests
+- [x] Update API and architecture documentation
+- [ ] Receive successful offline validation feedback
+
+### Step 3C: Prefetch and manual refresh
+
+- [ ] Temporary prefetch subscription
 - [ ] Manual refresh
-- [ ] No public `loadData()` requirement
+- [ ] Cleanup and cancellation semantics
 
-Exit criteria: creating demand automatically loads exactly the required graph.
+Milestone exit criteria: creating subscription automatically loads exactly the required graph without a public `loadData()` call.
 
 ## Milestone 4: Transactions and invalidation
 
@@ -120,7 +147,7 @@ Exit criteria: representative page requirements are declared once and reused.
 ## Milestone 8: Refresh and polling
 
 - [ ] Stale time
-- [ ] Fixed interval while demanded
+- [ ] Fixed interval while subscribed
 - [ ] Poll-until completion
 - [ ] Timeout
 - [ ] Retry/backoff/jitter
@@ -148,7 +175,7 @@ Exit criteria: failed optimistic appointment booking restores local graph state.
 - [ ] Snapshot schema and redaction
 - [ ] Stable snapshot test normaliser
 
-Exit criteria: every node execution can be traced to demand and invalidation reasons.
+Exit criteria: every node execution can be traced to subscription and invalidation reasons.
 
 ## Milestone 11: Devtools
 
@@ -164,7 +191,7 @@ Exit criteria: framework behaviour can be understood without console logging.
 ## Milestone 12: Cache lifecycle and advanced lazy behaviour
 
 - [ ] Garbage collection for unused data
-- [ ] Direct-demand-only semantics if still required
+- [ ] Direct-subscription-only semantics if still required
 - [ ] Memory pressure tests
 - [ ] Reference-data caching examples
 

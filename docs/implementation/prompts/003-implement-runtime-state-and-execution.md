@@ -24,7 +24,7 @@ Implement only:
 - Branch-scoped failure handling
 - Runtime state inspection and observation needed to test execution
 
-Do not implement automatic demand-driven scheduling, Vue composables, subscriptions, transactions, domain events, polling, retry policies, optimistic mutations, query groups, metrics, snapshots, or devtools UI.
+Do not implement automatic subscription-driven scheduling, Vue composables, subscriptions, transactions, domain events, polling, retry policies, optimistic mutations, query groups, metrics, snapshots, or devtools UI.
 
 ## Required reading
 
@@ -92,7 +92,7 @@ await runtime.execute([CurrentPointPeriod]);
 const state = runtime.getState(CurrentPointPeriod);
 ```
 
-`execute` is intentionally explicit in Milestone 2. Automatic scheduling based on consumer demand belongs to Milestone 3.
+`execute` is intentionally explicit in Milestone 2. Automatic scheduling based on consumer subscription belongs to Milestone 3.
 
 ## Core design constraints
 
@@ -192,7 +192,7 @@ Required behaviour:
 6. Abort in-flight executions for affected descendants where possible.
 7. Prevent obsolete results from committing even if a loader ignores abort.
 
-Do not automatically execute stale descendants. Automatic demand-driven work belongs to Milestone 3.
+Do not automatically execute stale descendants. Automatic subscription-driven work belongs to Milestone 3.
 
 Multiple context updates are not atomic yet. Transactions belong to Milestone 4.
 
@@ -387,7 +387,7 @@ Suggested shape:
 ```ts
 type RuntimeListener = () => void;
 
-const unsubscribe = runtime.subscribe(listener);
+const unsubscribe = runtime.onChange(listener);
 ```
 
 Requirements:
@@ -464,7 +464,7 @@ createGraphRuntime(graph)
 runtime.getState(node)
 runtime.setContext(contextNode, value)
 runtime.execute(nodes)
-runtime.subscribe(listener)
+runtime.onChange(listener)
 ```
 
 Export public runtime state and execution error types from `src/core/index.ts` and the root entry point.
@@ -616,7 +616,7 @@ Add or update an ADR only if implementation materially changes an accepted archi
 
 Do not implement:
 
-- Automatic execution from subscriptions or demand
+- Automatic execution from subscriptions or subscription
 - Microtask scheduling
 - Execution coalescing across graph changes
 - Prefetch
@@ -638,7 +638,7 @@ Do not implement:
 - Configurable concurrency limits
 - Server-side rendering
 
-Explicit runtime execution is required now. Automatic demand-driven execution is Milestone 3.
+Explicit runtime execution is required now. Automatic subscription-driven execution is Milestone 3.
 
 ## Quality requirements
 
@@ -669,7 +669,7 @@ Perform checks that do not require installed project dependencies:
 - Search implementation and tests for explicit `any` usage.
 - Confirm TypeScript suppression comments exist only in intentional type tests.
 - Search for console logging in core source.
-- Confirm no scheduler, demand, transaction, event, polling, mutation, metric, snapshot, or Vue-integration modules were added.
+- Confirm no scheduler, subscription, transaction, event, polling, mutation, metric, snapshot, or Vue-integration modules were added.
 - Confirm mutable runtime state is not added to node-definition types or objects.
 - Confirm tests represent every required behavioural category.
 - Confirm documentation marks validation as pending.

@@ -35,7 +35,7 @@ describe("runtime cancellation and races", () => {
     });
     const runtime = createGraphRuntime(createGraph({ nodes: [affected, unrelated, context] }));
     const notifications = vi.fn();
-    runtime.subscribe(notifications);
+    runtime.onChange(notifications);
 
     const firstExecution = runtime.execute([affected, unrelated]);
     await waitForCondition(

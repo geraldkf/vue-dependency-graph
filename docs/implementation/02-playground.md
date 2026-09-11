@@ -37,7 +37,7 @@ Long-running workflow:
 
 - Change one context
 - Change multiple contexts atomically
-- Add and remove demand
+- Add and remove subscription
 - Publish typed events
 - Run optimistic mutations
 - Start and cancel polling
@@ -60,7 +60,7 @@ Do not start with random failures because deterministic scenarios are easier to 
 
 - Nodes and edges
 - Status and freshness
-- Active demand count
+- Active subscription count
 - Current generation
 - Last invalidation reason
 
@@ -87,8 +87,8 @@ Do not start with random failures because deterministic scenarios are easier to 
 1. Child registered before parent.
 2. Two context values committed in one transaction.
 3. Rapid context change while a previous request is in flight.
-4. Two components demand the same node.
-5. One component releases demand while another remains.
+4. Two components subscription the same node.
+5. One component releases subscription while another remains.
 6. Independent branch failure.
 7. Parent failure blocks only dependent descendants.
 8. Refresh failure retains stale data.
@@ -96,7 +96,7 @@ Do not start with random failures because deterministic scenarios are easier to 
 10. Polling completes.
 11. Polling fails.
 12. Polling times out.
-13. Demand disappears during polling.
+13. Subscription disappears during polling.
 14. Optimistic mutation succeeds.
 15. Optimistic mutation fails and rolls back.
 16. Snapshot exports with sensitive values redacted.

@@ -1,3 +1,8 @@
+export type { SchedulerState } from "./scheduler";
+export type {
+  NodeSubscription,
+  NodeSubscriptionState,
+} from "./subscription";
 export { GraphValidationError } from "./errors";
 export type { GraphValidationErrorCode } from "./errors";
 export {

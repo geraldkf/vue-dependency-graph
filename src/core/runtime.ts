@@ -1,3 +1,8 @@
+import type {
+  NodeSubscription,
+  NodeSubscriptionState,
+} from "./subscription";
+import type { SchedulerState } from "./scheduler";
 import {
   GraphExecutionError,
   type NodeExecutionFailure,
@@ -49,7 +54,16 @@ export interface GraphRuntime {
   readonly execute: (
     nodes: readonly AnyNodeDefinition[]
   ) => Promise<void>;
-  readonly subscribe: (listener: RuntimeListener) => () => void;
+  readonly subscribeNodes: (
+    nodes: readonly AnyNodeDefinition[]
+  ) => NodeSubscription;
+  readonly getSubscriptionState: (
+    node: AnyNodeDefinition
+  ) => NodeSubscriptionState;
+  readonly hasSubscribers: (node: AnyNodeDefinition) => boolean;
+  readonly getSchedulerState: () => SchedulerState;
+  readonly whenSettled: () => Promise<void>;
+  readonly onChange: (listener: RuntimeListener) => () => void;
 }
 
 interface MutableNodeRuntimeState {
@@ -61,10 +75,18 @@ interface MutableNodeRuntimeState {
   hasSuccessfulValue: boolean;
 }
 
+interface MutableNodeSubscriptionState {
+  direct: number;
+  required: number;
+}
+
+type ExecutionOrigin = "explicit" | "scheduler";
+
 interface ActiveAttempt {
   readonly generation: number;
   readonly token: symbol;
   readonly controller: AbortController;
+  readonly origins: Set<ExecutionOrigin>;
   readonly promise: Promise<void>;
 }
 
@@ -147,11 +169,18 @@ const snapshotState = <TData>(
 
 export const createGraphRuntime = (graph: Graph): GraphRuntime => {
   const states = new Map<string, MutableNodeRuntimeState>();
+  const subscriptionStates = new Map<string, MutableNodeSubscriptionState>();
   const activeAttempts = new Map<string, ActiveAttempt>();
   const listeners = new Set<RuntimeListener>();
+  const settlementWaiters = new Set<() => void>();
+  let schedulerScheduled = false;
+  let schedulerRunning = false;
+  let schedulerFollowUpRequired = false;
+  let schedulerError: Error | null = null;
 
   for (const node of graph.getNodes()) {
     states.set(node.key, createInitialState(node));
+    subscriptionStates.set(node.key, { direct: 0, required: 0 });
   }
 
   const requireState = (key: string): MutableNodeRuntimeState => {
@@ -168,6 +197,144 @@ export const createGraphRuntime = (graph: Graph): GraphRuntime => {
         // Listener failures are isolated from runtime state and other listeners.
       }
     }
+  };
+
+  const isSchedulerSettled = (): boolean =>
+    !schedulerScheduled && !schedulerRunning && !schedulerFollowUpRequired;
+
+  const resolveSettlementWaiters = (): void => {
+    if (!isSchedulerSettled()) return;
+    for (const resolve of [...settlementWaiters]) resolve();
+    settlementWaiters.clear();
+  };
+
+  const getSchedulerState = (): SchedulerState =>
+    Object.freeze({
+      isScheduled: schedulerScheduled,
+      isRunning: schedulerRunning,
+      error: schedulerError,
+    });
+
+  let flushScheduler: () => Promise<void>;
+
+  const schedule = (): void => {
+    if (schedulerRunning) {
+      schedulerFollowUpRequired = true;
+      return;
+    }
+    if (schedulerScheduled) return;
+
+    schedulerScheduled = true;
+    notify();
+    queueMicrotask(() => {
+      void flushScheduler();
+    });
+  };
+
+  const requireRegisteredNode = (
+    node: AnyNodeDefinition,
+    purpose: string
+  ): AnyNodeDefinition => {
+    const registered = graph.getNode(node.key);
+    if (!registered) {
+      throw new Error(`Node "${node.key}" is not registered for ${purpose}.`);
+    }
+    return registered;
+  };
+
+  const requireSubscriptionState = (key: string): MutableNodeSubscriptionState => {
+    const subscriptionState = subscriptionStates.get(key);
+    if (!subscriptionState) {
+      throw new Error(`Subscription state for node "${key}" was not found.`);
+    }
+    return subscriptionState;
+  };
+
+  const getSubscriptionState = (node: AnyNodeDefinition): NodeSubscriptionState => {
+    const registered = requireRegisteredNode(node, "subscription inspection");
+    const subscriptionState = requireSubscriptionState(registered.key);
+    return Object.freeze({
+      direct: subscriptionState.direct,
+      required: subscriptionState.required,
+      total: subscriptionState.direct + subscriptionState.required,
+    });
+  };
+
+  const subscribeNodes = (
+    requestedNodes: readonly AnyNodeDefinition[]
+  ): NodeSubscription => {
+    const directNodes: AnyNodeDefinition[] = [];
+    const directKeys = new Set<string>();
+
+    for (const requested of requestedNodes) {
+      const registered = requireRegisteredNode(requested, "node subscription");
+      if (directKeys.has(registered.key)) continue;
+      directKeys.add(registered.key);
+      directNodes.push(registered);
+    }
+
+    const frozenNodes = Object.freeze([...directNodes]);
+    if (directNodes.length === 0) {
+      return Object.freeze({
+        nodes: frozenNodes,
+        unsubscribe: () => undefined,
+      });
+    }
+
+    const visitedAncestors = new Set<string>();
+    const requiredKeys = new Set<string>();
+    const queue = directNodes.flatMap(node => graph.getParents(node));
+
+    while (queue.length > 0) {
+      const ancestor = queue.shift();
+      if (!ancestor || visitedAncestors.has(ancestor.key)) continue;
+      visitedAncestors.add(ancestor.key);
+
+      if (!directKeys.has(ancestor.key)) requiredKeys.add(ancestor.key);
+      queue.push(...graph.getParents(ancestor));
+    }
+
+    for (const key of directKeys) requireSubscriptionState(key).direct += 1;
+    for (const key of requiredKeys) requireSubscriptionState(key).required += 1;
+    notify();
+    schedule();
+
+    let active = true;
+    return Object.freeze({
+      nodes: frozenNodes,
+      unsubscribe: () => {
+        if (!active) return;
+
+        for (const key of directKeys) {
+          if (requireSubscriptionState(key).direct <= 0) {
+            throw new Error(`Direct subscription for node "${key}" cannot become negative.`);
+          }
+        }
+        for (const key of requiredKeys) {
+          if (requireSubscriptionState(key).required <= 0) {
+            throw new Error(`Required subscription for node "${key}" cannot become negative.`);
+          }
+        }
+
+        for (const key of directKeys) requireSubscriptionState(key).direct -= 1;
+        for (const key of requiredKeys) requireSubscriptionState(key).required -= 1;
+        active = false;
+
+        for (const [key, attempt] of activeAttempts) {
+          const subscriptionState = requireSubscriptionState(key);
+          if (
+            subscriptionState.direct + subscriptionState.required === 0 &&
+            attempt.origins.has("scheduler") &&
+            !attempt.origins.has("explicit")
+          ) {
+            attempt.controller.abort();
+          }
+        }
+
+        notify();
+        resolveSettlementWaiters();
+      },
+    });
   };
 
   const setContext = <TValue>(
@@ -191,6 +358,7 @@ export const createGraphRuntime = (graph: Graph): GraphRuntime => {
 
     const visited = new Set<string>();
     const queue = [...graph.getChildren(node)];
+    let subscribedDescendantChanged = false;
     while (queue.length > 0) {
       const descendant = queue.shift();
       if (!descendant || visited.has(descendant.key)) continue;
@@ -203,10 +371,14 @@ export const createGraphRuntime = (graph: Graph): GraphRuntime => {
       state.error = null;
 
       activeAttempts.get(descendant.key)?.controller.abort();
+      if (getSubscriptionState(descendant).total > 0) {
+        subscribedDescendantChanged = true;
+      }
       queue.push(...graph.getChildren(descendant));
     }
 
     notify();
+    if (subscribedDescendantChanged) schedule();
   };
 
   const getDependencyValue = <TNode extends AnyNodeDefinition>(
@@ -221,7 +393,10 @@ export const createGraphRuntime = (graph: Graph): GraphRuntime => {
     return state.data as NodeValue<TNode>;
   };
 
-  const executeNode = (node: AnyNodeDefinition): Promise<void> => {
+  const executeNode = (
+    node: AnyNodeDefinition,
+    origin: ExecutionOrigin
+  ): Promise<void> => {
     const state = requireState(node.key);
     if (
       state.hasSuccessfulValue &&
@@ -232,7 +407,10 @@ export const createGraphRuntime = (graph: Graph): GraphRuntime => {
     }
 
     const active = activeAttempts.get(node.key);
-    if (active?.generation === state.generation) return active.promise;
+    if (active?.generation === state.generation) {
+      active.origins.add(origin);
+      return active.promise;
+    }
 
     if (isContextNode(node)) return Promise.resolve();
 
@@ -307,13 +485,15 @@ export const createGraphRuntime = (graph: Graph): GraphRuntime => {
       generation,
       token,
       controller,
+      origins: new Set([origin]),
       promise,
     });
     return promise;
   };
 
-  const execute = async (
-    targets: readonly AnyNodeDefinition[]
+  const executeInternal = async (
+    targets: readonly AnyNodeDefinition[],
+    origin: ExecutionOrigin
   ): Promise<void> => {
     if (targets.length === 0) return;
 
@@ -362,7 +542,7 @@ export const createGraphRuntime = (graph: Graph): GraphRuntime => {
         }
 
         try {
-          await executeNode(node);
+          await executeNode(node, origin);
         } catch (error) {
           if (error instanceof ObsoleteAttempt) throw error;
           if (error instanceof NodeAttemptFailure) {
@@ -395,12 +575,66 @@ export const createGraphRuntime = (graph: Graph): GraphRuntime => {
     }
   };
 
+  const execute = (targets: readonly AnyNodeDefinition[]): Promise<void> =>
+    executeInternal(targets, "explicit");
+
+  const getSubscribedTargetsNeedingWork = (): readonly AnyNodeDefinition[] =>
+    graph.getNodes().filter(node => {
+      if (node.kind === "context") return false;
+      if (requireSubscriptionState(node.key).direct === 0) return false;
+      const state = requireState(node.key);
+      return !(
+        state.hasSuccessfulValue &&
+        state.status === "success" &&
+        state.freshness === "fresh"
+      );
+    });
+
+  flushScheduler = async (): Promise<void> => {
+    if (!schedulerScheduled || schedulerRunning) return;
+
+    schedulerScheduled = false;
+    schedulerRunning = true;
+    schedulerFollowUpRequired = false;
+    schedulerError = null;
+    notify();
+
+    try {
+      const targets = getSubscribedTargetsNeedingWork();
+      if (targets.length > 0) {
+        await executeInternal(targets, "scheduler");
+      }
+    } catch (error) {
+      schedulerError = toError(error);
+    } finally {
+      schedulerRunning = false;
+      notify();
+
+      if (schedulerFollowUpRequired) {
+        schedulerFollowUpRequired = false;
+        schedule();
+      } else {
+        resolveSettlementWaiters();
+      }
+    }
+  };
+
+  const whenSettled = (): Promise<void> => {
+    if (isSchedulerSettled()) return Promise.resolve();
+    return new Promise(resolve => settlementWaiters.add(resolve));
+  };
+
   return Object.freeze({
     getState: <TNode extends AnyNodeDefinition>(node: TNode) =>
       snapshotState<RuntimeNodeData<TNode>>(requireState(node.key)),
     setContext,
     execute,
-    subscribe: (listener: RuntimeListener) => {
+    subscribeNodes,
+    getSubscriptionState,
+    hasSubscribers: (node: AnyNodeDefinition) => getSubscriptionState(node).total > 0,
+    getSchedulerState,
+    whenSettled,
+    onChange: (listener: RuntimeListener) => {
       listeners.add(listener);
       let active = true;
       return () => {

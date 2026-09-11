@@ -84,5 +84,5 @@ Return full failure output and confirm the playground still renders.
 
 - Compiler feedback may require narrow generic adjustments around runtime state and typed dependency getters.
 - Milestone 3 must schedule the explicit execution engine rather than duplicate execution logic.
-- Demand release will need clear interaction with active attempts and graph-level observation.
+- Subscription release will need clear interaction with active attempts and graph-level observation.
 - Explicit refresh and prefetch semantics should build on freshness and generation behaviour already implemented.
