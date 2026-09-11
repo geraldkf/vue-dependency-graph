@@ -63,4 +63,20 @@ describe("graph runtime state", () => {
     runtime.setContext(context, 3);
     expect(safeCalls).toBe(1);
   });
+
+  it("returns independent snapshots for each read", () => {
+    const context = defineContextNode({ key: "context", initialValue: 1 });
+    const runtime = createGraphRuntime(createGraph({ nodes: [context] }));
+
+    const before = runtime.getState(context);
+    runtime.setContext(context, 2);
+    const after = runtime.getState(context);
+
+    expect(before.data).toBe(1);
+    expect(after.data).toBe(2);
+    expect(before).not.toBe(after);
+    expect(Object.isFrozen(before)).toBe(true);
+    expect(Object.isFrozen(after)).toBe(true);
+  });
+
 });

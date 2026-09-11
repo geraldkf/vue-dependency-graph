@@ -4,6 +4,12 @@ import type {
 } from "./subscription";
 import type { SchedulerState } from "./scheduler";
 import { createRuntimeObserver } from "./runtime-observer";
+import {
+  createRuntimeStateStore,
+  type ActiveAttempt,
+  type ExecutionOrigin,
+  type MutableNodeRuntimeState,
+} from "./runtime-state";
 import type { RefreshableNodeDefinition } from "./operations";
 import {
   GraphExecutionError,
@@ -74,28 +80,9 @@ export interface GraphRuntime {
   readonly onChange: (listener: RuntimeListener) => () => void;
 }
 
-interface MutableNodeRuntimeState {
-  data: unknown;
-  status: NodeStatus;
-  freshness: NodeFreshness;
-  error: Error | null;
-  generation: number;
-  hasSuccessfulValue: boolean;
-}
-
 interface MutableNodeSubscriptionState {
   direct: number;
   required: number;
-}
-
-type ExecutionOrigin = "explicit" | "scheduler" | "prefetch" | "refresh";
-
-interface ActiveAttempt {
-  readonly generation: number;
-  readonly token: symbol;
-  readonly controller: AbortController;
-  readonly origins: Set<ExecutionOrigin>;
-  readonly promise: Promise<void>;
 }
 
 const hasFreshSuccessfulValue = (
@@ -152,46 +139,16 @@ const isDerivedNode = (
 ): node is DerivedNodeDefinition<unknown, readonly AnyNodeDefinition[]> =>
   node.kind === "derived";
 
-const createInitialState = (
-  node: AnyNodeDefinition
-): MutableNodeRuntimeState => {
-  if (isContextNode(node)) {
-    return {
-      data: node.initialValue,
-      status: "success",
-      freshness: "fresh",
-      error: null,
-      generation: 0,
-      hasSuccessfulValue: true,
-    };
-  }
-
-  return {
-    data: isDataNode(node) ? node.initialValue : undefined,
-    status: "idle",
-    freshness: "stale",
-    error: null,
-    generation: 0,
-    hasSuccessfulValue: false,
-  };
-};
-
-const snapshotState = <TData>(
-  state: MutableNodeRuntimeState
-): NodeRuntimeState<TData> =>
-  Object.freeze({
-    data: state.data as TData,
-    status: state.status,
-    freshness: state.freshness,
-    error: state.error,
-    generation: state.generation,
-    hasSuccessfulValue: state.hasSuccessfulValue,
-  });
-
 export const createGraphRuntime = (graph: Graph): GraphRuntime => {
-  const states = new Map<string, MutableNodeRuntimeState>();
+  const {
+    getMutableState,
+    getSnapshot,
+    getActiveAttempt,
+    setActiveAttempt,
+    deleteActiveAttempt,
+    getActiveAttempts,
+  } = createRuntimeStateStore(graph);
   const subscriptionStates = new Map<string, MutableNodeSubscriptionState>();
-  const activeAttempts = new Map<string, ActiveAttempt>();
   const { notify, onChange } = createRuntimeObserver();
   const settlementWaiters = new Set<() => void>();
   const refreshOperations = new Map<string, Promise<void>>();
@@ -201,15 +158,8 @@ export const createGraphRuntime = (graph: Graph): GraphRuntime => {
   let schedulerError: Error | null = null;
 
   for (const node of graph.getNodes()) {
-    states.set(node.key, createInitialState(node));
     subscriptionStates.set(node.key, { direct: 0, required: 0 });
   }
-
-  const requireState = (key: string): MutableNodeRuntimeState => {
-    const state = states.get(key);
-    if (!state) throw new Error(`Runtime state for node "${key}" was not found.`);
-    return state;
-  };
 
   const isSchedulerSettled = (): boolean =>
     !schedulerScheduled && !schedulerRunning && !schedulerFollowUpRequired;
@@ -342,7 +292,7 @@ export const createGraphRuntime = (graph: Graph): GraphRuntime => {
         for (const key of requiredKeys) requireSubscriptionState(key).required -= 1;
         active = false;
 
-        for (const [key, attempt] of activeAttempts) {
+        for (const [key, attempt] of getActiveAttempts()) {
           const subscriptionState = requireSubscriptionState(key);
           if (
             subscriptionState.direct + subscriptionState.required === 0 &&
@@ -368,12 +318,12 @@ export const createGraphRuntime = (graph: Graph): GraphRuntime => {
       if (!descendant || visited.has(descendant.key)) continue;
       visited.add(descendant.key);
 
-      const state = requireState(descendant.key);
+      const state = getMutableState(descendant.key);
       state.generation += 1;
       state.freshness = "stale";
       state.status = state.hasSuccessfulValue ? "success" : "idle";
       state.error = null;
-      activeAttempts.get(descendant.key)?.controller.abort();
+      getActiveAttempt(descendant.key)?.controller.abort();
 
       const subscriptionState = requireSubscriptionState(descendant.key);
       if (subscriptionState.direct + subscriptionState.required > 0) {
@@ -391,7 +341,7 @@ export const createGraphRuntime = (graph: Graph): GraphRuntime => {
   ): void => {
     const registered = requireRegisteredContextNode(node);
 
-    const contextState = requireState(registered.key);
+    const contextState = getMutableState(registered.key);
     if (Object.is(contextState.data, value)) return;
 
     contextState.data = value;
@@ -409,7 +359,7 @@ export const createGraphRuntime = (graph: Graph): GraphRuntime => {
   const getDependencyValue = <TNode extends AnyNodeDefinition>(
     dependency: TNode
   ): NodeValue<TNode> => {
-    const state = requireState(dependency.key);
+    const state = getMutableState(dependency.key);
     if (!state.hasSuccessfulValue || state.freshness !== "fresh") {
       throw new Error(
         `Dependency "${dependency.key}" does not have a successful fresh value.`
@@ -422,12 +372,12 @@ export const createGraphRuntime = (graph: Graph): GraphRuntime => {
     node: AnyNodeDefinition,
     origin: ExecutionOrigin
   ): Promise<void> => {
-    const state = requireState(node.key);
+    const state = getMutableState(node.key);
     if (hasFreshSuccessfulValue(state)) {
       return Promise.resolve();
     }
 
-    const active = activeAttempts.get(node.key);
+    const active = getActiveAttempt(node.key);
     if (active?.generation === state.generation) {
       active.origins.add(origin);
       return active.promise;
@@ -460,8 +410,8 @@ export const createGraphRuntime = (graph: Graph): GraphRuntime => {
           return;
         }
 
-        const current = states.get(node.key);
-        const currentAttempt = activeAttempts.get(node.key);
+        const current = getMutableState(node.key);
+        const currentAttempt = getActiveAttempt(node.key);
         if (
           !current ||
           current.generation !== generation ||
@@ -488,8 +438,8 @@ export const createGraphRuntime = (graph: Graph): GraphRuntime => {
           if (subscribedDescendantChanged) schedule();
         }
       } catch (thrown) {
-        const current = states.get(node.key);
-        const currentAttempt = activeAttempts.get(node.key);
+        const current = getMutableState(node.key);
+        const currentAttempt = getActiveAttempt(node.key);
         const obsolete =
           !current ||
           current.generation !== generation ||
@@ -507,14 +457,12 @@ export const createGraphRuntime = (graph: Graph): GraphRuntime => {
         notify();
         throw new NodeAttemptFailure(node.key, error);
       } finally {
-        if (activeAttempts.get(node.key)?.token === token) {
-          activeAttempts.delete(node.key);
-        }
+        deleteActiveAttempt(node.key, token);
       }
     };
 
     const promise = Promise.resolve().then(run);
-    activeAttempts.set(node.key, {
+    setActiveAttempt(node.key, {
       generation,
       token,
       controller,
@@ -634,8 +582,8 @@ export const createGraphRuntime = (graph: Graph): GraphRuntime => {
     if (existing) return existing;
 
     for (const target of targets) {
-      const state = requireState(target.key);
-      const active = activeAttempts.get(target.key);
+      const state = getMutableState(target.key);
+      const active = getActiveAttempt(target.key);
       if (active?.origins.has("refresh")) continue;
       state.generation += 1;
       state.freshness = "stale";
@@ -657,7 +605,7 @@ export const createGraphRuntime = (graph: Graph): GraphRuntime => {
     graph.getNodes().filter(node => {
       if (node.kind === "context") return false;
       if (requireSubscriptionState(node.key).direct === 0) return false;
-      const state = requireState(node.key);
+      const state = getMutableState(node.key);
       return !hasFreshSuccessfulValue(state);
     });
 
@@ -697,7 +645,7 @@ export const createGraphRuntime = (graph: Graph): GraphRuntime => {
 
   return Object.freeze({
     getState: <TNode extends AnyNodeDefinition>(node: TNode) =>
-      snapshotState<RuntimeNodeData<TNode>>(requireState(node.key)),
+      getSnapshot(node),
     setContext,
     execute,
     prefetch,

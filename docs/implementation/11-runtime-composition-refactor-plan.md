@@ -30,13 +30,15 @@ Status: Validated offline.
 
 ### R2: Extract runtime observation
 
-Status: Prepared; offline validation pending.
+Status: Validated offline.
 
 Listener storage and synchronous snapshot dispatch now belong to a small closure-based observer. Notification ownership and call sites remain in the capabilities that commit state. The observer has no runtime-state knowledge, and R2 introduces no batching, payloads, or deferred dispatch.
 
 ### R3: Extract runtime state and active-attempt storage
 
-Status: Planned.
+Status: Prepared; offline validation pending.
+
+Node-state and active-attempt maps now belong to one runtime-local closure store. Initial-state creation and frozen snapshot creation belong to the store. State-transition, attempt-sharing, cancellation, and notification policy remain in the committing runtime capabilities. The store has no observer or scheduler dependency.
 
 ### R4: Extract the execution controller
 
