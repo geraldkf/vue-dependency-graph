@@ -26,11 +26,13 @@ Status: Validated offline.
 
 ### R1D: Document notification ownership
 
-Status: Prepared; offline validation pending.
+Status: Validated offline.
 
 ### R2: Extract runtime observation
 
-Status: Planned.
+Status: Prepared; offline validation pending.
+
+Listener storage and synchronous snapshot dispatch now belong to a small closure-based observer. Notification ownership and call sites remain in the capabilities that commit state. The observer has no runtime-state knowledge, and R2 introduces no batching, payloads, or deferred dispatch.
 
 ### R3: Extract runtime state and active-attempt storage
 

@@ -3,6 +3,7 @@ import type {
   NodeSubscriptionState,
 } from "./subscription";
 import type { SchedulerState } from "./scheduler";
+import { createRuntimeObserver } from "./runtime-observer";
 import type { RefreshableNodeDefinition } from "./operations";
 import {
   GraphExecutionError,
@@ -191,7 +192,7 @@ export const createGraphRuntime = (graph: Graph): GraphRuntime => {
   const states = new Map<string, MutableNodeRuntimeState>();
   const subscriptionStates = new Map<string, MutableNodeSubscriptionState>();
   const activeAttempts = new Map<string, ActiveAttempt>();
-  const listeners = new Set<RuntimeListener>();
+  const { notify, onChange } = createRuntimeObserver();
   const settlementWaiters = new Set<() => void>();
   const refreshOperations = new Map<string, Promise<void>>();
   let schedulerScheduled = false;
@@ -208,16 +209,6 @@ export const createGraphRuntime = (graph: Graph): GraphRuntime => {
     const state = states.get(key);
     if (!state) throw new Error(`Runtime state for node "${key}" was not found.`);
     return state;
-  };
-
-  const notify = (): void => {
-    for (const listener of [...listeners]) {
-      try {
-        listener();
-      } catch {
-        // Listener failures are isolated from runtime state and other listeners.
-      }
-    }
   };
 
   const isSchedulerSettled = (): boolean =>
@@ -716,14 +707,6 @@ export const createGraphRuntime = (graph: Graph): GraphRuntime => {
     hasSubscribers: (node: AnyNodeDefinition) => getSubscriptionState(node).total > 0,
     getSchedulerState,
     whenSettled,
-    onChange: (listener: RuntimeListener) => {
-      listeners.add(listener);
-      let active = true;
-      return () => {
-        if (!active) return;
-        active = false;
-        listeners.delete(listener);
-      };
-    },
+    onChange,
   });
 };

@@ -116,7 +116,7 @@ Milestone 3 status: Complete.
 
 ## Runtime composition refactor
 
-Status: R1A, R1B, and R1C validated offline; R1D prepared with offline validation pending.
+Status: R1A through R1D validated offline; R2 prepared with offline validation pending.
 
 Implementation plan: `docs/implementation/11-runtime-composition-refactor-plan.md`
 
@@ -129,8 +129,9 @@ This behavior-preserving refactor is scheduled before Milestone 4.
 - [x] R1C implementation: Standardise registered-node validation
 - [x] R1C offline validation
 - [x] R1D implementation: Document notification ownership
-- [ ] R1D offline validation
-- [ ] R2: Extract runtime observation
+- [x] R1D offline validation
+- [x] R2 implementation: Extract runtime observation
+- [ ] R2 offline validation
 - [ ] R3: Extract runtime state and active-attempt storage
 - [ ] R4: Extract the execution controller
 - [ ] R5: Extract subscription storage and lifecycle
