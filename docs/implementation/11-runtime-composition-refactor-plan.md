@@ -36,13 +36,15 @@ Listener storage and synchronous snapshot dispatch now belong to a small closure
 
 ### R3: Extract runtime state and active-attempt storage
 
-Status: Prepared; offline validation pending.
+Status: Validated offline.
 
 Node-state and active-attempt maps now belong to one runtime-local closure store. Initial-state creation and frozen snapshot creation belong to the store. State-transition, attempt-sharing, cancellation, and notification policy remain in the committing runtime capabilities. The store has no observer or scheduler dependency.
 
 ### R4: Extract the execution controller
 
-Status: Planned.
+Status: Prepared; offline validation pending.
+
+The existing single execution engine now belongs to one closure-based controller. Explicit, scheduler, prefetch, and refresh work all delegate to that controller. Runtime state remains in the R3 store. Execution continues to own attempt-start, committed-success, and committed-failure notifications, while descendant invalidation and scheduling remain outside the controller.
 
 ### R5: Extract subscription storage and lifecycle
 
