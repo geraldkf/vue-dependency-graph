@@ -14,6 +14,7 @@ Decision records capture choices that materially affect correctness, compatibili
 - ADR-008: Branch-scoped failure handling
 - ADR-009: Polling as a refresh policy
 - ADR-010: Diagnostics designed into the core
+- ADR-011: Execution concurrency limit
 
 ## Template
 

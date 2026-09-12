@@ -79,7 +79,7 @@ Milestone 3 will add:
 
 It will use the explicit execution engine rather than replacing it.
 
-## Proposed for Milestone 4
+## Proposed for Milestone 5
 
 Transactions will batch related context changes, defer invalidation notifications, and request one scheduler flush. Multiple `setContext` calls are not atomic in Milestone 2.
 

@@ -6,7 +6,7 @@ Prepared; offline validation pending.
 
 ## Objective
 
-Add a seam that a future Milestone 4 transaction API can defer dispatch through, without any capability needing to know a transaction is open, and without changing any existing observable behavior when no transaction is used.
+Add a seam that a future Milestone 5 transaction API can defer dispatch through, without any capability needing to know a transaction is open, and without changing any existing observable behavior when no transaction is used.
 
 ## Why this was needed
 
@@ -50,7 +50,7 @@ Mechanical only, no logic changes to any existing capability:
 
 - Does not batch, defer, or roll back state mutations. `setContext`, invalidation's descendant walk, and execution's state commits still happen immediately, synchronously, at the point they are called — a transaction only defers when observers are told about them. `tests/core/transaction.spec.ts` (`"does not roll back partial state when the transaction body throws"`) asserts this directly.
 - Does not defer or reconcile subscription lifecycle abort behavior. `afterUnsubscribe`'s scan for scheduler-only attempts to cancel still runs synchronously on `unsubscribe()`, not at commit. A component that unsubscribes and immediately resubscribes to the same node within one transaction can still have its in-flight attempt aborted prematurely. This is a separate mechanism from notification buffering and is not addressed here.
-- Does not satisfy any Milestone 4 checklist item. See the roadmap addition in `docs/implementation/01-roadmap.md`.
+- Does not satisfy any Milestone 5 checklist item. See the roadmap addition in `docs/implementation/01-roadmap.md`.
 
 ## Tests
 
@@ -75,4 +75,4 @@ All three pass: 98/98 tests (92 pre-existing, unchanged, plus 6 new), clean type
 
 ## Next task
 
-Before Milestone 4 implementation begins: decide whether invalidation's own state mutation (not just its notify/schedule calls) should also become transaction-aware, and whether subscription-lifecycle abort checks should be deferred to commit. Both are called out above as explicitly out of scope for this change.
+Before Milestone 5 implementation begins: decide whether invalidation's own state mutation (not just its notify/schedule calls) should also become transaction-aware, and whether subscription-lifecycle abort checks should be deferred to commit. Both are called out above as explicitly out of scope for this change.

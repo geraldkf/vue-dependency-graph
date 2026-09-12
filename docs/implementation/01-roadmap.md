@@ -114,13 +114,57 @@ Milestone exit criteria: creating subscription automatically loads exactly the r
 
 Milestone 3 status: Complete.
 
+## Execution concurrency limit
+
+Status: Planned. Not yet implemented.
+
+Implementation plan: `docs/implementation/26-execution-concurrency-limit-plan.md`
+
+Design decision: `docs/decisions/ADR-011-execution-concurrency-limit.md`
+
+An enhancement to the Milestone 2/3 execution engine, not tied to a numbered milestone. Prompted by a request to make sibling dependencies run concurrently and add a concurrency cap — checked first, not assumed: sibling and independent-target concurrency already works today (verified empirically, see the plan doc), so this item is scoped to the part that was genuinely missing, a configurable cap on simultaneous data-node loads. Does not block, and isn't blocked by, Milestone 4 or Milestone 5 — sequencing relative to them is still open.
+
+- [ ] Hand-rolled FIFO counting semaphore (`createExecutionConcurrencyLimiter`)
+- [ ] Wire it around `DataNodeDefinition.load()` calls only, not `derive()`
+- [ ] Abort-while-queued handling (reuses existing obsolete-attempt classification, no new logic needed there)
+- [ ] `GraphRuntimeOptions.maxConcurrentLoads`, default unlimited, on `createGraphRuntime`
+- [ ] Tests: capped concurrency timing, abort-while-queued, default-unlimited regression, derived nodes never gated
+- [ ] Receive successful offline validation feedback
+
+## Milestone 4: Vue adapter
+
+Implementation plan: `docs/implementation/25-vue-adapter-and-playground-plan.md`
+
+- [ ] V1: Plugin and injection
+- [ ] V2: Scope-safety guard
+- [ ] V3A: `useNode` — dirty-check comparator (`statesEqual`)
+- [ ] V3B: `useNode` — subscription and sync wiring
+- [ ] V3C: `useNode` — scope guard and public return shape
+- [ ] V3D: `useNode` — tests
+- [ ] V4: `useNodes` with query aggregate state and alias-preserving typing
+- [ ] V5A: Shared configurable mock loader
+- [ ] V5B: Playground scenario — context switching
+- [ ] V5C: Playground scenario — concurrent consumers
+- [ ] V5D: Playground scenario — error and retry
+- [ ] V5E: Playground scenario — unmount cleanup
+- [ ] V5F: Playground scenario — aggregate query
+- [ ] V5G: Playground shell (tabs, plugin installed in `main.ts`)
+- [ ] V6: Playground smoke tests
+- [ ] Behaviour tests with Vue Testing Library
+- [ ] Update API and architecture documentation
+- [ ] Receive successful offline validation feedback
+
+Exit criteria: a Vue component loads and refreshes graph data without manual load or unsubscribe calls, demonstrated both by Vue Testing Library assertions and by hand in the running playground.
+
+Milestone 4 was swapped ahead of what was originally numbered Milestone 4 (transactions, now Milestone 5): the core has never been exercised by a real consumer, and every runtime capability added since Milestone 3 (notification buffer, feature-folder restructure) was validated only against unit tests calling the core API directly. Proving the core against a real Vue component first is lower-risk than adding transaction staging on top of an unproven foundation. See the discussion preceding this decision for the full reasoning; nothing here is a hard technical dependency in either direction.
+
 ## Runtime composition refactor
 
 Status: R1A through R7 validated offline; R8 and R9 prepared with offline validation pending.
 
 Implementation plan: `docs/implementation/11-runtime-composition-refactor-plan.md`
 
-This behavior-preserving refactor is scheduled before Milestone 4.
+This behavior-preserving refactor was done in preparation for Milestone 5 (transactions).
 
 - [x] R1A implementation: Documentation and repository cleanup
 - [x] R1A offline validation
@@ -147,36 +191,7 @@ This behavior-preserving refactor is scheduled before Milestone 4.
 - [x] R9 implementation: Simplify runtime assembly and document internal boundaries
 - [ ] R9 offline validation
 
-The public API and runtime behavior remain unchanged. Milestone 4 has not started.
-
-## Pre-Milestone 4 preparation: notification buffer seam
-
-Status: Prepared; offline validation pending.
-
-Implementation note: `docs/implementation/23-transaction-notification-buffer-implementation-note.md`
-
-This is infrastructure prepared ahead of Milestone 4, not Milestone 4 itself. It routes every capability's `notify`/`schedule`/`resolveSettlementIfIdle`/`whenSettled` dispatch through one runtime-local buffer so a future transaction API has a seam to defer dispatch through, without every capability needing to know a transaction is open. It intentionally does not implement transactions.
-
-- [x] Buffer notify/schedule/resolveSettlementIfIdle/whenSettled dispatch behind a depth counter
-- [x] Support async-spanning deferral (depth stays open across an awaited gap)
-- [x] Support nested calls collapsing into one commit
-- [x] Preserve pass-through behavior at depth zero (no observable change to existing capabilities)
-- [x] Expose `runtime.transaction(work)` on the public API
-- [x] Add behavioural tests for coalescing, nesting, passthrough, and premature settlement
-- [ ] Receive successful offline validation feedback
-
-This does not satisfy any Milestone 4 checklist item below: state mutations are still applied immediately and are not batched or rolled back, so "Atomic context updates", "Deferred invalidation" (as opposed to deferred *notification*), and "Transaction rollback for local synchronous failure" remain entirely unstarted. "Deferred scheduling" is only partially addressed — the scheduler's flush is deferred until commit, but nothing yet prevents invalidation's own state mutation from happening immediately per call within a transaction body.
-
-## Milestone 4: Transactions and invalidation
-
-- [ ] Atomic context updates
-- [ ] Nested transactions
-- [ ] Deferred invalidation
-- [ ] Deferred scheduling
-- [ ] Transaction rollback for local synchronous failure
-- [ ] Generation changes and abort behaviour
-
-Exit criteria: observers do not see partially committed related context values.
+The public API and runtime behavior remain unchanged. Milestone 5 (transactions) has not started.
 
 ## Core module structure
 
@@ -193,21 +208,36 @@ Implementation note: `docs/implementation/24-core-feature-folder-restructure-imp
 - [x] Confirm zero test files required changes (all import through the public barrel)
 - [ ] Receive successful offline validation feedback
 
-## Milestone 5: Vue adapter
+## Pre-Milestone 5 preparation: notification buffer seam
 
-Implementation plan: `docs/implementation/25-vue-adapter-and-playground-plan.md`
+Status: Prepared; offline validation pending.
 
-- [ ] V1: Plugin and injection
-- [ ] V2: Scope-safety guard
-- [ ] V3: `useNode` with field-level dirty-check sync
-- [ ] V4: `useNodes` with query aggregate state
-- [ ] V5: Playground scenarios (context switching, concurrent consumers, error and retry, unmount cleanup, aggregate query)
-- [ ] V6: Playground smoke tests
-- [ ] Behaviour tests with Vue Testing Library
-- [ ] Update API and architecture documentation
+Implementation note: `docs/implementation/23-transaction-notification-buffer-implementation-note.md`
+
+This is infrastructure prepared ahead of Milestone 5 (transactions), not the milestone itself. It routes every capability's `notify`/`schedule`/`resolveSettlementIfIdle`/`whenSettled` dispatch through one runtime-local buffer so a future transaction API has a seam to defer dispatch through, without every capability needing to know a transaction is open. It intentionally does not implement transactions.
+
+- [x] Buffer notify/schedule/resolveSettlementIfIdle/whenSettled dispatch behind a depth counter
+- [x] Support async-spanning deferral (depth stays open across an awaited gap)
+- [x] Support nested calls collapsing into one commit
+- [x] Preserve pass-through behavior at depth zero (no observable change to existing capabilities)
+- [x] Expose `runtime.transaction(work)` on the public API
+- [x] Add behavioural tests for coalescing, nesting, passthrough, and premature settlement
 - [ ] Receive successful offline validation feedback
 
-Exit criteria: a Vue component loads and refreshes graph data without manual load or unsubscribe calls, demonstrated both by Vue Testing Library assertions and by hand in the running playground.
+This does not satisfy any Milestone 5 checklist item below: state mutations are still applied immediately and are not batched or rolled back, so "Atomic context updates", "Deferred invalidation" (as opposed to deferred *notification*), and "Transaction rollback for local synchronous failure" remain entirely unstarted. "Deferred scheduling" is only partially addressed — the scheduler's flush is deferred until commit, but nothing yet prevents invalidation's own state mutation from happening immediately per call within a transaction body.
+
+## Milestone 5: Transactions and invalidation
+
+- [ ] Atomic context updates
+- [ ] Nested transactions
+- [ ] Deferred invalidation
+- [ ] Deferred scheduling
+- [ ] Transaction rollback for local synchronous failure
+- [ ] Generation changes and abort behaviour
+
+Exit criteria: observers do not see partially committed related context values.
+
+Design decision recorded ahead of implementation: `docs/decisions/ADR-005-atomic-graph-transactions.md`.
 
 ## Milestone 6: Typed events
 

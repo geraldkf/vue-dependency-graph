@@ -111,7 +111,7 @@ graph.transaction(...);
 graph.publish(...);
 ```
 
-Subscription-driven execution, prefetch, and manual refresh are implemented on `GraphRuntime`. Transactions are Milestone 4. Vue integration, query groups, events, polling, and mutations follow later milestones.
+Subscription-driven execution, prefetch, and manual refresh are implemented on `GraphRuntime`. Vue integration is Milestone 4. Transactions, query groups, events, polling, and mutations follow later milestones.
 
 ## Implemented node subscription lifecycle API
 

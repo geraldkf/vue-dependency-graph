@@ -22,6 +22,8 @@ A node can retain stale data while refreshing or after a refresh error.
 
 A graph transaction batches local context, event, mutation, and invalidation changes. It does not promise backend transactional rollback.
 
+Split into its own record once the implementation approach was decided: see `ADR-005-atomic-graph-transactions.md`.
+
 ### Domain events avoid direct store coupling
 
 Domains publish typed business events. Other graph nodes declare event-based invalidation.

@@ -2,7 +2,7 @@
 
 ## Status
 
-Planned. Milestone 3 is validated offline. R1A through R9 are implemented; R8 and R9 offline validation is pending. This behavior-preserving refactor is scheduled before Milestone 4.
+Planned. Milestone 3 is validated offline. R1A through R9 are implemented; R8 and R9 offline validation is pending. This behavior-preserving refactor is scheduled before Milestone 5.
 
 ## Objective
 
@@ -74,7 +74,7 @@ Prefetch and refresh orchestration now belong to one runtime-local closure contr
 
 Status: Prepared; offline validation pending.
 
-`createGraphRuntime` builds nine capabilities (state store, execution, scheduler, notification buffer, subscriptions, invalidation, operations, plus the observer) in one composition root. Three of them require a genuine forward reference, and this note pins down exactly which and why, so a future addition (Milestone 4's transaction/atomic-context work is the next one) can tell at a glance whether it needs another one.
+`createGraphRuntime` builds nine capabilities (state store, execution, scheduler, notification buffer, subscriptions, invalidation, operations, plus the observer) in one composition root. Three of them require a genuine forward reference, and this note pins down exactly which and why, so a future addition (Milestone 5's transaction/atomic-context work is the next one to touch this composition root) can tell at a glance whether it needs another one.
 
 **Construction order:**
 
@@ -99,9 +99,9 @@ The two-capability mutual dependency between `execution` and `invalidation` (exe
 
 Two dead imports (`ExecutionOrigin`, `MutableNodeRuntimeState`) were also removed from `runtime.ts` — imported, never referenced in the file body.
 
-## Milestone 4 preparation: where transaction state staging will live
+## Milestone 5 preparation: where transaction state staging will live
 
-This is a decision, not an implementation. It exists so that whoever starts Milestone 4 — and whoever later builds Milestone 9's optimistic mutations on top of it — doesn't have to re-derive it. See `docs/decisions/ADR-005-atomic-graph-transactions.md` for the full context, decision, consequences, and alternatives considered. Summary: state staging for atomic transactions will be built as its own capability (most naturally as a staging mode on `state/state.ts`), sharing the same commit trigger as `runtime-notification-buffer.ts` rather than being folded into it. The notification buffer itself is not touched by this decision and needs no further changes for Milestone 4 to build on top of it.
+This is a decision, not an implementation. It exists so that whoever starts Milestone 5 — and whoever later builds Milestone 9's optimistic mutations on top of it — doesn't have to re-derive it. See `docs/decisions/ADR-005-atomic-graph-transactions.md` for the full context, decision, consequences, and alternatives considered. Summary: state staging for atomic transactions will be built as its own capability (most naturally as a staging mode on `state/state.ts`), sharing the same commit trigger as `runtime-notification-buffer.ts` rather than being folded into it. The notification buffer itself is not touched by this decision and needs no further changes for Milestone 5 to build on top of it.
 
 
 ## Composition decisions
