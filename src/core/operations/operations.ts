@@ -1,9 +1,9 @@
-import type { RefreshableNodeDefinition } from "./operations";
+import type { RefreshableNodeDefinition } from "./types";
 import type {
   ActiveAttempt,
   MutableNodeRuntimeState,
-} from "./runtime-state";
-import type { AnyNodeDefinition } from "./types";
+} from "../state/state";
+import type { AnyNodeDefinition } from "../graph/node";
 
 export interface RuntimeOperationsController {
   readonly prefetch: (

@@ -8,7 +8,7 @@ import type {
   DependencySource,
   DerivedNodeDefinition,
   DerivedNodeOptions,
-} from "./types";
+} from "./node";
 
 const validateKey = (key: string): void => {
   if (key.trim().length === 0) {

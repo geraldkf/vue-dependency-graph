@@ -2,7 +2,7 @@ import type {
   AnyNodeDefinition,
   DataNodeDefinition,
   DerivedNodeDefinition,
-} from "./types";
+} from "../graph/node";
 
 export type RefreshableNodeDefinition =
   | DataNodeDefinition<unknown, readonly AnyNodeDefinition[]>

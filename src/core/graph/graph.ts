@@ -3,7 +3,7 @@ import type {
   AnyNodeDefinition,
   Graph,
   NodeOrKey,
-} from "./types";
+} from "./node";
 
 export interface CreateGraphOptions {
   readonly nodes: readonly AnyNodeDefinition[];

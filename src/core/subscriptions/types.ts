@@ -1,4 +1,4 @@
-import type { AnyNodeDefinition } from "./types";
+import type { AnyNodeDefinition } from "../graph/node";
 
 export interface NodeSubscriptionState {
   readonly direct: number;

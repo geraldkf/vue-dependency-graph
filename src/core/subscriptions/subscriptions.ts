@@ -1,11 +1,11 @@
 import type {
   NodeSubscription,
   NodeSubscriptionState,
-} from "./subscription";
+} from "./types";
 import type {
   AnyNodeDefinition,
   Graph,
-} from "./types";
+} from "../graph/node";
 
 interface MutableNodeSubscriptionState {
   direct: number;

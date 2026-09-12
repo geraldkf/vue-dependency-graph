@@ -1,36 +1,37 @@
-export type { RefreshableNodeDefinition } from "./operations";
-export type { SchedulerState } from "./scheduler";
+export type { RefreshableNodeDefinition } from "./operations/types";
+export type { SchedulerState } from "./scheduling/types";
 export type {
   NodeSubscription,
   NodeSubscriptionState,
-} from "./subscription";
-export { GraphValidationError } from "./errors";
-export type { GraphValidationErrorCode } from "./errors";
+} from "./subscriptions/types";
+export { GraphValidationError } from "./graph/errors";
+export type { GraphValidationErrorCode } from "./graph/errors";
 export {
   GraphExecutionError,
   isAbortError,
   toError,
-} from "./execution";
+} from "./execution/types";
 export type {
   NodeExecutionFailure,
   NodeExecutionFailureKind,
-} from "./execution";
-export { createGraph } from "./graph";
-export type { CreateGraphOptions } from "./graph";
+} from "./execution/types";
+export { createGraph } from "./graph/graph";
+export type { CreateGraphOptions } from "./graph/graph";
 export {
   defineContextNode,
   defineDataNode,
   defineDerivedNode,
-} from "./nodes";
+} from "./graph/nodes";
 export { createGraphRuntime } from "./runtime";
+export type { GraphRuntime } from "./runtime";
+export type { RuntimeNotificationBuffer } from "./transactions/notification-buffer";
 export type {
-  GraphRuntime,
   NodeFreshness,
   NodeRuntimeState,
   NodeStatus,
-  RuntimeListener,
   RuntimeNodeData,
-} from "./runtime";
+} from "./state/types";
+export type { RuntimeListener } from "./observation/types";
 export type {
   AnyNodeDefinition,
   ContextNodeDefinition,
@@ -48,7 +49,7 @@ export type {
   NodeKind,
   NodeOrKey,
   NodeValue,
-} from "./types";
+} from "./graph/node";
 
 /** Identifies the framework-agnostic core layer during repository bootstrap. */
 export const coreLayerName = "core" as const;

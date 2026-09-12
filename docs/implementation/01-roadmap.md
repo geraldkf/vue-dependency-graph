@@ -148,6 +148,24 @@ This behavior-preserving refactor is scheduled before Milestone 4.
 
 The public API and runtime behavior remain unchanged. Milestone 4 has not started.
 
+## Pre-Milestone 4 preparation: notification buffer seam
+
+Status: Prepared; offline validation pending.
+
+Implementation note: `docs/implementation/23-transaction-notification-buffer-implementation-note.md`
+
+This is infrastructure prepared ahead of Milestone 4, not Milestone 4 itself. It routes every capability's `notify`/`schedule`/`resolveSettlementIfIdle`/`whenSettled` dispatch through one runtime-local buffer so a future transaction API has a seam to defer dispatch through, without every capability needing to know a transaction is open. It intentionally does not implement transactions.
+
+- [x] Buffer notify/schedule/resolveSettlementIfIdle/whenSettled dispatch behind a depth counter
+- [x] Support async-spanning deferral (depth stays open across an awaited gap)
+- [x] Support nested calls collapsing into one commit
+- [x] Preserve pass-through behavior at depth zero (no observable change to existing capabilities)
+- [x] Expose `runtime.transaction(work)` on the public API
+- [x] Add behavioural tests for coalescing, nesting, passthrough, and premature settlement
+- [ ] Receive successful offline validation feedback
+
+This does not satisfy any Milestone 4 checklist item below: state mutations are still applied immediately and are not batched or rolled back, so "Atomic context updates", "Deferred invalidation" (as opposed to deferred *notification*), and "Transaction rollback for local synchronous failure" remain entirely unstarted. "Deferred scheduling" is only partially addressed — the scheduler's flush is deferred until commit, but nothing yet prevents invalidation's own state mutation from happening immediately per call within a transaction body.
+
 ## Milestone 4: Transactions and invalidation
 
 - [ ] Atomic context updates
@@ -158,6 +176,21 @@ The public API and runtime behavior remain unchanged. Milestone 4 has not starte
 - [ ] Generation changes and abort behaviour
 
 Exit criteria: observers do not see partially committed related context values.
+
+## Core module structure
+
+Status: Restructured; offline validation pending.
+
+Implementation note: `docs/implementation/24-core-feature-folder-restructure-implementation-note.md`
+
+`src/core` was reorganised from a flat directory into feature folders (`graph/`, `execution/`, `state/`, `observation/`, `subscriptions/`, `scheduling/`, `invalidation/`, `operations/`, `transactions/`), each holding its own `types.ts` next to its own capability file, with `runtime.ts` remaining the top-level composition root. This is a structural clarity change with no behavioural or public API impact; it also eliminated two circular type-import edges that previously ran through `runtime.ts`.
+
+- [x] Move each capability file into its feature folder
+- [x] Split each contract file into its owning feature folder as `types.ts`
+- [x] Extract the runtime-level shared types (`NodeStatus`, `NodeFreshness`, `NodeRuntimeState`, `RuntimeNodeData`, `RuntimeListener`) out of `runtime.ts` into `state/types.ts` and `observation/types.ts`
+- [x] Repoint every internal import and the public barrel (`index.ts`)
+- [x] Confirm zero test files required changes (all import through the public barrel)
+- [ ] Receive successful offline validation feedback
 
 ## Milestone 5: Vue adapter
 

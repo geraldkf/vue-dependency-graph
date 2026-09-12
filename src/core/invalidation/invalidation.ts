@@ -1,12 +1,12 @@
 import type {
   ActiveAttempt,
   MutableNodeRuntimeState,
-} from "./runtime-state";
+} from "../state/state";
 import type {
   AnyNodeDefinition,
   ContextNodeDefinition,
   Graph,
-} from "./types";
+} from "../graph/node";
 
 export interface RuntimeInvalidationController {
   readonly setContext: <TValue>(

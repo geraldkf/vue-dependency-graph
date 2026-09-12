@@ -3,13 +3,13 @@ import type {
   NodeRuntimeState,
   NodeStatus,
   RuntimeNodeData,
-} from "./runtime";
+} from "./types";
 import type {
   AnyNodeDefinition,
   ContextNodeDefinition,
   DataNodeDefinition,
   Graph,
-} from "./types";
+} from "../graph/node";
 
 export interface MutableNodeRuntimeState {
   data: unknown;

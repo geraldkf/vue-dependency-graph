@@ -1,4 +1,4 @@
-import type { RuntimeListener } from "./runtime";
+import type { RuntimeListener } from "./types";
 
 export interface RuntimeObserver {
   readonly onChange: (listener: RuntimeListener) => () => void;

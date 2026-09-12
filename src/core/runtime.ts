@@ -1,61 +1,46 @@
 import type {
   NodeSubscription,
   NodeSubscriptionState,
-} from "./subscription";
-import type { SchedulerState } from "./scheduler";
+} from "./subscriptions/types";
+import type { SchedulerState } from "./scheduling/types";
 import {
   createRuntimeSchedulerController,
   type RuntimeSchedulerController,
-} from "./runtime-scheduler";
-import { createRuntimeObserver } from "./runtime-observer";
+} from "./scheduling/scheduler";
+import { createRuntimeObserver } from "./observation/observer";
+import type { RuntimeListener } from "./observation/types";
+import {
+  createRuntimeNotificationBuffer,
+  type RuntimeNotificationBuffer,
+} from "./transactions/notification-buffer";
 import {
   createRuntimeStateStore,
   type ActiveAttempt,
   type ExecutionOrigin,
   type MutableNodeRuntimeState,
-} from "./runtime-state";
-import type { RefreshableNodeDefinition } from "./operations";
-import { createRuntimeOperationsController } from "./runtime-operations";
-import { createRuntimeExecutionController } from "./runtime-execution";
+} from "./state/state";
+import type {
+  NodeFreshness,
+  NodeRuntimeState,
+  NodeStatus,
+  RuntimeNodeData,
+} from "./state/types";
+import type { RefreshableNodeDefinition } from "./operations/types";
+import { createRuntimeOperationsController } from "./operations/operations";
+import { createRuntimeExecutionController } from "./execution/execution";
 import {
   createRuntimeInvalidationController,
   type RuntimeInvalidationController,
-} from "./runtime-invalidation";
+} from "./invalidation/invalidation";
 import {
   createRuntimeSubscriptionController,
   type RuntimeSubscriptionController,
-} from "./runtime-subscriptions";
+} from "./subscriptions/subscriptions";
 import type {
   AnyNodeDefinition,
   ContextNodeDefinition,
   Graph,
-  NodeValue,
-} from "./types";
-
-export type NodeStatus =
-  | "idle"
-  | "loading"
-  | "success"
-  | "refreshing"
-  | "error";
-
-export type NodeFreshness = "fresh" | "stale";
-
-export type RuntimeNodeData<TNode extends AnyNodeDefinition> =
-  TNode["kind"] extends "derived"
-    ? NodeValue<TNode> | undefined
-    : NodeValue<TNode>;
-
-export interface NodeRuntimeState<TData> {
-  readonly data: TData;
-  readonly status: NodeStatus;
-  readonly freshness: NodeFreshness;
-  readonly error: Error | null;
-  readonly generation: number;
-  readonly hasSuccessfulValue: boolean;
-}
-
-export type RuntimeListener = () => void;
+} from "./graph/node";
 
 export interface GraphRuntime {
   readonly getState: <TNode extends AnyNodeDefinition>(
@@ -84,6 +69,16 @@ export interface GraphRuntime {
   readonly getSchedulerState: () => SchedulerState;
   readonly whenSettled: () => Promise<void>;
   readonly onChange: (listener: RuntimeListener) => () => void;
+  /**
+   * Runs `work`, coalescing every notify/schedule dispatch caused by it
+   * into a single commit once `work` settles. Depth stays open across any
+   * awaited gap inside `work`, so a `transaction` spanning multiple async
+   * steps still produces one flush instead of one per step. Nested
+   * transactions collapse into the outermost one's commit. State mutations
+   * inside `work` are applied immediately and are not rolled back on
+   * failure — this defers observation, it does not provide isolation.
+   */
+  readonly transaction: <T>(work: () => T | Promise<T>) => Promise<T>;
 }
 
 const isSchedulerOnlyAttempt = (attempt: ActiveAttempt): boolean =>
@@ -98,7 +93,7 @@ export const createGraphRuntime = (graph: Graph): GraphRuntime => {
     deleteActiveAttempt,
     getActiveAttempts,
   } = createRuntimeStateStore(graph);
-  const { notify, onChange } = createRuntimeObserver();
+  const { notify: emitNotify, onChange } = createRuntimeObserver();
   const requireRegisteredNode = (
     node: AnyNodeDefinition,
     purpose: string
@@ -114,6 +109,11 @@ export const createGraphRuntime = (graph: Graph): GraphRuntime => {
   let execution!: ReturnType<typeof createRuntimeExecutionController>;
   let scheduler!: RuntimeSchedulerController;
   let invalidation!: RuntimeInvalidationController;
+  // Forward-referenced for the same reason `subscriptions`/`invalidation`
+  // are above: the buffer wraps `scheduler.schedule`, but execution (built
+  // before scheduler exists) also needs the buffered notify. The
+  // indirection closure defers the lookup until `buffer` is assigned below.
+  let buffer!: RuntimeNotificationBuffer;
 
   execution = createRuntimeExecutionController({
     graph,
@@ -123,7 +123,7 @@ export const createGraphRuntime = (graph: Graph): GraphRuntime => {
     deleteActiveAttempt,
     resolveRegisteredNode: node =>
       requireRegisteredNode(node, "execution"),
-    notify,
+    notify: () => buffer.notify(),
     onChangedRefreshResult: node =>
       invalidation.invalidateChangedResultDescendants(node),
   });
@@ -143,14 +143,27 @@ export const createGraphRuntime = (graph: Graph): GraphRuntime => {
   scheduler = createRuntimeSchedulerController({
     getTargetsNeedingWork: getSubscribedTargetsNeedingWork,
     execute: targets => execution.execute(targets, "scheduler"),
-    notify,
+    notify: emitNotify,
+  });
+
+  // The buffer's real sinks are the observer's raw notify and the
+  // scheduler's own schedule/resolveSettlementIfIdle. Everything else in
+  // this composition root talks to `buffer.*`, never to `emitNotify` or
+  // `scheduler.schedule` directly, so a future `transaction(...)` call can
+  // defer dispatch without any capability needing to know a transaction is
+  // open.
+  buffer = createRuntimeNotificationBuffer({
+    notify: emitNotify,
+    schedule: scheduler.schedule,
+    resolveSettlementIfIdle: scheduler.resolveSettlementIfIdle,
+    whenSettled: scheduler.whenSettled,
   });
 
   subscriptions = createRuntimeSubscriptionController({
     graph,
     resolveRegisteredNode: requireRegisteredNode,
-    notify,
-    afterSubscribe: scheduler.schedule,
+    notify: buffer.notify,
+    afterSubscribe: buffer.schedule,
     afterUnsubscribe: () => {
       for (const [key, attempt] of getActiveAttempts()) {
         const node = graph.getNode(key);
@@ -162,7 +175,7 @@ export const createGraphRuntime = (graph: Graph): GraphRuntime => {
           attempt.controller.abort();
         }
       }
-      scheduler.resolveSettlementIfIdle();
+      buffer.resolveSettlementIfIdle();
     },
   });
 
@@ -172,8 +185,8 @@ export const createGraphRuntime = (graph: Graph): GraphRuntime => {
     getActiveAttempt,
     hasSubscribers: subscriptions.hasSubscribers,
     resolveRegisteredNode: requireRegisteredNode,
-    notify,
-    schedule: scheduler.schedule,
+    notify: buffer.notify,
+    schedule: buffer.schedule,
   });
 
   const operations = createRuntimeOperationsController({
@@ -181,7 +194,7 @@ export const createGraphRuntime = (graph: Graph): GraphRuntime => {
     getActiveAttempt,
     resolveRegisteredNode: requireRegisteredNode,
     execute: (targets, origin) => execution.execute(targets, origin),
-    notify,
+    notify: buffer.notify,
   });
 
   return Object.freeze({
@@ -195,7 +208,8 @@ export const createGraphRuntime = (graph: Graph): GraphRuntime => {
     getSubscriptionState: subscriptions.getSubscriptionState,
     hasSubscribers: subscriptions.hasSubscribers,
     getSchedulerState: scheduler.getSchedulerState,
-    whenSettled: scheduler.whenSettled,
+    whenSettled: buffer.whenSettled,
     onChange,
+    transaction: buffer.runTransaction,
   });
 };
