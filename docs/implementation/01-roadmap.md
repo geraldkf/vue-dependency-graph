@@ -135,8 +135,8 @@ An enhancement to the Milestone 2/3 execution engine, not tied to a numbered mil
 
 Implementation plan: `docs/implementation/25-vue-adapter-and-playground-plan.md`
 
-- [ ] V1: Plugin and injection
-- [ ] V2: Scope-safety guard
+- [x] V1: Plugin and injection
+- [x] V2: Scope-safety guard
 - [ ] V3A: `useNode` — dirty-check comparator (`statesEqual`)
 - [ ] V3B: `useNode` — subscription and sync wiring
 - [ ] V3C: `useNode` — scope guard and public return shape

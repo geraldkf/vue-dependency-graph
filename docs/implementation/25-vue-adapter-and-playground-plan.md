@@ -2,7 +2,7 @@
 
 ## Status
 
-Planned. Nothing in `src/vue` or `src/playground` beyond bootstrap stubs exists yet. This is Milestone 4.
+In progress. V1 (plugin and injection) and V2 (scope-safety guard) are implemented, offline validation pending. Everything else in `src/vue` and `src/playground` beyond bootstrap stubs remains as planned below. This is Milestone 4.
 
 ## Objective
 
@@ -59,11 +59,12 @@ For tests, `@testing-library/vue`'s `render(Component, { global: { provide: { [G
 
 Checklist:
 
-- [ ] Define `GraphRuntimeKey` (module-internal, not exported from `src/vue/index.ts`)
-- [ ] Implement `createGraphRuntimePlugin`
-- [ ] Implement `useGraphRuntime` with the explicit throw-on-missing behaviour
-- [ ] `tests/vue/plugin.spec.ts`: throws with no injection; resolves correctly when provided via `global.provide`; resolves correctly when provided via a mounted `createGraphRuntimePlugin` (confirms both paths actually agree)
-- [ ] Confirm empirically, not by assumption, that `@testing-library/vue`'s `render()` creates a genuine Vue effect scope for the mounted component — `useNode`/`useNodes` (V3/V4) depend on `onScopeDispose` actually firing on unmount, and this is the first point in the plan where that can be checked. If it doesn't hold, V3/V4's unmount tests need a different harness, and better to find that out here than three steps later.
+- [x] Define `GraphRuntimeKey` (module-internal, not exported from `src/vue/index.ts`)
+- [x] Implement `createGraphRuntimePlugin`
+- [x] Implement `useGraphRuntime` with the explicit throw-on-missing behaviour
+- [x] `tests/vue/plugin.spec.ts`: throws with no injection; resolves correctly when provided via `global.provide`; resolves correctly when provided via a mounted `createGraphRuntimePlugin` (confirms both paths actually agree)
+- [x] Confirm empirically, not by assumption, that `@testing-library/vue`'s `render()` creates a genuine Vue effect scope for the mounted component — confirmed: `onScopeDispose` fires correctly on `unmount()`. See `docs/implementation/27-vue-adapter-v1-implementation-note.md`.
+- [ ] Receive successful offline validation feedback
 
 ### V2: Scope-safety guard
 
@@ -84,8 +85,8 @@ This stays internal to `src/vue` — not exported. Nothing has asked for consume
 
 Checklist:
 
-- [ ] Implement `assertActiveEffectScope`
-- [ ] Unit test: throws when called with no active scope (a plain function call, not inside `setup()`); does not throw when called from inside a mounted test component's `setup()`
+- [x] Implement `assertActiveEffectScope`
+- [x] Unit test: throws when called with no active scope (a plain function call, not inside `setup()`); does not throw when called from inside a mounted test component's `setup()`
 
 ### V3: `useNode`
 
@@ -270,8 +271,8 @@ All new tests use `@testing-library/vue`'s `render()` with an explicitly constru
 
 ## Work sequence
 
-- [ ] V1: Plugin and injection (`GraphRuntimeKey`, `createGraphRuntimePlugin`, `useGraphRuntime`) + tests + effect-scope-in-tests confirmation
-- [ ] V2: Scope-safety guard (`assertActiveEffectScope`), shared by V3 and V4
+- [x] V1: Plugin and injection (`GraphRuntimeKey`, `createGraphRuntimePlugin`, `useGraphRuntime`) + tests + effect-scope-in-tests confirmation
+- [x] V2: Scope-safety guard (`assertActiveEffectScope`), shared by V3 and V4
 - [ ] V3A: `useNode` — dirty-check comparator (`statesEqual`) + direct tests
 - [ ] V3B: `useNode` — subscription and sync wiring
 - [ ] V3C: `useNode` — scope guard and public return shape
