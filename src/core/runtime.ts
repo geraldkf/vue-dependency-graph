@@ -16,8 +16,6 @@ import {
 import {
   createRuntimeStateStore,
   type ActiveAttempt,
-  type ExecutionOrigin,
-  type MutableNodeRuntimeState,
 } from "./state/state";
 import type {
   NodeFreshness,
@@ -105,17 +103,25 @@ export const createGraphRuntime = (graph: Graph): GraphRuntime => {
     return registered;
   };
 
+  // Only these three bindings are genuinely forward-referenced: each is
+  // read inside a closure that is constructed before the binding itself
+  // is assigned. `execution` and `scheduler` are never read before their
+  // own assignment anywhere in this function, so they're declared with
+  // `const` below instead of joining this list.
+  //
+  // - `subscriptions`: read inside its own `afterUnsubscribe` callback
+  //   (constructed as part of its own call below) and inside
+  //   `getSubscribedTargetsNeedingWork` (defined before subscriptions
+  //   exists, called later by the scheduler).
+  // - `invalidation`: read inside `execution`'s `onChangedRefreshResult`
+  //   callback. `execution` is constructed first, before `invalidation`
+  //   exists.
+  // - `buffer`: read inside `execution`'s `notify` callback, same reason.
   let subscriptions!: RuntimeSubscriptionController;
-  let execution!: ReturnType<typeof createRuntimeExecutionController>;
-  let scheduler!: RuntimeSchedulerController;
   let invalidation!: RuntimeInvalidationController;
-  // Forward-referenced for the same reason `subscriptions`/`invalidation`
-  // are above: the buffer wraps `scheduler.schedule`, but execution (built
-  // before scheduler exists) also needs the buffered notify. The
-  // indirection closure defers the lookup until `buffer` is assigned below.
   let buffer!: RuntimeNotificationBuffer;
 
-  execution = createRuntimeExecutionController({
+  const execution = createRuntimeExecutionController({
     graph,
     getMutableState,
     getActiveAttempt,
@@ -138,9 +144,7 @@ export const createGraphRuntime = (graph: Graph): GraphRuntime => {
       return execution.needsExecution(node);
     });
 
-
-
-  scheduler = createRuntimeSchedulerController({
+  const scheduler = createRuntimeSchedulerController({
     getTargetsNeedingWork: getSubscribedTargetsNeedingWork,
     execute: targets => execution.execute(targets, "scheduler"),
     notify: emitNotify,

@@ -116,7 +116,7 @@ Milestone 3 status: Complete.
 
 ## Runtime composition refactor
 
-Status: R1A through R7 validated offline; R8 prepared with offline validation pending.
+Status: R1A through R7 validated offline; R8 and R9 prepared with offline validation pending.
 
 Implementation plan: `docs/implementation/11-runtime-composition-refactor-plan.md`
 
@@ -144,7 +144,8 @@ This behavior-preserving refactor is scheduled before Milestone 4.
 - [x] R7 offline validation
 - [x] R8 implementation: Extract prefetch and refresh operations
 - [ ] R8 offline validation
-- [ ] R9: Simplify runtime assembly and document internal boundaries
+- [x] R9 implementation: Simplify runtime assembly and document internal boundaries
+- [ ] R9 offline validation
 
 The public API and runtime behavior remain unchanged. Milestone 4 has not started.
 
@@ -194,14 +195,19 @@ Implementation note: `docs/implementation/24-core-feature-folder-restructure-imp
 
 ## Milestone 5: Vue adapter
 
-- [ ] Plugin and injection
-- [ ] `useNode`
-- [ ] `useNodes`
-- [ ] Scope cleanup
-- [ ] Query aggregate state
-- [ ] Behaviour tests with Vue Testing Library
+Implementation plan: `docs/implementation/25-vue-adapter-and-playground-plan.md`
 
-Exit criteria: a Vue component loads and refreshes graph data without manual load or unsubscribe calls.
+- [ ] V1: Plugin and injection
+- [ ] V2: Scope-safety guard
+- [ ] V3: `useNode` with field-level dirty-check sync
+- [ ] V4: `useNodes` with query aggregate state
+- [ ] V5: Playground scenarios (context switching, concurrent consumers, error and retry, unmount cleanup, aggregate query)
+- [ ] V6: Playground smoke tests
+- [ ] Behaviour tests with Vue Testing Library
+- [ ] Update API and architecture documentation
+- [ ] Receive successful offline validation feedback
+
+Exit criteria: a Vue component loads and refreshes graph data without manual load or unsubscribe calls, demonstrated both by Vue Testing Library assertions and by hand in the running playground.
 
 ## Milestone 6: Typed events
 

@@ -2,7 +2,7 @@
 
 ## Status
 
-Planned. Milestone 3 is validated offline. This behavior-preserving refactor is scheduled before Milestone 4.
+Planned. Milestone 3 is validated offline. R1A through R9 are implemented; R8 and R9 offline validation is pending. This behavior-preserving refactor is scheduled before Milestone 4.
 
 ## Objective
 
@@ -72,7 +72,37 @@ Prefetch and refresh orchestration now belong to one runtime-local closure contr
 
 ### R9: Simplify runtime assembly and document internal boundaries
 
-Status: Planned.
+Status: Prepared; offline validation pending.
+
+`createGraphRuntime` builds nine capabilities (state store, execution, scheduler, notification buffer, subscriptions, invalidation, operations, plus the observer) in one composition root. Three of them require a genuine forward reference, and this note pins down exactly which and why, so a future addition (Milestone 4's transaction/atomic-context work is the next one) can tell at a glance whether it needs another one.
+
+**Construction order:**
+
+1. `createRuntimeStateStore` — no dependencies on other capabilities.
+2. `createRuntimeObserver` — no dependencies on other capabilities.
+3. `execution` — depends on `buffer` (not yet constructed) and `invalidation` (not yet constructed).
+4. `scheduler` — depends on `execution` (already constructed) and the raw observer notify.
+5. `buffer` — depends on `scheduler.schedule` / `scheduler.resolveSettlementIfIdle` / `scheduler.whenSettled` (already constructed) and the raw observer notify.
+6. `subscriptions` — depends on `buffer` (already constructed) and on itself (its own `afterUnsubscribe` callback reads `subscriptions.hasSubscribers`).
+7. `invalidation` — depends on `subscriptions` and `buffer` (both already constructed).
+8. `operations` — depends on `execution` and `buffer` (both already constructed).
+
+**Only three bindings are genuinely forward-referenced**, meaning something reads them before they're assigned:
+
+- `subscriptions` — read inside its own `afterUnsubscribe` callback, and inside `getSubscribedTargetsNeedingWork` (defined before subscriptions exists, invoked later by the scheduler).
+- `invalidation` — read inside `execution`'s `onChangedRefreshResult` callback. `execution` is built first.
+- `buffer` — read inside `execution`'s `notify` callback, same reason.
+
+`execution` and `scheduler` were previously also declared with the same `let x!: T` forward-reference pattern for cosmetic consistency, even though nothing in the file reads either before its own assignment. They're now plain `const` bindings. This is a pure internal simplification with no behavioral change: all 98 existing tests pass unchanged, and none needed modification, since every test exercises the runtime through the public `GraphRuntime` API, never the composition root's internal binding style.
+
+The two-capability mutual dependency between `execution` and `invalidation` (execution's completion triggers invalidation; invalidation's schedule requests trigger execution) is not an ordering mistake — it's inherent to the domain, and no reordering of construction removes it. An alternative was considered: have `execution` expose an `onChangedRefreshResult(listener)` registration method instead of accepting the callback in its constructor, called by `runtime.ts` after `invalidation` exists, removing the need to forward-declare it at all. This was not adopted for R9 — it changes `execution`'s public shape and its own test surface for a marginal benefit over three well-commented forward-declarations in one file. It remains available to revisit if a future capability (see the transaction staging decision below) needs a cleaner registration point.
+
+Two dead imports (`ExecutionOrigin`, `MutableNodeRuntimeState`) were also removed from `runtime.ts` — imported, never referenced in the file body.
+
+## Milestone 4 preparation: where transaction state staging will live
+
+This is a decision, not an implementation. It exists so that whoever starts Milestone 4 — and whoever later builds Milestone 9's optimistic mutations on top of it — doesn't have to re-derive it. See `docs/decisions/ADR-005-atomic-graph-transactions.md` for the full context, decision, consequences, and alternatives considered. Summary: state staging for atomic transactions will be built as its own capability (most naturally as a staging mode on `state/state.ts`), sharing the same commit trigger as `runtime-notification-buffer.ts` rather than being folded into it. The notification buffer itself is not touched by this decision and needs no further changes for Milestone 4 to build on top of it.
+
 
 ## Composition decisions
 
