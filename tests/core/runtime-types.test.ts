@@ -4,6 +4,7 @@ import {
   defineContextNode,
   defineDataNode,
   defineDerivedNode,
+  type GraphRuntimeOptions,
 } from "../../src/core";
 
 const count = defineContextNode({ key: "count", initialValue: 1 });
@@ -34,3 +35,15 @@ runtime.setContext(data, "value");
 runtime.setContext(derived, 2);
 
 void runtime.execute([data, derived] as const);
+
+const options: GraphRuntimeOptions = { maxConcurrentLoads: 2 };
+const limitedRuntime = createGraphRuntime(
+  createGraph({ nodes: [derived, data, count] }),
+  options
+);
+void limitedRuntime;
+
+createGraphRuntime(createGraph({ nodes: [] }), {});
+
+// @ts-expect-error maxConcurrentLoads must be numeric
+createGraphRuntime(createGraph({ nodes: [] }), { maxConcurrentLoads: "2" });

@@ -37,6 +37,16 @@ const graph = createGraph({
 const runtime = createGraphRuntime(graph);
 ```
 
+Optionally cap concurrent data-node loads for one runtime:
+
+```ts
+const runtime = createGraphRuntime(graph, {
+  maxConcurrentLoads: 6,
+});
+```
+
+`maxConcurrentLoads` must be at least `1`. It limits only asynchronous `DataNodeDefinition.load()` calls. Derived nodes are synchronous and do not consume slots. The limit is shared across explicit execution, scheduler work, prefetch, and refresh within the runtime. Separate runtimes have separate limits. Omitting the option preserves unlimited concurrency.
+
 Registration order does not matter. Graph creation validates node keys, duplicate dependencies, missing dependencies, and cycles. Multiple runtimes created from one graph have independent state.
 
 ## Read state

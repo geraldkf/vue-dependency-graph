@@ -1,3 +1,4 @@
+import type { ExecutionConcurrencyLimiter } from "./concurrency-limiter";
 import {
   GraphExecutionError,
   type NodeExecutionFailure,
@@ -27,6 +28,7 @@ export interface RuntimeExecutionController {
 
 export interface RuntimeExecutionDependencies {
   readonly graph: Graph;
+  readonly concurrencyLimiter: ExecutionConcurrencyLimiter;
   readonly getMutableState: (key: string) => MutableNodeRuntimeState;
   readonly getActiveAttempt: (key: string) => ActiveAttempt | undefined;
   readonly setActiveAttempt: (key: string, attempt: ActiveAttempt) => void;
@@ -86,6 +88,7 @@ const hasFreshSuccessfulValue = (
 
 export const createRuntimeExecutionController = ({
   graph,
+  concurrencyLimiter,
   getMutableState,
   getActiveAttempt,
   setActiveAttempt,
@@ -136,10 +139,15 @@ export const createRuntimeExecutionController = ({
       try {
         let value: unknown;
         if (isDataNode(node)) {
-          value = await node.load({
-            get: getDependencyValue,
-            signal: controller.signal,
-          });
+          await concurrencyLimiter.acquire(controller.signal);
+          try {
+            value = await node.load({
+              get: getDependencyValue,
+              signal: controller.signal,
+            });
+          } finally {
+            concurrencyLimiter.release();
+          }
         } else if (isDerivedNode(node)) {
           value = node.derive({ get: getDependencyValue });
         } else {

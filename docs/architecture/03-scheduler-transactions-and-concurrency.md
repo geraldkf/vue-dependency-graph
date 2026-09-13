@@ -35,6 +35,18 @@ The runtime recursively ensures parents before a child. Independent parent promi
 
 Context nodes require no loader. Data nodes receive typed dependency access and an attempt-scoped `AbortSignal`. Derived nodes execute synchronously after their dependencies are successful and fresh.
 
+## Data-load concurrency limit
+
+`createGraphRuntime` accepts an optional runtime-wide limit:
+
+```ts
+const runtime = createGraphRuntime(graph, {
+  maxConcurrentLoads: 6,
+});
+```
+
+The runtime owns one FIFO counting semaphore. A data-node attempt acquires a slot immediately before calling `load()` and releases it in `finally`. A queued attempt that is aborted is removed without invoking its loader. The same limit applies across explicit execution, scheduler work, prefetch, and refresh. Derived nodes do not acquire slots, and separate runtimes do not share capacity. The default is unlimited concurrency.
+
 ## In-flight sharing
 
 A runtime stores one active attempt per node generation. Overlapping explicit, scheduled, prefetch, and refresh work shares that attempt rather than invoking the loader repeatedly.
@@ -130,9 +142,5 @@ await runtime.transaction(async () => {
 The current notification buffer defers runtime notification, scheduler dispatch, and settlement handling until the outer transaction commits. Nested transactions collapse into one outer commit.
 
 This is not yet an atomic state transaction. Context state and descendant invalidation still mutate immediately, and a thrown transaction body does not roll back committed local state. Milestone 5 will add state staging, deferred invalidation, and local synchronous rollback.
-
-## Concurrency limit
-
-Sibling dependencies and independent targets already execute concurrently. The proposed `maxConcurrentLoads` option is a separate planned enhancement that will cap simultaneous data-node `load()` calls across one runtime.
 
 The planned limit does not gate derived nodes and is orthogonal to transaction semantics.

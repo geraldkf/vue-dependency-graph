@@ -6,7 +6,7 @@ import {
   defineDataNode,
   defineDerivedNode,
 } from "../../src/core";
-import { deferred } from "./test-helpers";
+import { deferred, waitForCondition } from "./test-helpers";
 
 describe("dependency-aware execution", () => {
   it("resolves an empty target list", async () => {
@@ -77,8 +77,10 @@ describe("dependency-aware execution", () => {
     const runtime = createGraphRuntime(createGraph({ nodes: [total, right, left] }));
 
     const execution = runtime.execute([total]);
-    await Promise.resolve();
-    await Promise.resolve();
+    await waitForCondition(
+      () => started.length === 2,
+      "both independent parent loaders to start"
+    );
     expect(started.sort()).toEqual(["left", "right"]);
     expect(runtime.getState(total).status).toBe("idle");
 

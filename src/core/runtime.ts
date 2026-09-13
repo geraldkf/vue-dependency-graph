@@ -25,6 +25,7 @@ import type {
 } from "./state/types";
 import type { RefreshableNodeDefinition } from "./operations/types";
 import { createRuntimeOperationsController } from "./operations/operations";
+import { createExecutionConcurrencyLimiter } from "./execution/concurrency-limiter";
 import { createRuntimeExecutionController } from "./execution/execution";
 import {
   createRuntimeInvalidationController,
@@ -39,6 +40,14 @@ import type {
   ContextNodeDefinition,
   Graph,
 } from "./graph/node";
+
+export interface GraphRuntimeOptions {
+  /**
+   * Maximum number of data-node load functions that may run concurrently
+   * within this runtime. Defaults to unlimited concurrency.
+   */
+  readonly maxConcurrentLoads?: number;
+}
 
 export interface GraphRuntime {
   readonly getState: <TNode extends AnyNodeDefinition>(
@@ -82,7 +91,10 @@ export interface GraphRuntime {
 const isSchedulerOnlyAttempt = (attempt: ActiveAttempt): boolean =>
   attempt.origins.size === 1 && attempt.origins.has("scheduler");
 
-export const createGraphRuntime = (graph: Graph): GraphRuntime => {
+export const createGraphRuntime = (
+  graph: Graph,
+  options?: GraphRuntimeOptions
+): GraphRuntime => {
   const {
     getMutableState,
     getSnapshot,
@@ -123,6 +135,9 @@ export const createGraphRuntime = (graph: Graph): GraphRuntime => {
 
   const execution = createRuntimeExecutionController({
     graph,
+    concurrencyLimiter: createExecutionConcurrencyLimiter(
+      options?.maxConcurrentLoads ?? Infinity
+    ),
     getMutableState,
     getActiveAttempt,
     setActiveAttempt,

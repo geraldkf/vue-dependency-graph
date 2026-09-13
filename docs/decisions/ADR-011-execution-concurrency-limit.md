@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed. Not yet implemented. Recorded ahead of implementation so the reasoning doesn't need to be reconstructed later, and so the request that prompted it is answered accurately rather than assumed.
+Accepted and implemented. Full offline validation is pending after the final integration-test update.
 
 ## Context
 

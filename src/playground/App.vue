@@ -22,6 +22,7 @@
 import { computed, ref, type Component } from "vue";
 import AggregateQueryScenario from "./scenarios/AggregateQueryScenario.vue";
 import ConcurrentConsumersScenario from "./scenarios/ConcurrentConsumersScenario.vue";
+import ConcurrencyLimitScenario from "./scenarios/ConcurrencyLimitScenario.vue";
 import ContextSwitchingScenario from "./scenarios/ContextSwitchingScenario.vue";
 import ErrorAndRetryScenario from "./scenarios/ErrorAndRetryScenario.vue";
 import UnmountCleanupScenario from "./scenarios/UnmountCleanupScenario.vue";
@@ -42,6 +43,11 @@ const scenarios = [
     id: "concurrent-consumers",
     label: "Concurrent Consumers",
     component: ConcurrentConsumersScenario,
+  },
+  {
+    id: "concurrency-limit",
+    label: "Concurrency Limit",
+    component: ConcurrencyLimitScenario,
   },
   {
     id: "error-and-retry",

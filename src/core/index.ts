@@ -23,7 +23,7 @@ export {
   defineDerivedNode,
 } from "./graph/nodes";
 export { createGraphRuntime } from "./runtime";
-export type { GraphRuntime } from "./runtime";
+export type { GraphRuntime, GraphRuntimeOptions } from "./runtime";
 export type { RuntimeNotificationBuffer } from "./transactions/notification-buffer";
 export type {
   NodeFreshness,

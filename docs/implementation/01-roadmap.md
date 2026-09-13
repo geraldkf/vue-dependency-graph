@@ -90,20 +90,23 @@ Exit criteria met: creating a node subscription automatically loads exactly the 
 
 ## Execution concurrency limit
 
-Status: Planned. Not yet implemented.
+Status: Implemented. Final offline validation pending.
 
 Implementation plan: `docs/implementation/26-execution-concurrency-limit-plan.md`
+
+Implementation note: `docs/implementation/28-execution-concurrency-limit-implementation-note.md`
 
 Design decision: `docs/decisions/ADR-011-execution-concurrency-limit.md`
 
 An enhancement to the Milestone 2/3 execution engine, not tied to a numbered milestone. Prompted by a request to make sibling dependencies run concurrently and add a concurrency cap — checked first, not assumed: sibling and independent-target concurrency already works today (verified empirically, see the plan doc), so this item is scoped to the part that was genuinely missing, a configurable cap on simultaneous data-node loads. Does not block, and isn't blocked by, Milestone 4 or Milestone 5 — sequencing relative to them is still open.
 
-- [ ] Hand-rolled FIFO counting semaphore (`createExecutionConcurrencyLimiter`)
-- [ ] Wire it around `DataNodeDefinition.load()` calls only, not `derive()`
-- [ ] Abort-while-queued handling (reuses existing obsolete-attempt classification, no new logic needed there)
-- [ ] `GraphRuntimeOptions.maxConcurrentLoads`, default unlimited, on `createGraphRuntime`
-- [ ] Tests: capped concurrency timing, abort-while-queued, default-unlimited regression, derived nodes never gated
-- [ ] Receive successful offline validation feedback
+- [x] Hand-rolled FIFO counting semaphore (`createExecutionConcurrencyLimiter`)
+- [x] Wire it around `DataNodeDefinition.load()` calls only, not `derive()`
+- [x] Abort-while-queued handling (reuses existing obsolete-attempt classification, no new logic needed there)
+- [x] `GraphRuntimeOptions.maxConcurrentLoads`, default unlimited, on `createGraphRuntime`
+- [x] Tests: capped concurrency, FIFO admission, abort-while-queued, default-unlimited regression, shared execution origins, independent runtimes, and derived nodes never gated
+- [x] Playground scenario for limits of 1, 2, and unlimited with manually controlled loader completion
+- [ ] Receive successful automated and manual offline validation feedback
 
 ## Milestone 4: Vue adapter and Pinia integration
 
