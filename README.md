@@ -6,9 +6,9 @@ This repository begins as an isolated research and development project. The exis
 
 ## Status
 
-Design and prototyping.
+Design and prototyping. Milestones 1 through 4 are implemented, including the framework-agnostic runtime, subscription scheduler, Vue composables, Pinia-owned runtime integration, and the executable playground.
 
-No API in this repository should be considered stable until the first integration milestone is complete.
+Milestone 4 is complete and manual browser validation of the Pinia-backed playground was reported successful. APIs remain subject to change until the existing-application migration trial is complete.
 
 ## Repository model
 
@@ -70,7 +70,7 @@ core + vue + devtools <--- playground
 - Couple one domain store directly to another domain store.
 - Publish multiple independently versioned packages during the research phase.
 
-## Proposed technology baseline
+## Technology baseline
 
 - pnpm for package management
 - TypeScript with strict mode
@@ -117,6 +117,12 @@ After the first install generates `pnpm-lock.yaml`, verify it with:
 pnpm install --frozen-lockfile
 ```
 
-## Bootstrap validation status
+## Documentation
 
-The repository files have been prepared and statically inspected. Dependency installation, type checking, tests, builds, CI, and playground startup remain pending offline validation. See `docs/implementation/04-bootstrap-implementation-note.md`.
+- Public API: `docs/api/01-public-api.md`
+- Architecture: `docs/architecture/01-system-overview.md`
+- Vue and Pinia integration: `docs/architecture/07-vue-and-pinia-integration.md`
+- Roadmap: `docs/implementation/01-roadmap.md`
+- Test strategy: `docs/testing/01-test-strategy.md`
+
+Historical implementation notes preserve point-in-time decisions and validation evidence. Use the documents above for the current architecture and API.

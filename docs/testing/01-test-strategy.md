@@ -109,21 +109,28 @@ Use fake timers.
 - Redaction
 - Stable snapshot normalisation
 
-## Vue integration tests
+## Vue and Pinia integration tests
 
-Use Vitest 3.0.7 and Vue Testing Library.
+Use Vitest 3.0.7, Vue Testing Library, and real deterministic graph runtimes.
 
 Verify:
 
-- Mount creates subscription
-- Unmount releases subscription
+- Mount creates graph subscription ownership
+- Unmount releases subscription ownership
 - Two consumers share one load
 - Reactive status and data changes
-- `useNodes` alias typing and runtime values
-- Query aggregate partial failure
+- `useNodes` tuple typing and runtime values
+- Aggregate partial failure and retained successful data
+- Explicit runtime precedence over injection
+- One stable runtime per Pinia instance
+- Independent runtimes across separate Pinia instances
+- Components can use a Pinia-owned runtime without the graph runtime plugin
+- Scenario tab changes release the previous scope's subscriptions
 - No consumer `loadData()` call
 
-Prefer direct deterministic core instances over broad module mocking.
+Use a real `createPinia()` instance and the real dependency graph store for Pinia integration tests. Do not install the graph runtime plugin in those tests. Prefer direct deterministic instances over broad module mocking.
+
+Compile-time `.test.ts` files are checked by `vue-tsc` and excluded from Vitest. Register Vue Testing Library cleanup globally. Use fake timers only for deterministic playground delays, not for graph execution ordering.
 
 ## Compile-time type tests
 

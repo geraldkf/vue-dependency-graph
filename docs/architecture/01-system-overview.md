@@ -104,6 +104,22 @@ Logical boundaries are still important. Moving to multiple packages later remain
 7. Context updates, events, mutations, or refresh policies may invalidate nodes.
 8. Only subscribed stale nodes and required ancestors are scheduled again.
 
+## Implemented Vue runtime ownership
+
+The Vue adapter supports two runtime-resolution paths:
+
+```text
+Vue component
+    |
+    +-- explicit runtime --> Pinia store --> GraphRuntime
+    |
+    `-- injected runtime --> Vue plugin --> GraphRuntime
+```
+
+Both paths use the same `useNode` and `useNodes` composables and the same framework-agnostic core runtime. An explicit runtime takes precedence over injection.
+
+Pinia is an application integration choice, not a core dependency. A Pinia store may create and own one runtime per Pinia instance, but it must not mirror node values, status, errors, subscriptions, or scheduler state. See `docs/architecture/07-vue-and-pinia-integration.md`.
+
 ## Important boundaries
 
 - A node dependency means the loader requires the dependency's successful value.

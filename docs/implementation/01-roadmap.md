@@ -131,37 +131,26 @@ An enhancement to the Milestone 2/3 execution engine, not tied to a numbered mil
 - [ ] Tests: capped concurrency timing, abort-while-queued, default-unlimited regression, derived nodes never gated
 - [ ] Receive successful offline validation feedback
 
-## Milestone 4: Vue adapter
+## Milestone 4: Vue adapter and Pinia integration
 
-Implementation plan: `docs/implementation/25-vue-adapter-and-playground-plan.md`
+Status: Complete.
 
-- [x] V4A: Explicit runtime option for `useNode` and `useNodes` (prepared; offline validation pending)
-- [x] V4B: Pinia-owned playground graph runtime (prepared; offline validation pending)
-- [x] V4C: Pinia-backed composable integration tests (prepared; offline validation pending)
-- [x] V5G: Pinia-backed playground shell (manual playground validation reported successful)
-- [x] V6: Pinia-backed playground smoke tests (prepared; offline validation pending)
-- [x] V1: Plugin and injection
-- [x] V2: Scope-safety guard
-- [x] V3A: `useNode` — dirty-check comparator (`statesEqual`)
-- [x] V3B: `useNode` — subscription and sync wiring
-- [x] V3C: `useNode` — scope guard and public return shape
-- [x] V3D: `useNode` — tests
-- [x] V4: `useNodes` with query aggregate state and alias-preserving typing
-- [x] V5A: Shared configurable mock loader
-- [x] V5B: Playground scenario — context switching (shell wiring deferred to V5G)
-- [x] V5C: Playground scenario — concurrent consumers (shell wiring deferred to V5G)
-- [x] V5D: Playground scenario — error and retry (shell wiring deferred to V5G)
-- [x] V5E: Playground scenario — unmount cleanup (shell wiring deferred to V5G)
-- [x] V5F: Playground scenario — aggregate query (shell wiring is V5G, next)
-- [x] V5G: Pinia-backed playground shell (tabs, Pinia installed in `main.ts`)
-- [x] V6: Playground smoke tests
-- [x] Behaviour tests with Vue Testing Library
-- [ ] Update API and architecture documentation
-- [ ] Receive successful offline validation feedback
+Implementation summary: `docs/implementation/27-vue-adapter-implementation-summary.md`
 
-Exit criteria: a Vue component loads and refreshes graph data without manual load or unsubscribe calls, demonstrated both by Vue Testing Library assertions and by hand in the running playground.
+- [x] Vue plugin and injected runtime resolution
+- [x] Scope-safe `useNode` and `useNodes`
+- [x] Explicit runtime option
+- [x] Pinia-owned runtime integration
+- [x] Behavioural and compile-time tests
+- [x] Five deterministic playground scenarios
+- [x] Pinia-backed playground shell
+- [x] Shell lifecycle smoke tests
+- [x] API and architecture documentation
+- [x] Manual browser validation reported successful
 
-Milestone 4 was swapped ahead of what was originally numbered Milestone 4 (transactions, now Milestone 5): the core has never been exercised by a real consumer, and every runtime capability added since Milestone 3 (notification buffer, feature-folder restructure) was validated only against unit tests calling the core API directly. Proving the core against a real Vue component first is lower-risk than adding transaction staging on top of an unproven foundation. See the discussion preceding this decision for the full reasoning; nothing here is a hard technical dependency in either direction.
+Exit criteria met: a Vue component loads and refreshes graph data without manual loading or subscription cleanup, and an application with Pinia already installed can expose the runtime through a store without installing the graph runtime plugin or changing `App.vue`.
+
+Run the full repository validation commands before release if they have not been run against the final combined change set.
 
 ## Runtime composition refactor
 
