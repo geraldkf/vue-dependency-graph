@@ -34,6 +34,7 @@
     "check:boundaries": "node scripts/check-boundaries.mjs"
   },
   "dependencies": {
+    "pinia": "3.0.4",
     "pnpm": "^12.4.1",
     "vue": "3.5.13"
   },

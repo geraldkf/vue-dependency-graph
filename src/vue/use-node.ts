@@ -5,7 +5,7 @@ import type {
   NodeStatus,
   RuntimeNodeData,
 } from "../core";
-import { useGraphRuntime } from "./plugin";
+import { resolveGraphRuntime, type GraphComposableOptions } from "./composable-options";
 import { assertActiveEffectScope } from "./scope-guard";
 import { createNodeSubscription } from "./node-subscription";
 
@@ -29,10 +29,11 @@ export interface UseNodeResult<TNode extends AnyNodeDefinition> {
  * for the reasoning.
  */
 export const useNode = <TNode extends AnyNodeDefinition>(
-  node: TNode
+  node: TNode,
+  options?: GraphComposableOptions
 ): UseNodeResult<TNode> => {
   assertActiveEffectScope("useNode");
-  const runtime = useGraphRuntime();
+  const runtime = resolveGraphRuntime(options);
 
   const { state, dispose } = createNodeSubscription(runtime, node);
 

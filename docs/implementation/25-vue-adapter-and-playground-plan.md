@@ -2,7 +2,7 @@
 
 ## Status
 
-In progress. V1 (plugin and injection), V2 (scope-safety guard), V3 (`useNode`, all sub-steps complete), V4 (`useNodes`), and all five playground scenarios (V5A shared mock loader, V5B context switching, V5C concurrent consumers, V5D error and retry, V5E unmount cleanup, V5F aggregate query) are implemented, offline validation pending. V5G (the playground shell wiring all five together) is next, followed by V6 (playground smoke tests). This is Milestone 4.
+In progress. V1 through V4, V4A (explicit runtime support), V4B (Pinia-owned graph runtime), V4C (Pinia-backed composable integration), and all five playground scenarios (V5A through V5F) are implemented, offline validation pending. The revised V5G Pinia-backed playground shell is next, followed by V6 playground smoke tests. This is Milestone 4.
 
 ## Objective
 
@@ -203,6 +203,62 @@ Checklist:
 - [x] Implement the four aggregate computed refs
 - [x] `tests/vue/use-nodes.spec.ts`: aggregate reflects partial failure correctly (some nodes `error`, others `success`); alias typing compiles and runtime values line up with the typed tuple; mount/unmount lifecycle for the multi-node case
 
+### V4A: Explicit runtime support
+
+Applications that already own a runtime through an application-level facility such as Pinia can pass it directly to the Vue composables without installing the graph runtime plugin:
+
+```ts
+const graphStore = useDependencyGraphStore();
+const targets = useNode(Targets, { runtime: graphStore.runtime });
+const query = useNodes([Targets, Permissions], { runtime: graphStore.runtime });
+```
+
+The explicit runtime takes precedence over an injected runtime. Omitting it preserves the existing plugin-based behaviour and missing-runtime error. This step does not add Pinia as a library dependency and does not change subscription, dirty-checking, or scope-disposal behaviour.
+
+Checklist:
+- [x] Add the shared `GraphComposableOptions` contract
+- [x] Support an optional explicit runtime in `useNode` and `useNodes`
+- [x] Preserve plugin injection as the fallback
+- [x] Test explicit-runtime usage, precedence, cleanup, and tuple typing
+- [ ] Receive successful offline validation feedback
+
+### V4B: Pinia-owned playground graph runtime
+
+The playground now has one Pinia setup store that creates and owns its `GraphRuntime`. The runtime is created inside the store factory, so each Pinia instance receives an independent runtime, while repeated store access within one Pinia instance returns the same runtime.
+
+```ts
+export const useDependencyGraphStore = defineStore("dependencyGraph", () => {
+  const runtime = markRaw(createGraphRuntime(playgroundGraph));
+  return { runtime };
+});
+```
+
+`playgroundGraph` combines the existing namespaced scenario nodes. Pinia does not mirror node data, status, freshness, errors, subscriptions, or scheduler state. The graph runtime remains the source of truth and is marked raw so Vue does not proxy its closure-based API object.
+
+Checklist:
+- [x] Add Pinia to the playground package dependencies
+- [x] Assemble one playground graph from all scenario nodes
+- [x] Create the runtime inside a Pinia setup store
+- [x] Mark the runtime raw
+- [x] Test stable ownership, non-reactive wrapping, and per-Pinia isolation
+- [ ] Receive successful offline validation feedback
+
+### V4C: Pinia-backed composable integration
+
+Focused integration tests now mount Vue consumers with Pinia only, resolve the store-owned runtime, and pass it explicitly to `useNode` and `useNodes`. The graph runtime plugin is deliberately absent from these mounts, matching the departmental application integration path.
+
+The tests cover subscription lifecycle, automatic loading, shared execution across two consumers, context-driven reloads, and tuple-preserving result types. Scenario components are not rewired in this step; V5G will apply the same tested pattern across the complete playground shell in one coordinated change.
+
+Checklist:
+- [x] Mount consumers with Pinia and no graph runtime plugin
+- [x] Exercise `useNode` through the store-owned runtime
+- [x] Exercise `useNodes` through the store-owned runtime
+- [x] Verify mount/unmount subscription lifecycle
+- [x] Verify two consumers share one execution
+- [x] Verify context changes reload through the same runtime
+- [x] Preserve compile-time node result typing
+- [ ] Receive successful offline validation feedback
+
 ## Playground scenarios
 
 The playground becomes a small set of real, switchable scenarios — not a single demo page — each built to exercise one thing this plan needs to see working outside of an assertion. A mock loader with a configurable artificial delay and a controllable failure toggle backs every data node used here, so loading/error states are actually reachable on demand rather than resolving instantly.
@@ -280,13 +336,16 @@ All new tests use `@testing-library/vue`'s `render()` with an explicitly constru
 - [x] V3C: `useNode` — scope guard and public return shape
 - [x] V3D: `useNode` — mount/unmount/reactive-change/shared-load/scope-guard tests
 - [x] V4: `useNodes` with aggregate state and alias-preserving typing + tests (aggregate partial failure, alias typing, lifecycle)
+- [x] V4A: Explicit runtime option for `useNode`/`useNodes` + behavioural and type tests
+- [x] V4B: Pinia-owned graph runtime
+- [x] V4C: Pinia-backed composable integration
 - [x] V5A: Shared configurable mock loader
 - [x] V5B: Scenario 1 — Context switching (component and tests built with an isolated test runtime; shell wiring deferred to V5G)
 - [x] V5C: Scenario 2 — Concurrent consumers (component and tests built with an isolated test runtime; shell wiring deferred to V5G)
 - [x] V5D: Scenario 3 — Error and retry (component and tests built with an isolated test runtime; shell wiring deferred to V5G)
 - [x] V5E: Scenario 4 — Unmount cleanup (component and tests built with an isolated test runtime; shell wiring deferred to V5G)
 - [x] V5F: Scenario 5 — Aggregate query (component and tests built with an isolated test runtime; shell wiring is V5G, next)
-- [ ] V5G: Playground shell (`App.vue` tabs, plugin installed in `main.ts`)
+- [ ] V5G: Pinia-backed playground shell (`App.vue` tabs, Pinia installed in `main.ts`, runtime owned by the graph store)
 - [ ] V6: Replace `tests/playground/App.spec.ts`'s stub assertions with scenario smoke tests
 - [ ] Update API and architecture documentation
 - [ ] Receive successful offline validation feedback

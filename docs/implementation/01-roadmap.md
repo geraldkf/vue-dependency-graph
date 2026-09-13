@@ -135,6 +135,9 @@ An enhancement to the Milestone 2/3 execution engine, not tied to a numbered mil
 
 Implementation plan: `docs/implementation/25-vue-adapter-and-playground-plan.md`
 
+- [x] V4A: Explicit runtime option for `useNode` and `useNodes` (prepared; offline validation pending)
+- [x] V4B: Pinia-owned playground graph runtime (prepared; offline validation pending)
+- [x] V4C: Pinia-backed composable integration tests (prepared; offline validation pending)
 - [x] V1: Plugin and injection
 - [x] V2: Scope-safety guard
 - [x] V3A: `useNode` — dirty-check comparator (`statesEqual`)

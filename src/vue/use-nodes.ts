@@ -4,7 +4,7 @@ import type {
   NodeRuntimeState,
   RuntimeNodeData,
 } from "../core";
-import { useGraphRuntime } from "./plugin";
+import { resolveGraphRuntime, type GraphComposableOptions } from "./composable-options";
 import { assertActiveEffectScope } from "./scope-guard";
 import { statesEqual } from "./states-equal";
 
@@ -39,10 +39,11 @@ export interface UseNodesResult<TNodes extends readonly AnyNodeDefinition[]>
  * already uses — callers don't need to write `useNodes([a, b] as const)`.
  */
 export const useNodes = <const TNodes extends readonly AnyNodeDefinition[]>(
-  nodes: TNodes
+  nodes: TNodes,
+  options?: GraphComposableOptions
 ): UseNodesResult<TNodes> => {
   assertActiveEffectScope("useNodes");
-  const runtime = useGraphRuntime();
+  const runtime = resolveGraphRuntime(options);
 
   const state = shallowRef(nodes.map(node => runtime.getState(node)));
 

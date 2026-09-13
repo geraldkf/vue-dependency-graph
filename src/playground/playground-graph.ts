@@ -1,0 +1,26 @@
+import { createGraph } from "../core";
+import { metricA, metricB, metricC } from "./scenarios/aggregate-query-nodes";
+import { sharedResource } from "./scenarios/concurrent-consumers-nodes";
+import {
+  selectedUserId,
+  userProfile,
+} from "./scenarios/context-switching-nodes";
+import { flakyResource } from "./scenarios/error-and-retry-nodes";
+import { toggleableResource } from "./scenarios/unmount-cleanup-nodes";
+
+/**
+ * One graph shared by the playground's Pinia-owned runtime.
+ * Scenario node keys are namespaced so all scenarios can coexist safely.
+ */
+export const playgroundGraph = createGraph({
+  nodes: [
+    selectedUserId,
+    userProfile,
+    sharedResource,
+    flakyResource,
+    toggleableResource,
+    metricA,
+    metricB,
+    metricC,
+  ],
+});

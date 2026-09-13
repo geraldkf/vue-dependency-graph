@@ -103,15 +103,13 @@ Unsubscribe is idempotent. Listener errors are isolated.
 The following APIs remain proposed for later milestones:
 
 ```ts
-useNode(PointPeriods);
-useNodes({ periods: PointPeriods });
 defineQuery(...);
 useQuery(...);
 graph.transaction(...);
 graph.publish(...);
 ```
 
-Subscription-driven execution, prefetch, and manual refresh are implemented on `GraphRuntime`. Vue integration is Milestone 4. Transactions, query groups, events, polling, and mutations follow later milestones.
+Subscription-driven execution, prefetch, manual refresh, `useNode`, and `useNodes` are implemented. Transactions, query groups, events, polling, and mutations follow later milestones.
 
 ## Implemented node subscription lifecycle API
 
@@ -196,3 +194,29 @@ await runtime.refresh([Targets, Summary]);
 `refresh(...)` accepts data and derived handles but not context handles. It preserves successful values while refreshing and invalidates descendants only when the committed result changes by `Object.is` comparison.
 
 Both APIs return `Promise<void>`. They are caller-owned one-shot operations and are awaited directly. `runtime.whenSettled()` continues to describe scheduler quiescence only.
+
+
+## Implemented Vue runtime resolution
+
+Vue composables support the existing injected-runtime setup:
+
+```ts
+const targets = useNode(Targets);
+const query = useNodes([Targets, Permissions]);
+```
+
+Applications that already own a `GraphRuntime`, including applications that expose it through a Pinia store, can pass it explicitly without installing the graph runtime plugin:
+
+```ts
+const graphStore = useDependencyGraphStore();
+
+const targets = useNode(Targets, {
+  runtime: graphStore.runtime,
+});
+
+const query = useNodes([Targets, Permissions], {
+  runtime: graphStore.runtime,
+});
+```
+
+The explicit runtime takes precedence over an injected runtime. When no explicit runtime is supplied, the composables continue to resolve the runtime through `useGraphRuntime()` and preserve its existing missing-runtime error.
