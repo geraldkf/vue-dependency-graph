@@ -24,92 +24,69 @@ Manual browser validation of the later Pinia-backed playground has been reported
 
 ## Milestone 1: Graph registry and validation
 
-Status: Validation pending.
+Status: Implementation complete; final combined offline validation pending.
 
-- [x] Prepare typed node handles
-- [x] Prepare context, data, and derived definitions
-- [x] Prepare order-independent subscription
-- [x] Prepare parent and child indexes
-- [x] Prepare duplicate detection
-- [x] Prepare missing dependency detection
-- [x] Prepare cycle detection
-- [x] Prepare read-only topology inspection
-- [x] Prepare behavioural and type tests
-- [x] Update API and architecture documentation
-- [ ] Receive successful offline validation feedback
+Implementation summary: `docs/implementation/06-graph-registry-summary.md`
 
-Prepared exit criteria are met by static inspection. Milestone 1 remains incomplete until offline type checking, tests, build, boundary validation, and playground startup are reported successful.
+- [x] Immutable typed context, data, and derived node handles
+- [x] Typed dependency access
+- [x] Order-independent graph creation
+- [x] Parent and child indexes
+- [x] Duplicate key and dependency validation
+- [x] Missing dependency validation
+- [x] Self-cycle and multi-node cycle validation
+- [x] Read-only deterministic topology inspection
+- [x] Behavioural and compile-time tests
+- [x] Current API and architecture documentation
+- [ ] Run final combined boundary, typecheck, test, and build validation
+
+The graph registry is used by every later runtime, Vue, Pinia, and playground capability. Final validation should use the current combined repository rather than reconstructing the original isolated Milestone 1 state.
 
 ## Milestone 2: Runtime state and execution
 
-Status: Validation pending.
+Status: Implementation complete; final combined offline validation pending.
 
-- [x] Prepare separate runtime state
-- [x] Prepare status and freshness model
-- [x] Prepare typed context updates and descendant invalidation
-- [x] Prepare dependency-aware explicit execution
-- [x] Prepare concurrent independent branches
-- [x] Prepare per-attempt abort controllers
-- [x] Prepare generation-based obsolete-result protection
-- [x] Prepare in-flight deduplication
-- [x] Prepare initial and refresh error distinction
-- [x] Prepare branch-scoped failure handling
-- [x] Prepare runtime observation and read-only state inspection
-- [x] Prepare behavioural and type tests
-- [x] Update API and architecture documentation
-- [ ] Receive successful offline validation feedback
+Implementation summary: `docs/implementation/07-runtime-execution-summary.md`
 
-Prepared exit criteria are met by static inspection. Milestone 2 remains incomplete until offline type checking, tests, build, boundary validation, and playground startup are reported successful.
+- [x] Runtime state separated from immutable graph definitions
+- [x] Status and freshness model
+- [x] Typed context updates and descendant invalidation
+- [x] Dependency-aware explicit execution
+- [x] Concurrent independent branches and sibling dependencies
+- [x] Attempt-scoped cancellation
+- [x] Generation and token protection against obsolete results
+- [x] Same-generation in-flight deduplication
+- [x] Branch-scoped failure handling
+- [x] Successful-value retention during refresh and refresh failure
+- [x] Read-only runtime state inspection and observation
+- [x] Behavioural and compile-time tests
+- [x] Current API and architecture documentation
+- [ ] Run final combined boundary, typecheck, test, and build validation
 
-## Milestone 3: Subscription and scheduler
+The execution engine is reused by subscription scheduling, prefetch, refresh, Vue composables, Pinia integration, and the playground. Final validation should use the current combined repository rather than reconstructing the original isolated Milestone 2 state.
 
-### Step 3A: Node subscription and lifecycle
+## Milestone 3: Subscription, scheduler, prefetch, and refresh
 
-Status: Validated offline.
+Status: Complete and validated offline.
 
-- [x] Prepare direct node subscription
-- [x] Prepare reference-counted subscription ownership
-- [x] Prepare transitive required subscription
-- [x] Prepare subscription-level deduplication
-- [x] Prepare idempotent release
-- [x] Prepare subscription inspection and observation
-- [x] Prepare behavioural and type tests
-- [x] Update API and architecture documentation
-- [x] Receive successful offline validation feedback
+Implementation summary: `docs/implementation/08-subscription-scheduler-operations-summary.md`
 
-### Step 3B: Automatic subscription scheduler
+- [x] Reference-counted direct and required node subscriptions
+- [x] Per-subscription target and ancestor deduplication
+- [x] Idempotent unsubscribe and read-only subscription inspection
+- [x] Automatic microtask scheduling for subscribed stale nodes
+- [x] Coalesced schedule requests and active-flush follow-up handling
+- [x] Subscription-driven cancellation ownership
+- [x] Scheduler error inspection and deterministic settlement
+- [x] One-shot prefetch without persistent subscription ownership
+- [x] Manual refresh for data and derived nodes
+- [x] Shared execution ownership across explicit, scheduler, prefetch, and refresh work
+- [x] Changed-result descendant invalidation
+- [x] Behavioural and compile-time tests
+- [x] API and architecture documentation
+- [x] Successful offline validation reported
 
-Status: Validated offline.
-
-- [x] Prepare microtask scheduling
-- [x] Prepare coalesced execution flushes
-- [x] Prepare automatic execution for subscribed stale nodes
-- [x] Prepare active-flush follow-up handling
-- [x] Prepare subscription-driven cancellation ownership
-- [x] Prepare scheduler failure inspection
-- [x] Prepare scheduler settlement API
-- [x] Prepare behavioural and type tests
-- [x] Update API and architecture documentation
-- [x] Receive successful offline validation feedback
-
-### Step 3C: Prefetch and manual refresh
-
-Status: Validated offline.
-
-- [x] Prepare one-shot prefetch without persistent subscriptions
-- [x] Prepare manual refresh for data and derived nodes
-- [x] Prepare caller-operation ownership and deduplication
-- [x] Prepare changed-result descendant invalidation
-- [x] Prepare scheduler interaction and cancellation semantics
-- [x] Prepare failure and recovery behaviour
-- [x] Prepare behavioural and type tests
-- [x] Update API and architecture documentation
-- [x] Receive successful offline validation feedback
-
-Milestone exit criteria: creating subscription automatically loads exactly the required graph without a public `loadData()` call.
-
-
-Milestone 3 status: Complete.
+Exit criteria met: creating a node subscription automatically loads exactly the required graph without a public `loadData()` call. Prefetch and refresh reuse the same execution engine without creating duplicate orchestration paths.
 
 ## Execution concurrency limit
 

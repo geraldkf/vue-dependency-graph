@@ -1,8 +1,8 @@
 # Mutations, Failures, and Cache Behaviour
 
-## Implemented runtime value behaviour
+## Runtime value behaviour
 
-Milestone 2 retains successful values across invalidation and refresh failures.
+Successful values survive invalidation and refresh failure:
 
 - A context node begins with a successful fresh value.
 - A data node begins with its initial value but no successful load.
@@ -10,61 +10,72 @@ Milestone 2 retains successful values across invalidation and refresh failures.
 - Invalidation marks descendants stale without deleting data.
 - Initial execution uses `loading`.
 - Re-execution with previous successful data uses `refreshing`.
-- Success stores the value, clears errors, and marks the node fresh.
-- Initial failure stores an error with no successful value.
+- Success stores the value, clears the error, and marks the node fresh.
+- Initial failure stores an error without claiming a successful value.
 - Refresh failure retains successful data, stores the error, and remains stale.
+
+Status, freshness, error, and successful-value history are independent facts. A consumer can therefore show useful stale data and a new refresh error together.
+
+## Fresh-value reuse
+
+Execution reuses a node only when it has a successful value, `success` status, and `fresh` freshness. Stale, failed, idle, and never-successful nodes remain eligible for work.
+
+No time-based staleness or cache garbage collection exists yet.
 
 ## Failure scopes
 
-Failure is evaluated by dependency branch rather than globally.
+Failure is evaluated by dependency branch rather than globally:
 
-- A child cannot execute when a required parent fails.
+- A failed node records an error.
+- A child does not execute when a required parent fails.
 - Independent branches continue.
-- Blocked nodes are reported separately from directly failed nodes.
+- Blocked nodes are reported separately from direct failures.
 - Abort and superseded attempts are not business failures.
-- Non-`Error` thrown values are normalised to `Error`.
+- Unknown thrown values are normalised to `Error`.
 
-`GraphExecutionError` aggregates the outcome after all executable requested branches settle. Per-node state remains available for UI and later diagnostics.
-
-## Fresh value reuse
-
-Explicit execution skips a node only when it has a successful value, `success` status, and `fresh` freshness. A stale or failed node is eligible for another attempt.
-
-No stale-time policy or garbage collection exists yet.
-
-## Proposed mutations
-
-A later mutation milestone will support:
-
-- Invalidate affected nodes after remote success
-- Reconcile known node data
-- Optimistic local updates
-- Rollback snapshots
-- Domain event publication
-
-Graph rollback will restore local runtime state only. It cannot guarantee backend rollback.
-
-## Deferred cache policies
-
-The following remain proposed:
-
-- Time-based staleness
-- Refresh on focus or reconnect
-- Polling
-- Retry and backoff
-- Garbage collection of unused values
-- Persistent cache restoration
+`GraphExecutionError` aggregates failures after all executable requested branches settle.
 
 ## Automatic scheduler failures
 
-Step 3B captures automatic orchestration failures in `SchedulerState.error`. The scheduler waits for branch-scoped execution to settle before recording the error. The failed node retains its normal per-node error state.
+Automatic execution failures are captured in `SchedulerState.error`. The failed node retains its normal per-node error state.
 
-Automatic failures do not create unhandled promise rejections and do not immediately retry. A new node subscription or context change provides a new external trigger. The scheduler clears its prior error when that pass starts, and successful node execution clears the node error through the existing runtime state machine.
+The scheduler settles without an unhandled rejection and does not immediately retry. A later external trigger, such as a context change or new subscription, starts a new pass and clears the prior scheduler error at pass start.
 
-Cancellation caused by the final subscriber unsubscribing is not a business failure and is not stored as a node or scheduler error.
+Scheduler-owned cancellation caused by disappearing subscription ownership is not stored as a node or scheduler business error.
 
-### Prefetch and refresh failures
+## Prefetch and refresh failures
 
-Prefetch and manual refresh are caller-visible operations. They reject with the existing `GraphExecutionError` after independent executable branches settle. Their failures update normal per-node state and do not become scheduler errors unless the scheduler independently owns failing orchestration.
+Prefetch and refresh are caller-owned operations. They reject with `GraphExecutionError` after independent executable branches settle.
 
-A refresh failure retains a previous successful value, records the error, and leaves the node stale. A later successful refresh clears the node error. Prefetch creates no persistent subscription or cache-lifecycle ownership.
+Their failures update normal per-node state. They do not become scheduler errors unless the scheduler independently owns the same failing orchestration.
+
+A failed refresh retains previous successful data, records the error, and leaves the node stale. A later successful refresh clears the error.
+
+## Current cache scope
+
+The current runtime cache is in-memory and belongs to one `GraphRuntime`. Definition and graph objects may be shared by multiple runtimes, but values and attempts are not shared across runtime instances.
+
+A Pinia store may own a runtime instance, but Pinia does not mirror or persist graph cache state.
+
+## Planned mutations
+
+A later mutation milestone will cover:
+
+- invalidation after remote success
+- direct cache reconciliation
+- optimistic local updates
+- rollback snapshots
+- mutation event publication
+
+Atomic graph transactions and optimistic mutation rollback have different semantics. Transaction staging defers local state visibility until commit. Optimistic mutation applies local state immediately and restores a snapshot on failure.
+
+## Deferred cache policies
+
+The following remain planned:
+
+- stale-after duration
+- refresh on focus or reconnect
+- polling
+- retry and backoff
+- garbage collection of unused values
+- persistent cache restoration

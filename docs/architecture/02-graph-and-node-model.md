@@ -1,12 +1,14 @@
 # Graph and Node Model
 
-## Registry first
+## Definitions and runtime state
 
-Node definitions are immutable descriptors. Runtime state will be stored separately inside a graph instance in a later milestone. Definitions can therefore be reused in tests without carrying status, data, errors, subscribers, or execution state.
+Node definitions are immutable typed descriptors. Definitions contain identity, topology, initial values, and retained execution functions. Mutable values, status, errors, generations, subscriptions, and active work belong to a `GraphRuntime`.
+
+A validated graph and its definitions may therefore be shared by multiple independent runtime instances.
 
 ## Strongly typed node handles
 
-A node definition is also its typed handle.
+A node definition is also its typed handle:
 
 ```ts
 const Credits = defineDataNode({
@@ -16,15 +18,13 @@ const Credits = defineDataNode({
 });
 ```
 
-The handle carries the output type. `NodeValue<typeof Credits>` resolves to `Credit[]`, and later APIs such as `get(Credits)` and `useNode(Credits)` can retain that type.
-
-Keys remain stable string identifiers for topology, diagnostics, serialisation, duplicate detection, and future snapshots. Consumer APIs should normally use handles rather than unrelated string constants.
+`NodeValue<typeof Credits>` resolves to `Credit[]`. Consumer APIs normally accept handles and retain their value types. Stable string keys remain the identity used for topology, diagnostics, validation, and future serialisation.
 
 ## Node kinds
 
 ### Context node
 
-A mutable graph input in future milestones. Milestone 1 defines only its immutable descriptor and initial value.
+A context node declares a mutable graph input and an initial value:
 
 ```ts
 const PointPeriodId = defineContextNode<number | undefined>({
@@ -33,11 +33,11 @@ const PointPeriodId = defineContextNode<number | undefined>({
 });
 ```
 
-Context nodes have no dependencies. Nodes should declare each context they require directly.
+Context definitions have no dependencies. A runtime owns the current context value and applies descendant invalidation when it changes.
 
 ### Data node
 
-An asynchronous data definition. Its loader is retained but not executed by the registry.
+A data node declares asynchronous work:
 
 ```ts
 const Targets = defineDataNode({
@@ -49,11 +49,11 @@ const Targets = defineDataNode({
 });
 ```
 
-The loader's `get` function accepts only declared dependencies and returns each dependency's value type.
+The loader's `get` function accepts only declared dependency handles and returns each dependency's value type. The runtime supplies an attempt-scoped `AbortSignal`.
 
 ### Derived node
 
-A synchronous calculation from dependencies. Its derive function is retained but not executed by the registry.
+A derived node calculates synchronously from dependencies:
 
 ```ts
 const CanModifyCredit = defineDerivedNode({
@@ -65,11 +65,11 @@ const CanModifyCredit = defineDerivedNode({
 });
 ```
 
-Asynchronous derived nodes remain out of scope. Async work belongs in a data node so future loading, cancellation, errors, polling, and metrics use one model.
+Asynchronous work belongs in a data node so it shares the runtime's loading, cancellation, error, refresh, and metrics model.
 
-## Forward and circular references
+## Forward references
 
-Normal definitions use a readonly dependency tuple. A dependency resolver is also supported for definitions that require forward references:
+A dependency resolver supports definitions that require forward references:
 
 ```ts
 const A = defineDerivedNode({
@@ -79,7 +79,7 @@ const A = defineDerivedNode({
 });
 ```
 
-Resolvers are evaluated during graph creation, after all local variables should have been initialised. This enables deterministic cycle validation without mutable definitions. They must be synchronous, side-effect free, and return stable handles.
+Resolvers are evaluated during graph creation. They must be synchronous, side-effect free, and return stable handles.
 
 ## Graph creation
 
@@ -89,19 +89,17 @@ const graph = createGraph({
 });
 ```
 
-Registration order does not matter. `createGraph` receives the complete definition set, validates it, builds all indexes, and only then returns a graph.
-
-Dynamic registration is not supported in the initial design.
+Registration order does not matter. `createGraph` receives the complete definition set, validates it, builds indexes, and then returns the graph. Dynamic registration is not supported.
 
 ## Graph indexes
 
-The graph maintains private indexes:
+The graph privately maintains:
 
 - Node by key
 - Parent keys by node key
 - Child keys by node key
 
-Every registered node is represented, including roots, leaves, and disconnected nodes. Duplicate edges are rejected rather than silently deduplicated.
+Every registered node is represented, including roots, leaves, and disconnected nodes. Parent order follows dependency declaration order. Children use deterministic key order.
 
 Graph identity is key-based. Duplicate node keys are invalid even when the definitions are otherwise identical.
 
@@ -117,11 +115,9 @@ Graph construction rejects:
 - Multi-node cycles
 - Cycles in disconnected components
 
-Validation failures use `GraphValidationError` and a narrow `GraphValidationErrorCode` union. Messages include relevant node keys, and circular dependency messages include a readable path where practical.
+Validation failures use `GraphValidationError` and a narrow `GraphValidationErrorCode` union. Messages identify relevant node keys, and circular-dependency messages include a readable path where practical.
 
 ## Topology inspection
-
-The graph exposes read-only inspection:
 
 ```ts
 const node = graph.getNode("targets");
@@ -132,18 +128,16 @@ const nodes = graph.getNodes();
 
 Unknown keys return `undefined` from `getNode`, `false` from `hasNode`, and empty collections from parent or child inspection.
 
-`getNodes` preserves registration order. Parent order preserves dependency declaration order. Children use deterministic key order. Returned arrays are frozen copies and cannot mutate internal indexes.
+`getNodes` preserves registration order. Returned arrays are frozen copies and cannot mutate internal indexes.
 
-## Deferred runtime concerns
+## Runtime relationship
 
-Milestone 1 does not implement:
+The graph describes valid topology. `GraphRuntime` supplies current values and behaviour on top of it, including:
 
-- Current values
-- Status or freshness
-- Execution
-- Dependency-value resolution
-- Scheduling or subscription
-- Context mutation
-- Invalidation
-- Events or transactions
-- Metrics or snapshots
+- Context mutation and descendant invalidation
+- Dependency-aware execution
+- Subscription-driven scheduling
+- Prefetch and refresh
+- Vue observation and component lifecycle integration
+
+Runtime behaviour does not mutate graph definitions or topology.

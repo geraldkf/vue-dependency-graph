@@ -1,25 +1,12 @@
 # Execution, Scheduling, Transactions, and Concurrency
 
-## Implemented in Milestone 2
-
-Milestone 2 provides explicit dependency-aware execution:
-
-```ts
-const runtime = createGraphRuntime(graph);
-await runtime.execute([Targets, Credits]);
-```
-
-Execution starts from the requested targets, includes their transitive ancestors, skips fresh successful nodes, and runs independent ready branches concurrently.
-
-Automatic scheduling remains unimplemented. Consumers must explicitly call `execute` until Milestone 3.
-
 ## Runtime separation
 
-Immutable node definitions and graph topology can be shared by multiple runtime instances. Each runtime owns its values, statuses, errors, generations, listeners, active promises, and abort controllers.
+Immutable node definitions and validated topology may be shared by multiple runtime instances. Each `GraphRuntime` independently owns values, statuses, freshness, errors, generations, listeners, subscriptions, scheduler state, active promises, and abort controllers.
 
 ## Runtime state
 
-Execution status and freshness are independent:
+Execution status and freshness are separate:
 
 ```ts
 type NodeStatus =
@@ -32,117 +19,120 @@ type NodeStatus =
 type NodeFreshness = "fresh" | "stale";
 ```
 
+A node may retain stale successful data while refreshing or after a refresh error.
+
 Context nodes begin successful and fresh. Data nodes begin with their initial value but without a successful execution. Derived nodes use `undefined` before their first successful derivation.
 
-## Dependency execution
+## Dependency-aware execution
 
-The runtime recursively ensures all required parents before a child. Independent parent promises are awaited together, providing parallel execution without a separate wave abstraction.
+```ts
+await runtime.execute([Targets, Credits]);
+```
 
-Context nodes require no loader. Data nodes receive typed `get` and an attempt-scoped `AbortSignal`. Derived nodes execute synchronously after all parents are fresh and successful.
+Execution starts from requested targets, includes transitive ancestors, skips fresh successful values, and excludes unrelated nodes.
+
+The runtime recursively ensures parents before a child. Independent parent promises and independent top-level targets are started together and awaited with `Promise.allSettled`, providing real concurrency without a separate wave planner.
+
+Context nodes require no loader. Data nodes receive typed dependency access and an attempt-scoped `AbortSignal`. Derived nodes execute synchronously after their dependencies are successful and fresh.
+
+## In-flight sharing
+
+A runtime stores one active attempt per node generation. Overlapping explicit, scheduled, prefetch, and refresh work shares that attempt rather than invoking the loader repeatedly.
+
+Different runtime instances never share attempts. A new generation does not reuse obsolete work.
 
 ## Generations and cancellation
 
-Each node has a generation. Changing a context increments that context generation and increments each transitive descendant generation once. Affected active attempts are aborted.
+Each node has a generation. Context changes and refresh preparation can advance generations. Attempts capture their starting generation and a unique token.
 
-Every attempt captures its starting generation and unique token. A result commits only when both still match. This prevents an API that ignores abort from overwriting newer state.
+A result commits only when the current generation and active token still match. This prevents an API that ignores abort from overwriting newer state.
 
-Abort and superseded results are not stored as business errors.
+Affected active work is aborted using attempt-scoped controllers. Abort and superseded results are not recorded as business errors.
 
-## In-flight deduplication
+## Branch-scoped failures
 
-A runtime shares one active promise for the same node generation. Overlapping explicit executions therefore do not duplicate a loader. Different runtime instances never share attempts.
+A directly failed node records an error. Descendants that require it are blocked and do not execute. Independent branches continue.
 
-## Branch failures
+After executable branches settle, the caller receives `GraphExecutionError`, containing direct and blocked failure records. Per-node state remains available for UI and diagnostics.
 
-Failure is branch scoped:
-
-- A directly failed node records an error.
-- Descendants are blocked and do not execute.
-- Independent branches continue.
-- The execution promise settles after executable branches finish.
-- It then rejects with `GraphExecutionError` containing failed and blocked node records.
-
-## Observation
-
-A small framework-agnostic graph-level subscription API notifies after committed state changes. Listener failures are isolated. Obsolete results do not notify.
-
-## Proposed for Milestone 3
-
-Milestone 3 will add:
-
-- Node subscription
-- Automatic microtask scheduling
-- Coalescing of synchronous graph changes
-- Unsubscribe
-- Prefetch
-- Manual refresh
-
-It will use the explicit execution engine rather than replacing it.
-
-## Proposed for Milestone 5
-
-Transactions will batch related context changes, defer invalidation notifications, and request one scheduler flush. Multiple `setContext` calls are not atomic in Milestone 2.
-
-## Implemented in Step 3A: Node subscription lifecycle
-
-A runtime can now register lifecycle subscription without triggering execution:
+## Node subscriptions
 
 ```ts
 const subscription = runtime.subscribeNodes([Targets]);
 ```
 
-Subscription has three counters:
+A subscription contributes direct ownership for requested targets and required ownership for transitive ancestors. Contributions are deduplicated within one subscription, including shared and diamond ancestors.
 
-- Direct subscription from explicit targets
-- Required subscription from directly subscribed descendants
-- Total subscription count as their sum
+Subscription registration is synchronous and does not invoke loaders synchronously. A non-empty subscription requests one coalesced scheduler microtask.
 
-One subscription contributes once to each transitive ancestor, including diamond graphs. Multiple targets in one subscription use set semantics: duplicate targets are removed, shared ancestors receive one contribution, and a directly requested parent does not also receive required subscription from a requested child.
-
-Separate subscriptions contribute independently. Releasing a subscription removes exactly its own direct and required contributions and is idempotent.
-
-Subscription changes notify existing runtime subscribers once after add and once after active release. Empty and failed subscriptions do not notify.
-
-Step 3A deliberately does not execute, schedule, refresh, or cancel nodes when subscription changes. Step 3B will connect total subscription count to automatic microtask scheduling through the existing execution engine.
-
-## Implemented in Step 3B: Automatic subscription scheduler
-
-Creating a non-empty node subscription queues one microtask scheduler flush. Multiple synchronous subscriptions and context changes coalesce into that flush. The scheduler recalculates the current directly subscribed targets at flush time and delegates execution to the existing dependency-aware execution engine.
+Cleanup is idempotent:
 
 ```ts
-const subscription = runtime.subscribeNodes([Targets]);
-await runtime.whenSettled();
+subscription.unsubscribe();
 ```
 
-Loaders never run synchronously inside `subscribeNodes` or `setContext`.
+## Automatic scheduler
 
-Only one scheduler flush runs per runtime. Changes occurring while a flush is active request one follow-up pass, which recalculates current subscription and generation state rather than reusing an old target list.
+The scheduler recalculates current directly subscribed targets at flush time and delegates all work to the single dependency-aware execution engine.
 
-`whenSettled()` resolves when there is no queued flush, active flush, or required follow-up. It resolves after success, failure, or scheduler-owned cancellation. It does not imply that every subscribed node succeeded.
+Properties:
 
-Scheduler failures are captured in a read-only state:
+- synchronous schedule requests coalesce
+- one flush runs at a time per runtime
+- changes during a flush request one recalculated follow-up pass
+- scheduler errors are captured rather than becoming unhandled rejections
+- a failed subscribed node does not enter an automatic retry loop
+- a later context change or new subscription is an explicit retry trigger
+
+Inspect scheduler state:
 
 ```ts
 runtime.getSchedulerState();
 ```
 
-A failed subscribed node remains settled without an automatic retry loop. A later context change or new node subscription is an explicit retry trigger and clears the prior scheduler error when the new pass starts.
+Await scheduler quiescence:
 
-### Cancellation ownership
+```ts
+await runtime.whenSettled();
+```
 
-Active attempts track whether they are owned by explicit execution, scheduler execution, or both. Unsubscribing the final subscriber aborts scheduler-only work that no longer has any direct or required subscription count. Shared work remains active while another subscriber requires it. Work also remains active when an explicit `execute` caller owns the same attempt.
+`whenSettled()` describes queued, running, and follow-up scheduler work. It resolves after scheduler success, failure, or scheduler-owned cancellation. It does not describe caller-owned prefetch or refresh operations.
 
-### Implemented in Step 3C: One-shot operations
+## Cancellation ownership
 
-`prefetch(...)` and `refresh(...)` are caller-owned one-shot operations that reuse the existing dependency-aware executor.
+Active attempts track execution origins. The final unsubscribe aborts work only when the attempt is scheduler-owned and no current subscription requires the node.
+
+Work remains active when another subscription still requires it or when an explicit, prefetch, or refresh caller also owns the attempt.
+
+## Prefetch and refresh
 
 ```ts
 await runtime.prefetch([Targets]);
-await runtime.refresh([Targets]);
+await runtime.refresh([Targets, Summary]);
 ```
 
-Prefetch skips successful fresh nodes, creates no persistent subscription counts, and does not cause later context changes to reload prefetched nodes automatically. Manual refresh forces data or derived targets into a new generation while preserving successful data.
+Prefetch is a caller-owned one-shot execution without persistent subscription ownership. It skips fresh successful values.
 
-Execution attempts can be owned by explicit execution, the scheduler, prefetch, refresh, or a combination. Final unsubscribe cancels scheduler-only work but preserves attempts still owned by a caller operation.
+Refresh accepts data and derived targets, advances their generation, preserves previous successful values, and forces execution. A changed successful result invalidates transitive descendants. An `Object.is` equal result does not.
 
-`whenSettled()` remains intentionally limited to automatic scheduler work. Callers await the promise returned by `prefetch(...)` or `refresh(...)` for those operations.
+Callers await these operations directly. Their failures reject with `GraphExecutionError` and do not automatically become scheduler errors.
+
+## Transaction seam
+
+```ts
+await runtime.transaction(async () => {
+  runtime.setContext(JobSeekerId, firstValue);
+  await localWork();
+  runtime.setContext(JobSeekerId, finalValue);
+});
+```
+
+The current notification buffer defers runtime notification, scheduler dispatch, and settlement handling until the outer transaction commits. Nested transactions collapse into one outer commit.
+
+This is not yet an atomic state transaction. Context state and descendant invalidation still mutate immediately, and a thrown transaction body does not roll back committed local state. Milestone 5 will add state staging, deferred invalidation, and local synchronous rollback.
+
+## Concurrency limit
+
+Sibling dependencies and independent targets already execute concurrently. The proposed `maxConcurrentLoads` option is a separate planned enhancement that will cap simultaneous data-node `load()` calls across one runtime.
+
+The planned limit does not gate derived nodes and is orthogonal to transaction semantics.
