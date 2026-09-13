@@ -47,6 +47,40 @@ const runtime = createGraphRuntime(graph, {
 
 The runtime owns one FIFO counting semaphore. A data-node attempt acquires a slot immediately before calling `load()` and releases it in `finally`. A queued attempt that is aborted is removed without invoking its loader. The same limit applies across explicit execution, scheduler work, prefetch, and refresh. Derived nodes do not acquire slots, and separate runtimes do not share capacity. The default is unlimited concurrency.
 
+```mermaid
+flowchart LR
+    Explicit["execute()"]
+    Scheduler["Scheduler"]
+    Prefetch["prefetch()"]
+    Refresh["refresh()"]
+
+    Controller["Execution controller"]
+    Dependencies["Resolve dependencies"]
+    Kind{"Node kind"}
+    Limiter["Runtime FIFO limiter"]
+    Queue["Wait in FIFO queue"]
+    Load["DataNode.load()"]
+    Derive["DerivedNode.derive()"]
+    Commit["Commit current result"]
+
+    Explicit --> Controller
+    Scheduler --> Controller
+    Prefetch --> Controller
+    Refresh --> Controller
+    Controller --> Dependencies
+    Dependencies --> Kind
+
+    Kind -->|Data| Limiter
+    Limiter -->|Capacity available| Load
+    Limiter -->|At capacity| Queue
+    Queue -->|Slot granted| Load
+    Queue -->|Attempt aborted| Cancelled["Remove waiter"]
+    Load -->|Release in finally| Commit
+
+    Kind -->|Derived| Derive
+    Derive --> Commit
+```
+
 ## In-flight sharing
 
 A runtime stores one active attempt per node generation. Overlapping explicit, scheduled, prefetch, and refresh work shares that attempt rather than invoking the loader repeatedly.

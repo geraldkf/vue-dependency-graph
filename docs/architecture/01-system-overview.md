@@ -4,27 +4,56 @@
 
 The framework uses one package and one repository. Logical layers are separated by source folders and explicit import boundaries.
 
-```text
-Application and domain stores
-             |
-             v
-src/vue
-             |
-             v
-src/core
-             |
-             +-- registry
-             +-- scheduler
-             +-- transaction manager
-             +-- event invalidation
-             +-- refresh controller
-             +-- mutation coordinator
-             +-- diagnostics and metrics
+```mermaid
+flowchart TB
+    Application["Application and domain stores"]
+    Vue["Vue adapter<br/>useNode, useNodes, plugin"]
+    Playground["Playground scenarios"]
+    Devtools["Devtools<br/>(future)"]
+    Loaders["Data-node loaders"]
 
-src/devtools ------> public core inspection contracts
+    subgraph Core["Framework-agnostic core"]
+        Runtime["GraphRuntime<br/>composition root"]
+        Graph["Immutable node definitions<br/>and validated topology"]
+        State["Runtime state store"]
+        Observation["Observation"]
+        Subscriptions["Subscriptions"]
+        Scheduler["Scheduler"]
+        Execution["Execution controller"]
+        Limiter["FIFO concurrency limiter"]
+        Operations["Prefetch and refresh"]
+        Invalidation["Invalidation"]
+        Transactions["Transaction notification buffer"]
+    end
 
-src/playground ----> public core, Vue, and devtools entry points
+    Application --> Vue
+    Vue --> Runtime
+    Playground --> Vue
+    Playground --> Runtime
+    Devtools -. "public inspection contracts" .-> Runtime
+
+    Runtime --> Graph
+    Runtime --> State
+    Runtime --> Observation
+    Runtime --> Subscriptions
+    Runtime --> Scheduler
+    Runtime --> Execution
+    Runtime --> Operations
+    Runtime --> Invalidation
+    Runtime --> Transactions
+
+    Subscriptions --> Scheduler
+    Scheduler --> Execution
+    Operations --> Execution
+    Execution --> Limiter
+    Limiter --> Loaders
+    Execution --> State
+    Invalidation --> State
+    Transactions --> Observation
+    Transactions --> Scheduler
 ```
+
+The diagram shows the current implemented runtime composition. Devtools remains a future consumer of public inspection contracts. Later roadmap capabilities are described in their dedicated architecture documents and are not presented here as current runtime components.
 
 The playground and devtools consume public inspection APIs. They must not reach into private core internals.
 

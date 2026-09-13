@@ -46,6 +46,8 @@ Behaviour-focused coverage includes:
 
 The existing independent-parent concurrency test was updated to wait for its observable condition rather than assuming a fixed number of microtask turns. The limiter adds an asynchronous admission boundary even when capacity is immediately available, but it does not make independent loaders sequential.
 
+The playground reset test waits for the full observable reset state because reset first drains running and queued work before clearing scenario metrics.
+
 ## Playground validation scenario
 
 `ConcurrencyLimitScenario.vue` provides four independent, manually controlled data loaders. The scenario supports limits of `1`, `2`, and unlimited, displays active and maximum-observed loader counts, shows FIFO start order and per-loader state, and provides controls to complete work and reset cleanly. Focused component tests cover capped admission, unlimited execution, FIFO progression, and reset behaviour.

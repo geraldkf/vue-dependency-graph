@@ -51,7 +51,14 @@ The first bootstrap milestone may use a simple deterministic source scan. A dedi
 - Coalesced synchronous changes
 - Independent concurrency
 - In-flight deduplication
-- Concurrency limit
+- Concurrency limit:
+  - Runtime-wide maximum across explicit, scheduler, prefetch, and refresh work
+  - FIFO admission
+  - Queued abort before loader invocation
+  - Slot release after loader settlement
+  - Unlimited default
+  - Derived nodes do not consume slots
+  - Limits remain isolated between runtime instances
 - No-progress detection
 
 ### Context and transactions

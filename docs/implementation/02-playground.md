@@ -82,6 +82,17 @@ Do not start with random failures because deterministic scenarios are easier to 
 - Node duration
 - Query time-to-ready
 
+## Currently implemented scenarios
+
+- Context Switching
+- Concurrent Consumers
+- Concurrency Limit
+- Error and Retry
+- Unmount Cleanup
+- Aggregate Query
+
+The Concurrency Limit scenario uses four manually controlled loaders and runtime limits of `1`, `2`, or unlimited. It exposes active and maximum-observed counts, FIFO start order, per-loader state, manual completion controls, and clean reset behaviour.
+
 ## Required scenarios
 
 1. Child registered before parent.
