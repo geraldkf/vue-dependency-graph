@@ -146,8 +146,8 @@ Implementation plan: `docs/implementation/25-vue-adapter-and-playground-plan.md`
 - [x] V5B: Playground scenario — context switching (shell wiring deferred to V5G)
 - [x] V5C: Playground scenario — concurrent consumers (shell wiring deferred to V5G)
 - [x] V5D: Playground scenario — error and retry (shell wiring deferred to V5G)
-- [ ] V5E: Playground scenario — unmount cleanup
-- [ ] V5F: Playground scenario — aggregate query
+- [x] V5E: Playground scenario — unmount cleanup (shell wiring deferred to V5G)
+- [x] V5F: Playground scenario — aggregate query (shell wiring is V5G, next)
 - [ ] V5G: Playground shell (tabs, plugin installed in `main.ts`)
 - [ ] V6: Playground smoke tests
 - [ ] Behaviour tests with Vue Testing Library

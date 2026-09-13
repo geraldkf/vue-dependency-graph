@@ -2,7 +2,7 @@
 
 ## Status
 
-In progress. V1 (plugin and injection), V2 (scope-safety guard), V3 (`useNode`, all sub-steps complete), V4 (`useNodes`), V5A (shared mock loader), V5B (context-switching scenario), V5C (concurrent-consumers scenario), and V5D (error-and-retry scenario) are implemented, offline validation pending. V5E (unmount cleanup scenario) is next. Everything else in `src/vue` and `src/playground` beyond bootstrap stubs remains as planned below. This is Milestone 4.
+In progress. V1 (plugin and injection), V2 (scope-safety guard), V3 (`useNode`, all sub-steps complete), V4 (`useNodes`), and all five playground scenarios (V5A shared mock loader, V5B context switching, V5C concurrent consumers, V5D error and retry, V5E unmount cleanup, V5F aggregate query) are implemented, offline validation pending. V5G (the playground shell wiring all five together) is next, followed by V6 (playground smoke tests). This is Milestone 4.
 
 ## Objective
 
@@ -241,15 +241,15 @@ A failure toggle on the mock loader, a manual refresh button, visible error stat
 
 A node mounted behind a `v-if`, with a visible subscriber count (via `getSubscriptionState`) so toggling the `v-if` and watching the count go to zero is a manual, visual confirmation that `onScopeDispose` actually ran. This is the scenario most likely to *look* fine in a unit test's assertions while still leaking in a real app if the scope-guard or cleanup wiring has a subtle bug — the visual counter is the point, not decoration.
 
-- [ ] Build the scenario component
-- [ ] Wire it into the playground shell
+- [x] Build the scenario component
+- [ ] Wire it into the playground shell (deferred to V5G, which builds the shell all scenarios are wired into)
 
 **V5F: Scenario 5 — Aggregate query**
 
 Several nodes via one `useNodes` call, one of them wired to the failure toggle, to see the aggregate `isError`/`isSuccess` behave correctly under partial failure.
 
-- [ ] Build the scenario component
-- [ ] Wire it into the playground shell
+- [x] Build the scenario component
+- [ ] Wire it into the playground shell (V5G, next)
 
 **V5G: Playground shell**
 
@@ -284,8 +284,8 @@ All new tests use `@testing-library/vue`'s `render()` with an explicitly constru
 - [x] V5B: Scenario 1 — Context switching (component and tests built with an isolated test runtime; shell wiring deferred to V5G)
 - [x] V5C: Scenario 2 — Concurrent consumers (component and tests built with an isolated test runtime; shell wiring deferred to V5G)
 - [x] V5D: Scenario 3 — Error and retry (component and tests built with an isolated test runtime; shell wiring deferred to V5G)
-- [ ] V5E: Scenario 4 — Unmount cleanup
-- [ ] V5F: Scenario 5 — Aggregate query
+- [x] V5E: Scenario 4 — Unmount cleanup (component and tests built with an isolated test runtime; shell wiring deferred to V5G)
+- [x] V5F: Scenario 5 — Aggregate query (component and tests built with an isolated test runtime; shell wiring is V5G, next)
 - [ ] V5G: Playground shell (`App.vue` tabs, plugin installed in `main.ts`)
 - [ ] V6: Replace `tests/playground/App.spec.ts`'s stub assertions with scenario smoke tests
 - [ ] Update API and architecture documentation
