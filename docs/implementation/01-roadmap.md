@@ -137,14 +137,14 @@ Implementation plan: `docs/implementation/25-vue-adapter-and-playground-plan.md`
 
 - [x] V1: Plugin and injection
 - [x] V2: Scope-safety guard
-- [ ] V3A: `useNode` — dirty-check comparator (`statesEqual`)
-- [ ] V3B: `useNode` — subscription and sync wiring
-- [ ] V3C: `useNode` — scope guard and public return shape
-- [ ] V3D: `useNode` — tests
-- [ ] V4: `useNodes` with query aggregate state and alias-preserving typing
-- [ ] V5A: Shared configurable mock loader
-- [ ] V5B: Playground scenario — context switching
-- [ ] V5C: Playground scenario — concurrent consumers
+- [x] V3A: `useNode` — dirty-check comparator (`statesEqual`)
+- [x] V3B: `useNode` — subscription and sync wiring
+- [x] V3C: `useNode` — scope guard and public return shape
+- [x] V3D: `useNode` — tests
+- [x] V4: `useNodes` with query aggregate state and alias-preserving typing
+- [x] V5A: Shared configurable mock loader
+- [x] V5B: Playground scenario — context switching (shell wiring deferred to V5G)
+- [x] V5C: Playground scenario — concurrent consumers (shell wiring deferred to V5G)
 - [ ] V5D: Playground scenario — error and retry
 - [ ] V5E: Playground scenario — unmount cleanup
 - [ ] V5F: Playground scenario — aggregate query

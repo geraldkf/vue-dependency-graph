@@ -4,3 +4,11 @@ import { coreLayerName } from "../core";
 export const vueLayerName = `vue:${coreLayerName}` as const;
 
 export { createGraphRuntimePlugin, useGraphRuntime } from "./plugin";
+export { useNode } from "./use-node";
+export type { UseNodeResult } from "./use-node";
+export { useNodes } from "./use-nodes";
+export type {
+  UseNodesAggregate,
+  UseNodesResult,
+  UseNodesResults,
+} from "./use-nodes";

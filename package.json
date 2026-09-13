@@ -34,6 +34,7 @@
     "check:boundaries": "node scripts/check-boundaries.mjs"
   },
   "dependencies": {
+    "pnpm": "^12.4.1",
     "vue": "3.5.13"
   },
   "devDependencies": {

@@ -2,7 +2,7 @@
 
 ## Status
 
-In progress. V1 (plugin and injection) and V2 (scope-safety guard) are implemented, offline validation pending. Everything else in `src/vue` and `src/playground` beyond bootstrap stubs remains as planned below. This is Milestone 4.
+In progress. V1 (plugin and injection), V2 (scope-safety guard), V3 (`useNode`, all sub-steps complete), V4 (`useNodes`), V5A (shared mock loader), V5B (context-switching scenario), and V5C (concurrent-consumers scenario) are implemented, offline validation pending. V5D (error and retry scenario) is next. Everything else in `src/vue` and `src/playground` beyond bootstrap stubs remains as planned below. This is Milestone 4.
 
 ## Objective
 
@@ -142,30 +142,30 @@ const statesEqual = (
 
 `generation` is deliberately excluded — it changes on every invalidation even when `data`/`status`/`error` end up identical (for example, a context change that re-runs a derived node to the same result), and comparing it would defeat the whole point of the dirty-check. This is the single most important piece of correctness in the whole adapter (get it wrong and every component re-renders on every unrelated change, silently, with nothing to fail an assertion), so it gets its own direct unit test against hand-built `NodeRuntimeState` fixtures — not only exercised indirectly through a mounted component.
 
-- [ ] Implement `statesEqual`
-- [ ] `tests/vue/use-node.spec.ts` (or a dedicated small file): direct table of cases — identical states, `generation`-only difference, each other field differing one at a time
+- [x] Implement `statesEqual`
+- [x] `tests/vue/use-node.spec.ts` (or a dedicated small file): direct table of cases — identical states, `generation`-only difference, each other field differing one at a time — implemented as `tests/vue/states-equal.spec.ts`
 
 **V3B: Subscription and sync wiring**
 
 The `shallowRef` + `subscribeNodes` + `onChange` + `sync` wiring shown above.
 
-- [ ] Implement the wiring
-- [ ] Confirm `subscription.unsubscribe()` and the `onChange` unsubscribe function are each safe to call more than once (the core's existing subscription contract should already guarantee this — verify against the actual `subscriptions/subscriptions.ts` behaviour rather than assume, since `onScopeDispose` callbacks are not guaranteed to run exactly once across every Vue version/edge case)
+- [x] Implement the wiring — implemented as `createNodeSubscription` in `src/vue/node-subscription.ts`, a reusable primitive rather than inline in `useNode`, so V4 (`useNodes`) can build on it too
+- [x] Confirm `subscription.unsubscribe()` and the `onChange` unsubscribe function are each safe to call more than once (the core's existing subscription contract should already guarantee this — verify against the actual `subscriptions/subscriptions.ts` behaviour rather than assume, since `onScopeDispose` callbacks are not guaranteed to run exactly once across every Vue version/edge case) — confirmed: both guard themselves with an `active` flag. See `docs/implementation/30-vue-adapter-v3b-implementation-note.md`.
 
 **V3C: Scope guard and public return shape**
 
 Wrapping with `assertActiveEffectScope`, the `onScopeDispose` cleanup, and the computed-refs return shape.
 
-- [ ] Implement `UseNodeResult<TNode>` type and the returned computed refs
-- [ ] Wire `assertActiveEffectScope("useNode")` and `onScopeDispose`
+- [x] Implement `UseNodeResult<TNode>` type and the returned computed refs
+- [x] Wire `assertActiveEffectScope("useNode")` and `onScopeDispose` — confirmed working end to end with a throwaway smoke check (throws outside a scope, subscribes/reacts/unsubscribes inside a mounted component). See `docs/implementation/31-vue-adapter-v3c-implementation-note.md`.
 
 **V3D: Tests**
 
-- [ ] Mount creates a subscription (assert via `runtime.getSubscriptionState(node)`)
-- [ ] Unmount releases it (count returns to what it was before mount)
-- [ ] Reactive status/data changes when the underlying context changes
-- [ ] Two consumers on the same node share one load (mock loader call-count assertion — this is a Vue-layer test that the composable doesn't accidentally break the core's existing dedup, not a re-test of the core's dedup itself, which already has its own core-level tests)
-- [ ] Calling `useNode` outside an active scope throws (delegates to V2's guard, confirmed here at the point of actual use)
+- [x] Mount creates a subscription (assert via `runtime.getSubscriptionState(node)`)
+- [x] Unmount releases it (count returns to what it was before mount)
+- [x] Reactive status/data changes when the underlying context changes
+- [x] Two consumers on the same node share one load (mock loader call-count assertion — this is a Vue-layer test that the composable doesn't accidentally break the core's existing dedup, not a re-test of the core's dedup itself, which already has its own core-level tests)
+- [x] Calling `useNode` outside an active scope throws (delegates to V2's guard, confirmed here at the point of actual use)
 
 ### V4: `useNodes`
 
@@ -198,10 +198,10 @@ type UseNodesResult<TNodes extends readonly AnyNodeDefinition[]> = {
 
 Checklist:
 
-- [ ] Implement `UseNodesResult<TNodes>` and confirm it actually preserves per-node typing (a compile-time type test, matching this project's existing "compile-time type tests" convention — not just a runtime test that happens to pass)
-- [ ] Implement the single-subscription, per-node dirty-check sync wiring (reusing `statesEqual` from V3A)
-- [ ] Implement the four aggregate computed refs
-- [ ] `tests/vue/use-nodes.spec.ts`: aggregate reflects partial failure correctly (some nodes `error`, others `success`); alias typing compiles and runtime values line up with the typed tuple; mount/unmount lifecycle for the multi-node case
+- [x] Implement `UseNodesResult<TNodes>` and confirm it actually preserves per-node typing (a compile-time type test, matching this project's existing "compile-time type tests" convention — not just a runtime test that happens to pass) — see `tests/vue/use-nodes-types.test.ts`
+- [x] Implement the single-subscription, per-node dirty-check sync wiring (reusing `statesEqual` from V3A)
+- [x] Implement the four aggregate computed refs
+- [x] `tests/vue/use-nodes.spec.ts`: aggregate reflects partial failure correctly (some nodes `error`, others `success`); alias typing compiles and runtime values line up with the typed tuple; mount/unmount lifecycle for the multi-node case
 
 ## Playground scenarios
 
@@ -213,22 +213,22 @@ Each scenario is its own component under `src/playground/scenarios/`, switched v
 
 Built first since every scenario depends on it: a small loader factory taking a delay and a failure toggle, used as the `load` function for every data node in every scenario below, with a visible (in-UI, not just console) call counter so scenario 2 can prove dedup by eye.
 
-- [ ] Implement the mock loader factory
-- [ ] Decide its shape once, used identically by every scenario (avoids five slightly-different ad hoc mocks)
+- [x] Implement the mock loader factory
+- [x] Decide its shape once, used identically by every scenario (avoids five slightly-different ad hoc mocks)
 
 **V5B: Scenario 1 — Context switching**
 
 One context node (e.g. a selected user ID) with a couple of buttons to change it, one dependent data node showing its loading → success cycle on screen. The smallest possible proof the whole chain (context → invalidation → scheduler → execution → composable → DOM) works end to end, visually.
 
-- [ ] Build the scenario component
-- [ ] Wire it into the playground shell
+- [x] Build the scenario component
+- [ ] Wire it into the playground shell (deferred to V5G, which builds the shell all scenarios are wired into)
 
 **V5C: Scenario 2 — Concurrent consumers**
 
 Two components independently calling `useNode` on the *same* node, mounted side by side, with V5A's visible call counter making it directly observable that mounting two consumers causes one load, not two.
 
-- [ ] Build the scenario component
-- [ ] Wire it into the playground shell
+- [x] Build the scenario component
+- [ ] Wire it into the playground shell (deferred to V5G, which builds the shell all scenarios are wired into)
 
 **V5D: Scenario 3 — Error and retry**
 
@@ -273,14 +273,14 @@ All new tests use `@testing-library/vue`'s `render()` with an explicitly constru
 
 - [x] V1: Plugin and injection (`GraphRuntimeKey`, `createGraphRuntimePlugin`, `useGraphRuntime`) + tests + effect-scope-in-tests confirmation
 - [x] V2: Scope-safety guard (`assertActiveEffectScope`), shared by V3 and V4
-- [ ] V3A: `useNode` — dirty-check comparator (`statesEqual`) + direct tests
-- [ ] V3B: `useNode` — subscription and sync wiring
-- [ ] V3C: `useNode` — scope guard and public return shape
-- [ ] V3D: `useNode` — mount/unmount/reactive-change/shared-load/scope-guard tests
-- [ ] V4: `useNodes` with aggregate state and alias-preserving typing + tests (aggregate partial failure, alias typing, lifecycle)
-- [ ] V5A: Shared configurable mock loader
-- [ ] V5B: Scenario 1 — Context switching
-- [ ] V5C: Scenario 2 — Concurrent consumers
+- [x] V3A: `useNode` — dirty-check comparator (`statesEqual`) + direct tests
+- [x] V3B: `useNode` — subscription and sync wiring
+- [x] V3C: `useNode` — scope guard and public return shape
+- [x] V3D: `useNode` — mount/unmount/reactive-change/shared-load/scope-guard tests
+- [x] V4: `useNodes` with aggregate state and alias-preserving typing + tests (aggregate partial failure, alias typing, lifecycle)
+- [x] V5A: Shared configurable mock loader
+- [x] V5B: Scenario 1 — Context switching (component and tests built with an isolated test runtime; shell wiring deferred to V5G)
+- [x] V5C: Scenario 2 — Concurrent consumers (component and tests built with an isolated test runtime; shell wiring deferred to V5G)
 - [ ] V5D: Scenario 3 — Error and retry
 - [ ] V5E: Scenario 4 — Unmount cleanup
 - [ ] V5F: Scenario 5 — Aggregate query
