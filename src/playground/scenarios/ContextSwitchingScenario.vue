@@ -20,14 +20,15 @@
 // Imports from the public "../../vue" barrel, not internal src/vue files —
 // this scenario exists to prove the public API works, so it should be
 // written the way a real consumer of the framework would write it.
-import { useGraphRuntime, useNode } from "../../vue";
+import { useNode } from "../../vue";
+import { useDependencyGraphStore } from "../dependency-graph-store";
 import {
   selectedUserId,
   userIds,
   userProfile,
 } from "./context-switching-nodes";
 
-const runtime = useGraphRuntime();
-const context = useNode(selectedUserId);
-const profile = useNode(userProfile);
+const { runtime } = useDependencyGraphStore();
+const context = useNode(selectedUserId, { runtime });
+const profile = useNode(userProfile, { runtime });
 </script>

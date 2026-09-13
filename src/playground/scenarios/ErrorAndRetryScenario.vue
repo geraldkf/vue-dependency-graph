@@ -22,11 +22,12 @@
 // the new error, and this scenario exists specifically to make that
 // visible rather than have the UI hide the stale data once an error
 // appears.
-import { useGraphRuntime, useNode } from "../../vue";
+import { useNode } from "../../vue";
+import { useDependencyGraphStore } from "../dependency-graph-store";
 import { flakyLoader, flakyResource } from "./error-and-retry-nodes";
 
-const runtime = useGraphRuntime();
-const resource = useNode(flakyResource);
+const { runtime } = useDependencyGraphStore();
+const resource = useNode(flakyResource, { runtime });
 
 const handleRefresh = (): void => {
   // refresh() rejects when the batch fails, on top of recording the

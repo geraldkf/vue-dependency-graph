@@ -9,7 +9,9 @@
 
 <script setup lang="ts">
 import { useNode } from "../../vue";
+import { useDependencyGraphStore } from "../dependency-graph-store";
 import { toggleableResource } from "./unmount-cleanup-nodes";
 
-const resource = useNode(toggleableResource);
+const { runtime } = useDependencyGraphStore();
+const resource = useNode(toggleableResource, { runtime });
 </script>

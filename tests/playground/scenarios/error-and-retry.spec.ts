@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/vue";
-import { createGraph, createGraphRuntime } from "../../../src/core";
-import { createGraphRuntimePlugin } from "../../../src/vue/plugin";
+import { createPinia } from "pinia";
+import { useDependencyGraphStore } from "../../../src/playground/dependency-graph-store";
 import ErrorAndRetryScenario from "../../../src/playground/scenarios/ErrorAndRetryScenario.vue";
 import {
   flakyLoader,
@@ -23,12 +23,11 @@ describe("ErrorAndRetryScenario", () => {
 
   it("shows an error with no data on initial load failure", async () => {
     flakyLoader.shouldFail.value = true;
-    const runtime = createGraphRuntime(
-      createGraph({ nodes: [flakyResource] })
-    );
+    const pinia = createPinia();
+    const { runtime } = useDependencyGraphStore(pinia);
 
     render(ErrorAndRetryScenario, {
-      global: { plugins: [createGraphRuntimePlugin(runtime)] },
+      global: { plugins: [pinia] },
     });
 
     await vi.advanceTimersByTimeAsync(600);
@@ -41,12 +40,11 @@ describe("ErrorAndRetryScenario", () => {
   });
 
   it("keeps stale data visible alongside the error when a refresh fails, triggered via the UI toggle", async () => {
-    const runtime = createGraphRuntime(
-      createGraph({ nodes: [flakyResource] })
-    );
+    const pinia = createPinia();
+    const { runtime } = useDependencyGraphStore(pinia);
 
     render(ErrorAndRetryScenario, {
-      global: { plugins: [createGraphRuntimePlugin(runtime)] },
+      global: { plugins: [pinia] },
     });
 
     await vi.advanceTimersByTimeAsync(600);

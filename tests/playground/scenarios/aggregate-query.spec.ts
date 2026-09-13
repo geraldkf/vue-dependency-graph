@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/vue";
-import { createGraph, createGraphRuntime } from "../../../src/core";
-import { createGraphRuntimePlugin } from "../../../src/vue/plugin";
+import { createPinia } from "pinia";
+import { useDependencyGraphStore } from "../../../src/playground/dependency-graph-store";
 import AggregateQueryScenario from "../../../src/playground/scenarios/AggregateQueryScenario.vue";
 import {
   metricA,
@@ -21,12 +21,11 @@ describe("AggregateQueryScenario", () => {
   });
 
   it("aggregate reflects full success when every metric loads", async () => {
-    const runtime = createGraphRuntime(
-      createGraph({ nodes: [metricA, metricB, metricC] })
-    );
+    const pinia = createPinia();
+    const { runtime } = useDependencyGraphStore(pinia);
 
     render(AggregateQueryScenario, {
-      global: { plugins: [createGraphRuntimePlugin(runtime)] },
+      global: { plugins: [pinia] },
     });
 
     await vi.advanceTimersByTimeAsync(400);
@@ -46,12 +45,11 @@ describe("AggregateQueryScenario", () => {
   });
 
   it("aggregate reflects partial failure while the other metrics stay correct", async () => {
-    const runtime = createGraphRuntime(
-      createGraph({ nodes: [metricA, metricB, metricC] })
-    );
+    const pinia = createPinia();
+    const { runtime } = useDependencyGraphStore(pinia);
 
     render(AggregateQueryScenario, {
-      global: { plugins: [createGraphRuntimePlugin(runtime)] },
+      global: { plugins: [pinia] },
     });
 
     await vi.advanceTimersByTimeAsync(400);
@@ -96,12 +94,11 @@ describe("AggregateQueryScenario", () => {
 
   it("isSuccess is false when a metric has never had a successful value", async () => {
     metricCLoader.shouldFail.value = true;
-    const runtime = createGraphRuntime(
-      createGraph({ nodes: [metricA, metricB, metricC] })
-    );
+    const pinia = createPinia();
+    const { runtime } = useDependencyGraphStore(pinia);
 
     render(AggregateQueryScenario, {
-      global: { plugins: [createGraphRuntimePlugin(runtime)] },
+      global: { plugins: [pinia] },
     });
 
     await vi.advanceTimersByTimeAsync(400);

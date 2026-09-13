@@ -1,17 +1,69 @@
 <template>
   <main>
     <h1>Vue Dependency Graph</h1>
-    <p>Single-package framework playground</p>
-    <ul aria-label="Logical layers">
-      <li>{{ coreLayerName }}</li>
-      <li>{{ vueLayerName }}</li>
-      <li>{{ devtoolsLayerName }}</li>
-    </ul>
+    <p>Pinia-owned graph runtime playground</p>
+
+    <nav aria-label="Playground scenarios">
+      <button
+        v-for="scenario in scenarios"
+        :key="scenario.id"
+        :aria-pressed="activeScenarioId === scenario.id"
+        @click="activeScenarioId = scenario.id"
+      >
+        {{ scenario.label }}
+      </button>
+    </nav>
+
+    <component :is="activeScenario.component" />
   </main>
 </template>
 
 <script setup lang="ts">
-import { coreLayerName } from "../core";
-import { devtoolsLayerName } from "../devtools";
-import { vueLayerName } from "../vue";
+import { computed, ref, type Component } from "vue";
+import AggregateQueryScenario from "./scenarios/AggregateQueryScenario.vue";
+import ConcurrentConsumersScenario from "./scenarios/ConcurrentConsumersScenario.vue";
+import ContextSwitchingScenario from "./scenarios/ContextSwitchingScenario.vue";
+import ErrorAndRetryScenario from "./scenarios/ErrorAndRetryScenario.vue";
+import UnmountCleanupScenario from "./scenarios/UnmountCleanupScenario.vue";
+
+interface PlaygroundScenario {
+  readonly id: string;
+  readonly label: string;
+  readonly component: Component;
+}
+
+const scenarios = [
+  {
+    id: "context-switching",
+    label: "Context Switching",
+    component: ContextSwitchingScenario,
+  },
+  {
+    id: "concurrent-consumers",
+    label: "Concurrent Consumers",
+    component: ConcurrentConsumersScenario,
+  },
+  {
+    id: "error-and-retry",
+    label: "Error and Retry",
+    component: ErrorAndRetryScenario,
+  },
+  {
+    id: "unmount-cleanup",
+    label: "Unmount Cleanup",
+    component: UnmountCleanupScenario,
+  },
+  {
+    id: "aggregate-query",
+    label: "Aggregate Query",
+    component: AggregateQueryScenario,
+  },
+] as const satisfies readonly PlaygroundScenario[];
+
+const activeScenarioId = ref(scenarios[0].id);
+const activeScenario = computed(
+  () =>
+    scenarios.find(scenario => scenario.id === activeScenarioId.value) ??
+    scenarios[0]
+);
 </script>

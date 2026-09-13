@@ -19,11 +19,11 @@
 // DOM until something unrelated forced a re-render. This is playground
 // wiring, not something useNode/useNodes need to solve.
 import { onScopeDispose, ref } from "vue";
-import { useGraphRuntime } from "../../vue";
+import { useDependencyGraphStore } from "../dependency-graph-store";
 import ToggleableConsumer from "./ToggleableConsumer.vue";
 import { toggleableResource } from "./unmount-cleanup-nodes";
 
-const runtime = useGraphRuntime();
+const { runtime } = useDependencyGraphStore();
 const visible = ref(true);
 
 const subscriberCount = ref(

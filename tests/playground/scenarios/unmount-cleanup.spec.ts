@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/vue";
-import { createGraph, createGraphRuntime } from "../../../src/core";
-import { createGraphRuntimePlugin } from "../../../src/vue/plugin";
+import { createPinia } from "pinia";
+import { useDependencyGraphStore } from "../../../src/playground/dependency-graph-store";
 import UnmountCleanupScenario from "../../../src/playground/scenarios/UnmountCleanupScenario.vue";
 import { toggleableResource } from "../../../src/playground/scenarios/unmount-cleanup-nodes";
 
@@ -15,12 +15,11 @@ describe("UnmountCleanupScenario", () => {
   });
 
   it("shows the subscriber count drop to zero on hide and return on show", async () => {
-    const runtime = createGraphRuntime(
-      createGraph({ nodes: [toggleableResource] })
-    );
+    const pinia = createPinia();
+    const { runtime } = useDependencyGraphStore(pinia);
 
     render(UnmountCleanupScenario, {
-      global: { plugins: [createGraphRuntimePlugin(runtime)] },
+      global: { plugins: [pinia] },
     });
 
     // The subscription itself is already true synchronously (confirmed

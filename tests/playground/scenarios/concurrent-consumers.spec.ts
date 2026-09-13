@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/vue";
-import { createGraph, createGraphRuntime } from "../../../src/core";
-import { createGraphRuntimePlugin } from "../../../src/vue/plugin";
+import { createPinia } from "pinia";
+import { useDependencyGraphStore } from "../../../src/playground/dependency-graph-store";
 import ConcurrentConsumersScenario from "../../../src/playground/scenarios/ConcurrentConsumersScenario.vue";
 import {
   sharedResource,
@@ -18,12 +18,11 @@ describe("ConcurrentConsumersScenario", () => {
   });
 
   it("mounting two independent consumers of the same node causes one load", async () => {
-    const runtime = createGraphRuntime(
-      createGraph({ nodes: [sharedResource] })
-    );
+    const pinia = createPinia();
+    const { runtime } = useDependencyGraphStore(pinia);
 
     render(ConcurrentConsumersScenario, {
-      global: { plugins: [createGraphRuntimePlugin(runtime)] },
+      global: { plugins: [pinia] },
     });
 
     // Two independent components, two independent subscriptions — this is

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/vue";
-import { createGraph, createGraphRuntime } from "../../../src/core";
-import { createGraphRuntimePlugin } from "../../../src/vue/plugin";
+import { createPinia } from "pinia";
+import { useDependencyGraphStore } from "../../../src/playground/dependency-graph-store";
 import ContextSwitchingScenario from "../../../src/playground/scenarios/ContextSwitchingScenario.vue";
 import {
   selectedUserId,
@@ -18,12 +18,11 @@ describe("ContextSwitchingScenario", () => {
   });
 
   it("loads the initial user's profile and switches users on click", async () => {
-    const runtime = createGraphRuntime(
-      createGraph({ nodes: [selectedUserId, userProfile] })
-    );
+    const pinia = createPinia();
+    const { runtime } = useDependencyGraphStore(pinia);
 
     render(ContextSwitchingScenario, {
-      global: { plugins: [createGraphRuntimePlugin(runtime)] },
+      global: { plugins: [pinia] },
     });
 
     expect(screen.getByTestId("status").textContent).toContain("idle");

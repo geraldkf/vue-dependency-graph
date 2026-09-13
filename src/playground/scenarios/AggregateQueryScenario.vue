@@ -41,11 +41,12 @@
 </template>
 
 <script setup lang="ts">
-import { useGraphRuntime, useNodes } from "../../vue";
+import { useNodes } from "../../vue";
+import { useDependencyGraphStore } from "../dependency-graph-store";
 import { metricA, metricB, metricC, metricCLoader } from "./aggregate-query-nodes";
 
-const runtime = useGraphRuntime();
-const query = useNodes([metricA, metricB, metricC]);
+const { runtime } = useDependencyGraphStore();
+const query = useNodes([metricA, metricB, metricC], { runtime });
 
 const handleReload = (): void => {
   // Same rejection-handling reasoning as the error-and-retry scenario:

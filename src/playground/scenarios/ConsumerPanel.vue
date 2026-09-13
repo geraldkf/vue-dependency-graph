@@ -13,9 +13,11 @@
 // components sharing one node" — a node-as-prop version would only prove
 // the same thing with more ceremony.
 import { useNode } from "../../vue";
+import { useDependencyGraphStore } from "../dependency-graph-store";
 import { sharedResource } from "./concurrent-consumers-nodes";
 
 defineProps<{ label: string }>();
 
-const resource = useNode(sharedResource);
+const { runtime } = useDependencyGraphStore();
+const resource = useNode(sharedResource, { runtime });
 </script>

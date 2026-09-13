@@ -138,6 +138,8 @@ Implementation plan: `docs/implementation/25-vue-adapter-and-playground-plan.md`
 - [x] V4A: Explicit runtime option for `useNode` and `useNodes` (prepared; offline validation pending)
 - [x] V4B: Pinia-owned playground graph runtime (prepared; offline validation pending)
 - [x] V4C: Pinia-backed composable integration tests (prepared; offline validation pending)
+- [x] V5G: Pinia-backed playground shell (manual playground validation reported successful)
+- [x] V6: Pinia-backed playground smoke tests (prepared; offline validation pending)
 - [x] V1: Plugin and injection
 - [x] V2: Scope-safety guard
 - [x] V3A: `useNode` — dirty-check comparator (`statesEqual`)
@@ -151,9 +153,9 @@ Implementation plan: `docs/implementation/25-vue-adapter-and-playground-plan.md`
 - [x] V5D: Playground scenario — error and retry (shell wiring deferred to V5G)
 - [x] V5E: Playground scenario — unmount cleanup (shell wiring deferred to V5G)
 - [x] V5F: Playground scenario — aggregate query (shell wiring is V5G, next)
-- [ ] V5G: Playground shell (tabs, plugin installed in `main.ts`)
-- [ ] V6: Playground smoke tests
-- [ ] Behaviour tests with Vue Testing Library
+- [x] V5G: Pinia-backed playground shell (tabs, Pinia installed in `main.ts`)
+- [x] V6: Playground smoke tests
+- [x] Behaviour tests with Vue Testing Library
 - [ ] Update API and architecture documentation
 - [ ] Receive successful offline validation feedback
 

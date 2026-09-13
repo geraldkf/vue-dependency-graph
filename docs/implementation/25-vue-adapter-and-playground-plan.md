@@ -2,7 +2,7 @@
 
 ## Status
 
-In progress. V1 through V4, V4A (explicit runtime support), V4B (Pinia-owned graph runtime), V4C (Pinia-backed composable integration), and all five playground scenarios (V5A through V5F) are implemented, offline validation pending. The revised V5G Pinia-backed playground shell is next, followed by V6 playground smoke tests. This is Milestone 4.
+In progress. V1 through V4, V4A through V4C, and V5A through V6 are implemented. Manual playground validation for the Pinia-backed shell and all five scenarios was reported successful. V6 automated smoke tests are prepared with offline command validation pending. This is Milestone 4.
 
 ## Objective
 
@@ -345,8 +345,8 @@ All new tests use `@testing-library/vue`'s `render()` with an explicitly constru
 - [x] V5D: Scenario 3 — Error and retry (component and tests built with an isolated test runtime; shell wiring deferred to V5G)
 - [x] V5E: Scenario 4 — Unmount cleanup (component and tests built with an isolated test runtime; shell wiring deferred to V5G)
 - [x] V5F: Scenario 5 — Aggregate query (component and tests built with an isolated test runtime; shell wiring is V5G, next)
-- [ ] V5G: Pinia-backed playground shell (`App.vue` tabs, Pinia installed in `main.ts`, runtime owned by the graph store)
-- [ ] V6: Replace `tests/playground/App.spec.ts`'s stub assertions with scenario smoke tests
+- [x] V5G: Pinia-backed playground shell (`App.vue` tabs, Pinia installed in `main.ts`, runtime owned by the graph store)
+- [x] V6: Replace `tests/playground/App.spec.ts`'s stub assertions with scenario smoke tests
 - [ ] Update API and architecture documentation
 - [ ] Receive successful offline validation feedback
 
