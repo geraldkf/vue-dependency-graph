@@ -40,3 +40,24 @@ Concretely, when Milestone 5 is implemented:
 
 - **Extend the notification buffer itself.** Rejected. It would fold `state/state.ts` and `invalidation/invalidation.ts` concerns (generation/freshness semantics, active-attempt abort timing) into `transactions/`, reversing the narrow-capability boundaries the R1–R9 refactor sequence and the subsequent feature-folder restructure were done to establish. It also does not actually reduce the amount of code that changes in `execution.ts`/`invalidation.ts` — those still need rewriting to go through a staging-aware write path regardless of which file owns the staging logic — so the option mostly relocates the work to a less accurate home rather than avoiding it.
 - **Settle for weak atomicity (notification deferral only, already built) and treat "Atomic context updates" / "Deferred invalidation" as satisfied.** Considered but not adopted, because ADR-002's original commitment was to batch mutation and invalidation changes themselves, not only their notification, and Milestone 5's checklist explicitly separates "deferred scheduling" (already satisfied by the buffer) from "atomic context updates" and "deferred invalidation" (not satisfied by it). If a future revision decides weak atomicity is sufficient after all, that should be its own explicit ADR update, not an implicit scope reduction discovered mid-implementation.
+
+## Milestone 5A clarification
+
+Source reconciliation for Milestone 5A refined the staging boundary described above.
+
+The accepted direction remains unchanged for caller-driven context writes: context values and their descendant invalidation are staged and reconciled at the successful outermost commit, while the notification buffer remains a separate dispatch-only capability.
+
+However, the initial implementation will **not** make every `getMutableState(...)` consumer automatically read and write a global transaction overlay. A transaction may span an `await`, during which an execution attempt started before the transaction can complete independently. Treating that unrelated completion as transaction-owned would allow a later transaction rollback to discard legitimate runtime work and would make execution ownership depend only on timing.
+
+Milestone 5 therefore adopts these narrower rules:
+
+- public `getState(...)` remains a committed read while a transaction is open;
+- `setContext(...)` stages final caller-driven context values;
+- execution attempts already active remain committed runtime work;
+- explicit `execute(...)`, `prefetch(...)`, and `refresh(...)` calls from inside a transaction are rejected in the initial implementation;
+- scheduler work caused by staged context invalidation starts only after commit;
+- subscription lifecycle changes remain immediate and outside the staged context transaction model.
+
+This clarification deliberately replaces the earlier assumption that execution attempt-completion writes must always be intercepted by the same staging overlay. Execution race safety is instead preserved through existing generation and attempt-token checks, with commit-time context invalidation advancing affected generations once and aborting attempts that remain active.
+
+The detailed consistency model, commit ordering, rollback behaviour, risks, and implementation slices are recorded in `docs/implementation/29-milestone-5-atomic-transactions-plan.md`.

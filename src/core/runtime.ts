@@ -13,6 +13,7 @@ import {
   createRuntimeNotificationBuffer,
   type RuntimeNotificationBuffer,
 } from "./transactions/notification-buffer";
+import { createRuntimeTransactionCoordinator } from "./transactions/transaction-coordinator";
 import {
   createRuntimeStateStore,
   type ActiveAttempt,
@@ -149,8 +150,10 @@ export const createGraphRuntime = (
       invalidation.invalidateChangedResultDescendants(node),
   });
 
-  const execute = (targets: readonly AnyNodeDefinition[]): Promise<void> =>
-    execution.execute(targets, "explicit");
+  const execute = (targets: readonly AnyNodeDefinition[]): Promise<void> => {
+    transactions.assertOperationAllowed("execute");
+    return execution.execute(targets, "explicit");
+  };
 
   const getSubscribedTargetsNeedingWork = (): readonly AnyNodeDefinition[] =>
     graph.getNodes().filter(node => {
@@ -176,6 +179,10 @@ export const createGraphRuntime = (
     schedule: scheduler.schedule,
     resolveSettlementIfIdle: scheduler.resolveSettlementIfIdle,
     whenSettled: scheduler.whenSettled,
+  });
+
+  const transactions = createRuntimeTransactionCoordinator({
+    runWithBufferedNotifications: buffer.runTransaction,
   });
 
   subscriptions = createRuntimeSubscriptionController({
@@ -214,6 +221,7 @@ export const createGraphRuntime = (
     resolveRegisteredNode: requireRegisteredNode,
     execute: (targets, origin) => execution.execute(targets, origin),
     notify: buffer.notify,
+    assertOperationAllowed: transactions.assertOperationAllowed,
   });
 
   return Object.freeze({
@@ -229,6 +237,6 @@ export const createGraphRuntime = (
     getSchedulerState: scheduler.getSchedulerState,
     whenSettled: buffer.whenSettled,
     onChange,
-    transaction: buffer.runTransaction,
+    transaction: transactions.runTransaction,
   });
 };

@@ -6,6 +6,8 @@ Use these maintained documents as the current sources of truth:
 - [System overview](./architecture/01-system-overview.md)
 - [Vue and Pinia integration](./architecture/07-vue-and-pinia-integration.md)
 - [Implementation roadmap](./implementation/01-roadmap.md)
+- [Milestone 5 atomic transactions plan](./implementation/29-milestone-5-atomic-transactions-plan.md)
+- [Milestone 5B transaction coordinator implementation note](./implementation/30-milestone-5b-transaction-coordinator-implementation-note.md)
 - [Repository bootstrap summary](./implementation/04-bootstrap-summary.md)
 - [Graph registry summary](./implementation/06-graph-registry-summary.md)
 - [Runtime and execution summary](./implementation/07-runtime-execution-summary.md)

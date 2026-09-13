@@ -4,6 +4,8 @@ import {
   createGraphRuntime,
   defineContextNode,
   defineDataNode,
+  type DataNodeDefinition,
+  type GraphRuntime,
 } from "../../src/core";
 import { waitForCondition } from "./test-helpers";
 
@@ -104,6 +106,53 @@ describe("transactions", () => {
     });
 
     expect(observed).toEqual([4]);
+  });
+
+  it.each([
+    ["execute", (runtime: GraphRuntime, data: DataNodeDefinition<number, readonly []>) => runtime.execute([data])],
+    ["prefetch", (runtime: GraphRuntime, data: DataNodeDefinition<number, readonly []>) => runtime.prefetch([data])],
+    ["refresh", (runtime: GraphRuntime, data: DataNodeDefinition<number, readonly []>) => runtime.refresh([data])],
+  ] as const)(
+    "rejects %s inside a transaction without starting or invalidating work",
+    async (operation, invoke) => {
+      const load = vi.fn(async () => 1);
+      const data = defineDataNode({
+        key: `data-${operation}`,
+        dependencies: [] as const,
+        initialValue: 0,
+        load,
+      });
+      const runtime = createGraphRuntime(createGraph({ nodes: [data] }));
+      const stateBefore = runtime.getState(data);
+
+      await expect(
+        runtime.transaction(() => invoke(runtime, data))
+      ).rejects.toThrow(
+        `runtime.${operation}(...) cannot be called inside runtime.transaction(...).`
+      );
+
+      expect(load).not.toHaveBeenCalled();
+      expect(runtime.getState(data)).toEqual(stateBefore);
+    }
+  );
+
+  it("allows guarded operations again after a transaction completes", async () => {
+    const load = vi.fn(async () => 1);
+    const data = defineDataNode({
+      key: "data-after-transaction",
+      dependencies: [] as const,
+      initialValue: 0,
+      load,
+    });
+    const runtime = createGraphRuntime(createGraph({ nodes: [data] }));
+
+    await runtime.transaction(async () => {
+      await Promise.resolve();
+    });
+    await runtime.execute([data]);
+
+    expect(load).toHaveBeenCalledTimes(1);
+    expect(runtime.getState(data).data).toBe(1);
   });
 
   it("behaves as a plain passthrough outside a transaction (existing call sites unaffected)", () => {

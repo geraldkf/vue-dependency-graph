@@ -30,6 +30,7 @@ export interface RuntimeOperationsDependencies {
     origin: "prefetch" | "refresh"
   ) => Promise<void>;
   readonly notify: () => void;
+  readonly assertOperationAllowed: (operation: "prefetch" | "refresh") => void;
 }
 
 const createRefreshOperationKey = (
@@ -48,17 +49,21 @@ export const createRuntimeOperationsController = ({
   resolveRegisteredNode,
   execute,
   notify,
+  assertOperationAllowed,
 }: RuntimeOperationsDependencies): RuntimeOperationsController => {
   const refreshOperations = new Map<string, Promise<void>>();
 
   const prefetch = (
     targets: readonly AnyNodeDefinition[]
-  ): Promise<void> =>
-    execute(targets, "prefetch");
+  ): Promise<void> => {
+    assertOperationAllowed("prefetch");
+    return execute(targets, "prefetch");
+  };
 
   const refresh = (
     requestedTargets: readonly RefreshableNodeDefinition[]
   ): Promise<void> => {
+    assertOperationAllowed("refresh");
     if (requestedTargets.length === 0) return Promise.resolve();
 
     const targets: RefreshableNodeDefinition[] = [];

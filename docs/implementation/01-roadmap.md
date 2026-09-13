@@ -199,7 +199,14 @@ This does not satisfy any Milestone 5 checklist item below: state mutations are 
 
 ## Milestone 5: Transactions and invalidation
 
+Status: Planning prepared; offline validation pending.  
+Implementation plan: `docs/implementation/29-milestone-5-atomic-transactions-plan.md`
+
+- [x] Atomicity model, mutation-path inventory, and implementation sequence prepared
+- [ ] Planning offline validation
 - [ ] Atomic context updates
+- [x] M5B transaction coordinator and operation guards prepared
+- [ ] M5B offline validation
 - [ ] Nested transactions
 - [ ] Deferred invalidation
 - [ ] Deferred scheduling
