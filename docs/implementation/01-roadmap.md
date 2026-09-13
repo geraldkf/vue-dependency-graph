@@ -145,7 +145,7 @@ Implementation plan: `docs/implementation/25-vue-adapter-and-playground-plan.md`
 - [x] V5A: Shared configurable mock loader
 - [x] V5B: Playground scenario — context switching (shell wiring deferred to V5G)
 - [x] V5C: Playground scenario — concurrent consumers (shell wiring deferred to V5G)
-- [ ] V5D: Playground scenario — error and retry
+- [x] V5D: Playground scenario — error and retry (shell wiring deferred to V5G)
 - [ ] V5E: Playground scenario — unmount cleanup
 - [ ] V5F: Playground scenario — aggregate query
 - [ ] V5G: Playground shell (tabs, plugin installed in `main.ts`)

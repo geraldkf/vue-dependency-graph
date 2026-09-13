@@ -2,7 +2,7 @@
 
 ## Status
 
-In progress. V1 (plugin and injection), V2 (scope-safety guard), V3 (`useNode`, all sub-steps complete), V4 (`useNodes`), V5A (shared mock loader), V5B (context-switching scenario), and V5C (concurrent-consumers scenario) are implemented, offline validation pending. V5D (error and retry scenario) is next. Everything else in `src/vue` and `src/playground` beyond bootstrap stubs remains as planned below. This is Milestone 4.
+In progress. V1 (plugin and injection), V2 (scope-safety guard), V3 (`useNode`, all sub-steps complete), V4 (`useNodes`), V5A (shared mock loader), V5B (context-switching scenario), V5C (concurrent-consumers scenario), and V5D (error-and-retry scenario) are implemented, offline validation pending. V5E (unmount cleanup scenario) is next. Everything else in `src/vue` and `src/playground` beyond bootstrap stubs remains as planned below. This is Milestone 4.
 
 ## Objective
 
@@ -234,8 +234,8 @@ Two components independently calling `useNode` on the *same* node, mounted side 
 
 A failure toggle on the mock loader, a manual refresh button, visible error state — the initial-load-failure and refresh-failure-with-stale-data paths, rendered, not only asserted.
 
-- [ ] Build the scenario component
-- [ ] Wire it into the playground shell
+- [x] Build the scenario component
+- [ ] Wire it into the playground shell (deferred to V5G, which builds the shell all scenarios are wired into)
 
 **V5E: Scenario 4 — Unmount cleanup**
 
@@ -269,6 +269,8 @@ Per `docs/testing/01-test-strategy.md`'s existing Vue integration list — this 
 
 All new tests use `@testing-library/vue`'s `render()` with an explicitly constructed, deterministic `GraphRuntime` per test (real core, mock loaders) — consistent with the test strategy's stated preference for direct deterministic instances over broad module mocking.
 
+`tests/setup.ts` (added during V5D) registers `@testing-library/vue`'s `cleanup()` globally via `vitest.config.ts`'s `setupFiles`. Any test file with more than one `render()` call needs this — without it, every previously rendered component stays in the same jsdom document, and DOM queries like `getByTestId` start matching elements from earlier tests, not just the current one. See `docs/implementation/37-vue-adapter-v5d-implementation-note.md` for how this was found.
+
 ## Work sequence
 
 - [x] V1: Plugin and injection (`GraphRuntimeKey`, `createGraphRuntimePlugin`, `useGraphRuntime`) + tests + effect-scope-in-tests confirmation
@@ -281,7 +283,7 @@ All new tests use `@testing-library/vue`'s `render()` with an explicitly constru
 - [x] V5A: Shared configurable mock loader
 - [x] V5B: Scenario 1 — Context switching (component and tests built with an isolated test runtime; shell wiring deferred to V5G)
 - [x] V5C: Scenario 2 — Concurrent consumers (component and tests built with an isolated test runtime; shell wiring deferred to V5G)
-- [ ] V5D: Scenario 3 — Error and retry
+- [x] V5D: Scenario 3 — Error and retry (component and tests built with an isolated test runtime; shell wiring deferred to V5G)
 - [ ] V5E: Scenario 4 — Unmount cleanup
 - [ ] V5F: Scenario 5 — Aggregate query
 - [ ] V5G: Playground shell (`App.vue` tabs, plugin installed in `main.ts`)
