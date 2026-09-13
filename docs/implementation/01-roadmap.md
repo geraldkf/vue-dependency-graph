@@ -4,26 +4,23 @@ The framework should be delivered in vertical milestones. Every milestone must u
 
 ## Milestone 0: Single-package repository bootstrap
 
-Status: Validation pending.
+Status: Configuration updated; lockfile generation and final offline validation pending.
 
-Implementation prompt: `docs/implementation/prompts/001-bootstrap-pnpm-repository.md`
+Implementation summary: `docs/implementation/04-bootstrap-summary.md`
 
-- [x] Prepare a single pnpm package configuration
-- [x] Add root scripts and package manager declaration
-- [x] Declare supported Node.js and pnpm versions
-- [x] Add strict TypeScript configuration
-- [x] Create logical `src/core`, `src/vue`, `src/devtools`, and `src/playground` folders
-- [x] Add public and layer entry points
-- [x] Add Vue 3.5 and Vite playground bootstrap
-- [x] Add Vitest 3.0.7 smoke tests
-- [x] Add Vue Testing Library playground smoke test
-- [x] Add a simple boundary check for core isolation
-- [x] Add minimal CI workflow
-- [x] Document root commands and offline validation
-- [ ] Generate and commit `pnpm-lock.yaml` offline
-- [ ] Receive successful offline validation feedback
+- [x] Single pnpm package
+- [x] Node.js 22.13 or newer declared
+- [x] pnpm 12.4.1 declared consistently in `package.json` and CI
+- [x] Strict TypeScript configuration
+- [x] Logical source boundaries and public entry points
+- [x] Vite playground and test infrastructure
+- [x] Core boundary validation script
+- [x] CI workflow
+- [x] Remove npm lockfile and pnpm runtime dependency from the prepared change
+- [ ] Generate and commit `pnpm-lock.yaml` with pnpm 12.4.1
+- [ ] Run frozen install, typecheck, tests, build, and playground validation
 
-Prepared exit criteria are met by static inspection. Validated exit criteria remain pending until the developer reports successful installation, type checking, tests, build, boundary check, frozen installation, and playground startup.
+Manual browser validation of the later Pinia-backed playground has been reported successful. Milestone 0 remains pending only until the pnpm 12.4.1 lockfile and final command results are reported.
 
 ## Milestone 1: Graph registry and validation
 

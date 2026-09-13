@@ -72,7 +72,7 @@ core + vue + devtools <--- playground
 
 ## Technology baseline
 
-- pnpm for package management
+- pnpm 12.4.1 for package management
 - TypeScript with strict mode
 - Vue 3.5
 - Vite

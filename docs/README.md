@@ -6,6 +6,7 @@ Use these maintained documents as the current sources of truth:
 - [System overview](./architecture/01-system-overview.md)
 - [Vue and Pinia integration](./architecture/07-vue-and-pinia-integration.md)
 - [Implementation roadmap](./implementation/01-roadmap.md)
+- [Repository bootstrap summary](./implementation/04-bootstrap-summary.md)
 - [Vue adapter implementation summary](./implementation/27-vue-adapter-implementation-summary.md)
 - [Test strategy](./testing/01-test-strategy.md)
 - [Architecture decision records](./decisions/README.md)

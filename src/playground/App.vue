@@ -60,7 +60,9 @@ const scenarios = [
   },
 ] as const satisfies readonly PlaygroundScenario[];
 
-const activeScenarioId = ref(scenarios[0].id);
+type PlaygroundScenarioId = (typeof scenarios)[number]["id"];
+
+const activeScenarioId = ref<PlaygroundScenarioId>(scenarios[0].id);
 const activeScenario = computed(
   () =>
     scenarios.find(scenario => scenario.id === activeScenarioId.value) ??
