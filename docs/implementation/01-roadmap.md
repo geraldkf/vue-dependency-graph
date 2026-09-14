@@ -206,11 +206,17 @@ Implementation plan: `docs/implementation/29-milestone-5-atomic-transactions-pla
 - [ ] Planning offline validation
 - [ ] Atomic context updates
 - [x] M5B transaction coordinator and operation guards prepared
+- [x] M5C staged context values prepared
+- [x] M5D atomic commit and coalesced invalidation prepared
+- [x] M5E rollback and failure-path behaviour prepared
+- [ ] M5E offline validation
+- [ ] M5D offline validation
+- [ ] M5C offline validation
 - [ ] M5B offline validation
 - [ ] Nested transactions
 - [ ] Deferred invalidation
 - [ ] Deferred scheduling
-- [ ] Transaction rollback for local synchronous failure
+- [x] Transaction rollback for local synchronous and asynchronous failure prepared
 - [ ] Generation changes and abort behaviour
 
 Exit criteria: observers do not see partially committed related context values.

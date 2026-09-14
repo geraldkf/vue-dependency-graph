@@ -8,10 +8,21 @@ import type {
   Graph,
 } from "../graph/node";
 
+export interface ContextChange {
+  readonly node: ContextNodeDefinition<unknown>;
+  readonly value: unknown;
+}
+
 export interface RuntimeInvalidationController {
+  readonly resolveContextNode: <TValue>(
+    node: ContextNodeDefinition<TValue>
+  ) => ContextNodeDefinition<TValue>;
   readonly setContext: <TValue>(
     node: ContextNodeDefinition<TValue>,
     value: TValue
+  ) => void;
+  readonly commitContexts: (
+    changes: readonly ContextChange[]
   ) => void;
   readonly invalidateChangedResultDescendants: (
     node: AnyNodeDefinition
@@ -63,32 +74,78 @@ export const createRuntimeInvalidationController = ({
     return registered as ContextNodeDefinition<TValue>;
   };
 
-  const invalidateDescendants = (
-    node: AnyNodeDefinition
-  ): boolean => {
+  const collectDescendants = (
+    nodes: readonly AnyNodeDefinition[]
+  ): readonly AnyNodeDefinition[] => {
+    const descendants: AnyNodeDefinition[] = [];
     const visited = new Set<string>();
-    const queue = [...graph.getChildren(node)];
-    let subscribedDescendantChanged = false;
+    const queue = nodes.flatMap(node => graph.getChildren(node));
 
     while (queue.length > 0) {
       const descendant = queue.shift();
       if (!descendant || visited.has(descendant.key)) continue;
       visited.add(descendant.key);
+      descendants.push(descendant);
+      queue.push(...graph.getChildren(descendant));
+    }
 
+    return descendants;
+  };
+
+  const invalidateNodes = (
+    descendants: readonly AnyNodeDefinition[]
+  ): boolean => {
+    let subscribedDescendantChanged = false;
+
+    for (const descendant of descendants) {
       const state = getMutableState(descendant.key);
       state.generation += 1;
       state.freshness = "stale";
       state.status = state.hasSuccessfulValue ? "success" : "idle";
       state.error = null;
-      getActiveAttempt(descendant.key)?.controller.abort();
 
       if (hasSubscribers(descendant)) {
         subscribedDescendantChanged = true;
       }
-      queue.push(...graph.getChildren(descendant));
+    }
+
+    for (const descendant of descendants) {
+      getActiveAttempt(descendant.key)?.controller.abort();
     }
 
     return subscribedDescendantChanged;
+  };
+
+  const invalidateDescendants = (
+    node: AnyNodeDefinition
+  ): boolean =>
+    invalidateNodes(collectDescendants([node]));
+
+  const commitContexts = (
+    changes: readonly ContextChange[]
+  ): void => {
+    const effectiveChanges = changes.filter(({ node, value }) =>
+      !Object.is(getMutableState(node.key).data, value)
+    );
+    if (effectiveChanges.length === 0) return;
+
+    for (const { node, value } of effectiveChanges) {
+      const contextState = getMutableState(node.key);
+      contextState.data = value;
+      contextState.status = "success";
+      contextState.freshness = "fresh";
+      contextState.error = null;
+      contextState.generation += 1;
+      contextState.hasSuccessfulValue = true;
+    }
+
+    const descendants = collectDescendants(
+      effectiveChanges.map(({ node }) => node)
+    );
+    const subscribedDescendantChanged = invalidateNodes(descendants);
+
+    notify();
+    if (subscribedDescendantChanged) schedule();
   };
 
   const setContext = <TValue>(
@@ -96,20 +153,10 @@ export const createRuntimeInvalidationController = ({
     value: TValue
   ): void => {
     const registered = requireRegisteredContextNode(node);
-    const contextState = getMutableState(registered.key);
-    if (Object.is(contextState.data, value)) return;
-
-    contextState.data = value;
-    contextState.status = "success";
-    contextState.freshness = "fresh";
-    contextState.error = null;
-    contextState.generation += 1;
-    contextState.hasSuccessfulValue = true;
-
-    const subscribedDescendantChanged =
-      invalidateDescendants(registered);
-    notify();
-    if (subscribedDescendantChanged) schedule();
+    commitContexts([{
+      node: registered as ContextNodeDefinition<unknown>,
+      value,
+    }]);
   };
 
   const invalidateChangedResultDescendants = (
@@ -122,7 +169,9 @@ export const createRuntimeInvalidationController = ({
   };
 
   return Object.freeze({
+    resolveContextNode: requireRegisteredContextNode,
     setContext,
+    commitContexts,
     invalidateChangedResultDescendants,
   });
 };

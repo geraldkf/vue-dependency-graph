@@ -181,10 +181,6 @@ export const createGraphRuntime = (
     whenSettled: scheduler.whenSettled,
   });
 
-  const transactions = createRuntimeTransactionCoordinator({
-    runWithBufferedNotifications: buffer.runTransaction,
-  });
-
   subscriptions = createRuntimeSubscriptionController({
     graph,
     resolveRegisteredNode: requireRegisteredNode,
@@ -215,6 +211,12 @@ export const createGraphRuntime = (
     schedule: buffer.schedule,
   });
 
+  const transactions = createRuntimeTransactionCoordinator({
+    runWithBufferedNotifications: buffer.runTransaction,
+    resolveContextNode: invalidation.resolveContextNode,
+    commitContexts: invalidation.commitContexts,
+  });
+
   const operations = createRuntimeOperationsController({
     getMutableState,
     getActiveAttempt,
@@ -227,7 +229,7 @@ export const createGraphRuntime = (
   return Object.freeze({
     getState: <TNode extends AnyNodeDefinition>(node: TNode) =>
       getSnapshot(node),
-    setContext: invalidation.setContext,
+    setContext: transactions.setContext,
     execute,
     prefetch: operations.prefetch,
     refresh: operations.refresh,

@@ -175,6 +175,6 @@ await runtime.transaction(async () => {
 
 The current notification buffer defers runtime notification, scheduler dispatch, and settlement handling until the outer transaction commits. Nested transactions collapse into one outer commit.
 
-This is not yet an atomic state transaction. Context state and descendant invalidation still mutate immediately, and a thrown transaction body does not roll back committed local state. Milestone 5 will add state staging, deferred invalidation, and local synchronous rollback.
+Milestone 5 context staging, commit-wide invalidation, and rollback behaviour are now prepared. Successful commit reconciles effective final context values, deduplicates descendants across roots and diamond paths, advances each affected generation once, aborts affected attempts after generation commit, emits one notification, and requests at most one scheduler pass. Synchronous or asynchronous outer failure discards staged context changes without graph effects. Independent runtime work remains committed, and its notification buffer dispatch is released when the outer transaction closes even if transaction work fails. Settlement and execution-race validation remain pending.
 
 The planned limit does not gate derived nodes and is orthogonal to transaction semantics.

@@ -203,7 +203,7 @@ await runtime.transaction(async () => {
 });
 ```
 
-The current transaction seam defers notification and automatic scheduling only. It does not yet stage graph state, provide rollback, or defer invalidation state changes. Atomic state transactions remain Milestone 5 work.
+Milestone 5 context staging, commit-wide invalidation, and rollback behaviour are in progress. Context writes are held until the successful outer transaction completes, public reads remain committed reads while work is open, and synchronous or asynchronous outer failure discards staged context values without invalidation, abort, context notification, or context scheduling. Independent execution that completes while work is open remains committed and its buffered notification is released when the transaction closes. Settlement and execution-race validation remain incomplete until the later Milestone 5 slices are validated.
 
 ## Planned APIs
 
