@@ -195,6 +195,14 @@ M8C uses the injected deterministic environment to verify repeated settled refre
 
 M8D uses the deterministic environment to verify intermediate progress, completion, business failure, failure-before-completion ordering, timeout, predicate exceptions, generation changes, obsolete-result protection, retained successful data, and final-unsubscribe cleanup.
 
+### Retry and lifecycle coverage
+
+M8E uses deterministic clock and random sources to verify fixed and exponential delay calculation, jitter bounds, retry reset and exhaustion, timer preservation during pause, coalesced resume, suppression of paused requests, and active-time polling timeout. Browser adapter tests cover visibility, network state, options, and listener cleanup.
+
+### Polling Progress playground coverage
+
+M8F uses Vue Testing Library against a deterministic virtual-time scenario. Tests cover progress, non-overlap metrics, completion, retained-data failure, timeout, retry delay, pause/resume, unmount timer cleanup, reset, and shell tab mounting.
+
 ## Compile-time type tests
 
 Add a type-test mechanism to verify:
@@ -209,4 +217,4 @@ Add a type-test mechanism to verify:
 
 ## Offline validation responsibility
 
-The contained environment creates tests but does not claim they pass unless it actually ran them successfully. The developer runs the required commands offline and reports results. Test-related roadmap items remain in `Validation pending` state until that feedback is received.
+Milestone 8 validation is complete. The combined checkout passed boundary checks, strict typechecking, the complete Vitest suite, and the production build. The Polling Progress manual browser paths also passed. Future milestones must continue to report validation against the exact combined checkout.

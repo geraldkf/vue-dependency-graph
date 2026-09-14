@@ -2,11 +2,11 @@
 
 ### Status
 
-Accepted for Milestone 8 design. M8A policy definitions and validation are implemented with offline repository validation pending.
+Accepted and implemented in Milestone 8. Full automated validation and the Polling Progress manual browser paths passed.
 
 ### Context
 
-The runtime supports subscription-driven loading, explicit refresh, cancellation, stale-data retention, generation protection, shared attempts, and a runtime-wide concurrency limit. It does not yet provide time-based freshness or polling for long-running resources.
+The runtime supports subscription-driven loading, explicit refresh, cancellation, stale-data retention, generation protection, shared attempts, a runtime-wide concurrency limit, time-based freshness, and polling for long-running resources.
 
 Polling implemented inside a node loader would require recursive delays, hide request ownership, bypass normal refresh preparation, complicate cancellation, and make deterministic testing difficult. Browser lifecycle imports in the core would also violate the framework boundary.
 

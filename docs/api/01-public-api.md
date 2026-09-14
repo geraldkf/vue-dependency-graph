@@ -362,7 +362,21 @@ Every successful value is evaluated in failure, completion, timeout order. Compl
 
 Exported terminal error types are `GraphPollingConditionError` and `GraphPollingTimeoutError`. Retry metadata remains inert until M8E.
 
-## Other planned APIs
+### Retry and lifecycle environment
+
+Interval and poll-until policies now apply their declared fixed or exponential retry metadata to policy-owned failures. Exhaustion exposes `GraphRefreshRetryExhaustedError` while retaining prior successful data.
+
+The Vue entry point provides an optional browser adapter:
+
+```ts
+const runtime = createGraphRuntime(graph, {
+  refreshPolicyEnvironment: createBrowserRefreshPolicyEnvironment(),
+});
+```
+
+It pauses policy timers while the document is hidden or the browser is offline. Resume restores one remaining delay without replaying missed ticks. Poll timeout excludes paused duration.
+
+## Additional APIs
 
 ```ts
 pollUntil(...);

@@ -39,6 +39,10 @@ Resolution order is:
 
 Explicit runtime ownership allows an application with an existing Pinia installation to integrate the graph without changing `App.vue` or adding another application plugin.
 
+## Browser refresh-policy environment
+
+The optional `createBrowserRefreshPolicyEnvironment(...)` adapter belongs to the Vue entry point. It combines document visibility and online state without placing browser dependencies in core. Applications may pass it when constructing either a directly owned or Pinia-owned runtime.
+
 ## Pinia ownership
 
 The recommended setup store creates one runtime inside the store factory:

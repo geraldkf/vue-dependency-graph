@@ -1,3 +1,4 @@
+import { GraphExecutionError, toError } from "../execution/types";
 import type {
   AnyNodeDefinition,
   DataNodeDefinition,
@@ -7,10 +8,12 @@ import type { MutableNodeRuntimeState } from "../state/state";
 import {
   GraphPollingConditionError,
   GraphPollingTimeoutError,
+  GraphRefreshRetryExhaustedError,
 } from "./errors";
 import type {
   PollUntilPolicy,
   RefreshPolicyEnvironment,
+  RetryPolicy,
 } from "./types";
 
 type PolicyDataNode = DataNodeDefinition<
@@ -18,16 +21,22 @@ type PolicyDataNode = DataNodeDefinition<
   readonly AnyNodeDefinition[]
 >;
 
+type TimerPurpose = "refresh" | "retry";
+
 interface RefreshPolicySession {
   generation: number | undefined;
   succeededAt: number | undefined;
   timer: unknown | undefined;
+  timerDueAt: number | undefined;
+  timerPurpose: TimerPurpose | undefined;
+  remainingDelayMs: number | undefined;
   token: number;
   refreshing: boolean;
   policyRefreshSucceeded: boolean;
   pollingStartedAt: number | undefined;
   evaluatedGeneration: number | undefined;
   terminal: boolean;
+  retryCount: number;
 }
 
 export interface RuntimeRefreshPolicyController {
@@ -59,6 +68,32 @@ const isPolicyDataNode = (
   );
 };
 
+const getPolicyFailure = (error: unknown, nodeKey: string): Error => {
+  if (error instanceof GraphExecutionError) {
+    const cause = error.failures.find(failure => failure.nodeKey === nodeKey)?.error;
+    if (cause) return cause;
+  }
+  return toError(error);
+};
+
+const calculateRetryDelay = (
+  retry: RetryPolicy,
+  retryIndex: number,
+  random: () => number
+): number => {
+  const baseDelay =
+    retry.strategy === "fixed"
+      ? retry.delayMs
+      : Math.min(
+          retry.initialDelayMs * retry.multiplier ** retryIndex,
+          retry.maxDelayMs
+        );
+  if (retry.jitterRatio === 0) return Math.round(baseDelay);
+  const factor =
+    1 - retry.jitterRatio + 2 * retry.jitterRatio * random();
+  return Math.max(0, Math.round(baseDelay * factor));
+};
+
 export const createRuntimeRefreshPolicyController = ({
   graph,
   environment,
@@ -68,6 +103,15 @@ export const createRuntimeRefreshPolicyController = ({
   failPolicyNode,
 }: RuntimeRefreshPolicyDependencies): RuntimeRefreshPolicyController => {
   const sessions = new Map<string, RefreshPolicySession>();
+  let paused = environment.isPaused();
+  let pausedAt = paused ? environment.now() : undefined;
+  let totalPausedMs = 0;
+
+  const activeNow = (): number => {
+    const current = environment.now();
+    const currentPause = pausedAt === undefined ? 0 : current - pausedAt;
+    return current - totalPausedMs - currentPause;
+  };
 
   const getSession = (key: string): RefreshPolicySession => {
     const existing = sessions.get(key);
@@ -76,23 +120,44 @@ export const createRuntimeRefreshPolicyController = ({
       generation: undefined,
       succeededAt: undefined,
       timer: undefined,
+      timerDueAt: undefined,
+      timerPurpose: undefined,
+      remainingDelayMs: undefined,
       token: 0,
       refreshing: false,
       policyRefreshSucceeded: false,
       pollingStartedAt: undefined,
       evaluatedGeneration: undefined,
       terminal: false,
+      retryCount: 0,
     };
     sessions.set(key, created);
     return created;
   };
 
-  const clearTimer = (session: RefreshPolicySession): void => {
+  const clearTimer = (
+    session: RefreshPolicySession,
+    preserveRemaining = false
+  ): void => {
     session.token += 1;
+    if (
+      preserveRemaining &&
+      session.timerDueAt !== undefined &&
+      session.timerPurpose !== undefined
+    ) {
+      session.remainingDelayMs = Math.max(
+        0,
+        session.timerDueAt - environment.now()
+      );
+    } else if (!preserveRemaining) {
+      session.remainingDelayMs = undefined;
+      session.timerPurpose = undefined;
+    }
     if (session.timer !== undefined) {
       environment.clearTimeout(session.timer);
-      session.timer = undefined;
     }
+    session.timer = undefined;
+    session.timerDueAt = undefined;
   };
 
   const resetSession = (session: RefreshPolicySession): void => {
@@ -104,6 +169,7 @@ export const createRuntimeRefreshPolicyController = ({
     session.pollingStartedAt = undefined;
     session.evaluatedGeneration = undefined;
     session.terminal = false;
+    session.retryCount = 0;
   };
 
   const completeSession = (session: RefreshPolicySession): void => {
@@ -111,7 +177,7 @@ export const createRuntimeRefreshPolicyController = ({
     session.terminal = true;
   };
 
-  const getDelayMs = (
+  const getNormalDelay = (
     node: PolicyDataNode,
     succeededAt: number
   ): number | undefined => {
@@ -170,7 +236,7 @@ export const createRuntimeRefreshPolicyController = ({
     const startedAt = session.pollingStartedAt;
     if (
       startedAt !== undefined &&
-      environment.now() - startedAt >= policy.timeoutMs
+      activeNow() - startedAt >= policy.timeoutMs
     ) {
       completeSession(session);
       failPolicyNode(
@@ -184,7 +250,92 @@ export const createRuntimeRefreshPolicyController = ({
     return true;
   };
 
-  const reconcileNode = (node: PolicyDataNode): void => {
+  let reconcileNode: (node: PolicyDataNode) => void;
+
+  const startPolicyRefresh = (
+    node: PolicyDataNode,
+    session: RefreshPolicySession
+  ): void => {
+    if (paused || session.refreshing || session.terminal) return;
+    session.refreshing = true;
+    let succeeded = false;
+    void refreshPolicyNode(node)
+      .then(() => {
+        succeeded = true;
+      })
+      .catch(error => {
+        const retry =
+          node.refresh?.kind === "stale-after"
+            ? undefined
+            : node.refresh?.retry;
+        if (!retry) return;
+
+        if (session.retryCount < retry.maxRetries) {
+          const delayMs = calculateRetryDelay(
+            retry,
+            session.retryCount,
+            environment.random
+          );
+          session.retryCount += 1;
+          session.remainingDelayMs = delayMs;
+          session.timerPurpose = "retry";
+          return;
+        }
+
+        completeSession(session);
+        const state = getMutableState(node.key);
+        failPolicyNode(
+          node,
+          state.generation,
+          new GraphRefreshRetryExhaustedError(
+            node.key,
+            session.retryCount + 1,
+            getPolicyFailure(error, node.key)
+          )
+        );
+      })
+      .finally(() => {
+        session.refreshing = false;
+        session.policyRefreshSucceeded = succeeded;
+        if (succeeded) session.retryCount = 0;
+        reconcileNode(node);
+      });
+  };
+
+  const schedule = (
+    node: PolicyDataNode,
+    session: RefreshPolicySession,
+    delayMs: number,
+    purpose: TimerPurpose
+  ): void => {
+    session.timerPurpose = purpose;
+    session.remainingDelayMs = delayMs;
+    if (paused || session.timer !== undefined) return;
+
+    const token = session.token + 1;
+    session.token = token;
+    session.remainingDelayMs = undefined;
+    session.timerDueAt = environment.now() + delayMs;
+    session.timer = environment.setTimeout(() => {
+      if (session.token !== token) return;
+      session.timer = undefined;
+      session.timerDueAt = undefined;
+      session.timerPurpose = undefined;
+
+      const current = getMutableState(node.key);
+      const canRefresh =
+        hasSubscribers(node) &&
+        !paused &&
+        !session.terminal &&
+        (purpose === "retry" ||
+          (current.status === "success" &&
+            current.freshness === "fresh" &&
+            current.hasSuccessfulValue));
+      if (canRefresh) startPolicyRefresh(node, session);
+    }, delayMs);
+  };
+
+  reconcileNode = (node: PolicyDataNode): void => {
     const state = getMutableState(node.key);
     const session = getSession(node.key);
     const policy = node.refresh;
@@ -198,6 +349,16 @@ export const createRuntimeRefreshPolicyController = ({
       return;
     }
 
+    if (session.terminal || session.refreshing) return;
+
+    if (
+      session.timerPurpose === "retry" &&
+      session.remainingDelayMs !== undefined
+    ) {
+      schedule(node, session, session.remainingDelayMs, "retry");
+      return;
+    }
+
     const isFreshSuccess =
       state.status === "success" &&
       state.freshness === "fresh" &&
@@ -205,11 +366,8 @@ export const createRuntimeRefreshPolicyController = ({
 
     if (!isFreshSuccess) {
       clearTimer(session);
-      if (!session.refreshing) resetSession(session);
       return;
     }
-
-    if (session.refreshing) return;
 
     const continuedPollingCycle =
       policy?.kind === "poll-until" && session.policyRefreshSucceeded;
@@ -223,61 +381,57 @@ export const createRuntimeRefreshPolicyController = ({
       session.generation = state.generation;
       session.succeededAt = environment.now();
       session.terminal = false;
+      session.retryCount = 0;
       if (policy?.kind === "poll-until" && !continuedPollingCycle) {
-        session.pollingStartedAt = environment.now();
+        session.pollingStartedAt = activeNow();
         session.evaluatedGeneration = undefined;
       }
     }
 
     if (policy?.kind === "poll-until") {
-      if (session.terminal) return;
       if (!evaluatePollingResult(node, policy, state, session)) return;
     }
 
     if (session.timer !== undefined) return;
+    if (session.remainingDelayMs !== undefined) {
+      schedule(
+        node,
+        session,
+        session.remainingDelayMs,
+        session.timerPurpose ?? "refresh"
+      );
+      return;
+    }
+
     const succeededAt = session.succeededAt;
     if (succeededAt === undefined) return;
-    const delayMs = getDelayMs(node, succeededAt);
-    if (delayMs === undefined) return;
-
-    const token = session.token + 1;
-    const generation = state.generation;
-    session.token = token;
-    session.timer = environment.setTimeout(() => {
-      if (session.token !== token) return;
-      session.timer = undefined;
-
-      const current = getMutableState(node.key);
-      if (
-        current.generation !== generation ||
-        current.status !== "success" ||
-        current.freshness !== "fresh" ||
-        !current.hasSuccessfulValue ||
-        !hasSubscribers(node) ||
-        session.terminal
-      ) {
-        return;
-      }
-
-      session.refreshing = true;
-      let succeeded = false;
-      void refreshPolicyNode(node)
-        .then(() => {
-          succeeded = true;
-        })
-        .catch(() => undefined)
-        .finally(() => {
-          session.refreshing = false;
-          session.policyRefreshSucceeded = succeeded;
-          reconcileNode(node);
-        });
-    }, delayMs);
+    const delayMs = getNormalDelay(node, succeededAt);
+    if (delayMs !== undefined) schedule(node, session, delayMs, "refresh");
   };
 
   const policyNodes = graph.getNodes().filter(isPolicyDataNode);
   const reconcile = (): void => {
     for (const node of policyNodes) reconcileNode(node);
   };
+
+  environment.onPauseChange(nextPaused => {
+    if (nextPaused === paused) return;
+    if (nextPaused) {
+      paused = true;
+      pausedAt = environment.now();
+      for (const session of sessions.values()) {
+        clearTimer(session, true);
+      }
+      return;
+    }
+
+    if (pausedAt !== undefined) {
+      totalPausedMs += environment.now() - pausedAt;
+    }
+    pausedAt = undefined;
+    paused = false;
+    reconcile();
+  });
 
   return Object.freeze({ reconcile });
 };

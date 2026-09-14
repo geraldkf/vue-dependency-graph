@@ -183,6 +183,12 @@ Policy-owned refresh generation changes continue the same cycle. External invali
 
 Polling timers remain outside scheduler settlement. `whenSettled()` continues to describe automatic dependency scheduling, not future polling ticks.
 
+## Retry and pause scheduling
+
+Policy retries remain inside the refresh-policy controller and delegate every attempt to the existing refresh and execution path. Backoff is bounded, jitter uses the injected random source, and retries never overlap active policy work.
+
+Pause clears timers while retaining one remaining delay and timer purpose. Resume restores at most one timeout. Active loads continue during pause, and recurring policy timers remain outside scheduler settlement.
+
 ## Transaction seam
 
 ```ts

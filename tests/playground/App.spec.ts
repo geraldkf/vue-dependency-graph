@@ -46,6 +46,7 @@ describe("playground shell", () => {
       "Error and Retry",
       "Unmount Cleanup",
       "Aggregate Query",
+      "Polling Progress",
       "Context Switching",
     ] as const;
 

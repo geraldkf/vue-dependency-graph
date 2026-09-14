@@ -18,3 +18,17 @@ export class GraphPollingConditionError extends Error {
     this.name = "GraphPollingConditionError";
   }
 }
+
+export class GraphRefreshRetryExhaustedError extends Error {
+  public constructor(
+    public readonly nodeKey: string,
+    public readonly attempts: number,
+    public override readonly cause: Error
+  ) {
+    super(
+      `Refresh policy for node "${nodeKey}" exhausted ${attempts} attempt(s).`,
+      { cause }
+    );
+    this.name = "GraphRefreshRetryExhaustedError";
+  }
+}

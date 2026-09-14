@@ -408,7 +408,7 @@ Prefer keeping this internal until the playground proves a public consumer need.
 
 #### M8A: Policy definitions and validation
 
-Status: Implementation prepared; offline validation pending. See docs/implementation/79-milestone-8a-policy-definitions-validation-plan.md and docs/implementation/80-milestone-8a-policy-definitions-validation-note.md.
+Status: Complete and validated.
 
 - Add refresh-policy contracts and immutable factories.
 - Add optional `refresh` metadata to data-node definitions only.
@@ -421,7 +421,7 @@ Exit condition: strongly typed policy definitions can be declared but do not cre
 
 #### M8B: Runtime policy controller and stale-after behaviour
 
-Status: Implementation prepared; offline validation pending. See docs/implementation/81-milestone-8b-stale-after-implementation-note.md.
+Status: Complete and validated.
 
 - Add the injected environment and runtime-local policy sessions.
 - Add subscription transition integration.
@@ -435,7 +435,7 @@ Exit condition: a subscribed successful node refreshes once when its freshness d
 
 #### M8C: Fixed interval while subscribed
 
-Status: Implementation prepared; offline validation pending. See docs/implementation/82-milestone-8c-fixed-interval-implementation-note.md.
+Status: Complete and validated.
 
 - Implement recursive timeout scheduling after settled success.
 - Prevent overlapping loads.
@@ -446,7 +446,7 @@ Exit condition: a subscribed node refreshes repeatedly at settled intervals with
 
 #### M8D: Poll-until completion, failure, and timeout
 
-Status: Implementation prepared; offline validation pending. See docs/implementation/83-milestone-8d-poll-until-implementation-note.md.
+Status: Complete and validated.
 
 - Implement `pollUntil(...)` condition evaluation.
 - Define generation-scoped polling sessions.
@@ -459,7 +459,7 @@ Exit condition: a long-running resource advances through deterministic progress 
 
 #### M8E: Retry, backoff, jitter, pause, and resume
 
-Status: Planned.
+Status: Complete and validated.
 
 - Add fixed and exponential retry calculation.
 - Add bounded jitter using injected randomness.
@@ -472,7 +472,7 @@ Exit condition: transient policy failures retry deterministically, paused sessio
 
 #### M8F: Progress playground
 
-Status: Planned.
+Status: Complete and validated.
 
 Add a deterministic **Polling Progress** scenario that exposes:
 
@@ -501,7 +501,7 @@ Use Vue Testing Library with injected fake time. Do not expose real random failu
 
 #### M8G: Documentation reconciliation and final validation
 
-Status: Planned.
+Status: Complete and validated. See docs/implementation/86-milestone-8-implementation-summary.md.
 
 - Update the public API from proposed to implemented wording.
 - Update architecture, roadmap, testing strategy, playground instructions, README status, and ADR-012 status.

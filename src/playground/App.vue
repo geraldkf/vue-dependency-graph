@@ -29,6 +29,7 @@ import ErrorAndRetryScenario from "./scenarios/ErrorAndRetryScenario.vue";
 import UnmountCleanupScenario from "./scenarios/UnmountCleanupScenario.vue";
 import TypedEventsScenario from "./scenarios/TypedEventsScenario.vue";
 import QueryGroupsScenario from "./scenarios/QueryGroupsScenario.vue";
+import PollingProgressScenario from "./scenarios/PollingProgressScenario.vue";
 
 interface PlaygroundScenario {
   readonly id: string;
@@ -81,6 +82,11 @@ const scenarios = [
     id: "query-groups",
     label: "Query Groups",
     component: QueryGroupsScenario,
+  },
+  {
+    id: "polling-progress",
+    label: "Polling Progress",
+    component: PollingProgressScenario,
   },
 ] as const satisfies readonly PlaygroundScenario[];
 

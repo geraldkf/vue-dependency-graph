@@ -2,7 +2,7 @@
 
 ## Status
 
-Implementation prepared. Offline repository validation pending.
+Complete and validated as part of the combined Milestone 8 checkout.
 
 ## Scope
 
@@ -85,7 +85,7 @@ Existing M8B coverage continues to protect stale-after age retention, automatic-
 - A compiled smoke scenario confirmed repeated interval refresh, no overlap during a slow load, scheduling after settlement, and timer cleanup.
 - Documentation links and changed-file ZIP integrity were checked.
 
-Repository dependencies are unavailable in the contained environment, so the exact project typecheck, complete Vitest suite, and production build remain pending.
+The exact repository command suite subsequently passed against the combined Milestone 8 checkout.
 
 ## Offline validation
 

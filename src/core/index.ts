@@ -1,5 +1,9 @@
 export { pollUntil, refreshInterval, staleAfter } from "./refresh-policies/policy";
-export { GraphPollingConditionError, GraphPollingTimeoutError } from "./refresh-policies/errors";
+export {
+  GraphPollingConditionError,
+  GraphPollingTimeoutError,
+  GraphRefreshRetryExhaustedError,
+} from "./refresh-policies/errors";
 export type {
   ExponentialRetryOptions,
   ExponentialRetryPolicy,

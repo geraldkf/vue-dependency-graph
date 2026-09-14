@@ -162,6 +162,27 @@ The Typed Events scenario now includes an unrelated event target and a **Publish
 4. Roll back the appointment event transaction.
 5. Confirm the capability request count is unchanged and the unrelated event result remains committed.
 
+### Polling Progress
+
+The Polling Progress scenario uses an isolated runtime with a deterministic virtual clock. It demonstrates the real poll-until policy path without wall-clock waits or random outcomes.
+
+Controls:
+
+- **Mount consumer** starts subscription-owned loading.
+- **Advance one poll** advances the virtual clock by one interval.
+- **Complete** returns a completed response and stops polling.
+- **Fail** returns a business-failure response while retaining progress.
+- **Trigger timeout** advances active time to the polling timeout.
+- **Fail next request** demonstrates the deterministic 500 ms retry delay.
+- **Pause** clears the pending timer and freezes timeout budget.
+- **Resume** restores one remaining delay without replaying missed ticks.
+- **Unmount consumer** releases subscription ownership and timers.
+- **Reset** creates a clean scenario with zero requests and zero outstanding timers.
+
+The diagnostics show operation ID, progress, business state, node status, freshness, error type, request counts, maximum concurrency, retry attempt, scheduled delay, timer count, and lifecycle state.
+
+Manual validation passed for progress, completion, business failure, timeout, retry, pause/resume, unmount, reset, and tab-switch cleanup.
+
 ### Query Groups
 
 The **Query Groups** scenario demonstrates one immutable aliased query definition reused for prefetch, component subscription, aggregate state, and refresh.

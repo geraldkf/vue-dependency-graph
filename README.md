@@ -8,7 +8,7 @@ This repository begins as an isolated research and development project. The exis
 
 Design and prototyping. Milestones 1 through 7 are implemented, including the framework-agnostic runtime, subscription scheduler, Vue composables, Pinia-owned runtime integration, atomic local context transactions, typed event-driven invalidation, and reusable query groups.
 
-Milestone 7 query groups are implemented and documented with final combined automated and manual validation pending. Query definitions preserve aliases and exact node types, `useQuery(...)` reuses the existing combined subscription path, and query prefetch and refresh delegate to existing runtime operations. The latest validation feedback exposed one test-expectation mismatch and two implicit `any` parameters; those narrow issues are corrected, and the full command suite must be rerun. APIs remain subject to change until the existing-application migration trial is complete. Milestone 8D poll-until completion, business failure, and timeout are implemented with offline repository validation pending. Retry, backoff, jitter, pause/resume, and the progress playground remain deferred to later Milestone 8 slices.
+Milestone 8 refresh policies and polling are implemented and validated. The runtime supports stale-after, fixed interval, typed poll-until completion and failure, timeout, bounded retry with backoff and jitter, pause/resume, optional browser lifecycle integration, and a deterministic Polling Progress playground. See `docs/implementation/86-milestone-8-implementation-summary.md`. APIs remain subject to change until the existing-application migration trial is complete.
 
 ## Repository model
 

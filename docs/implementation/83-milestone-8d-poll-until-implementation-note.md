@@ -2,7 +2,7 @@
 
 ## Status
 
-Implementation prepared. Offline repository validation pending.
+Complete and validated as part of the combined Milestone 8 checkout.
 
 ## Scope
 
@@ -133,7 +133,7 @@ Existing M8B and M8C suites continue to cover stale-after and interval behaviour
 - Existing stale-after and interval focused TypeScript suites remained valid.
 - Documentation links and changed-file ZIP integrity were checked.
 
-Repository dependencies are unavailable in the contained environment, so the exact project typecheck, complete Vitest suite, and production build remain pending.
+The exact repository command suite subsequently passed against the combined Milestone 8 checkout.
 
 ## Offline validation
 

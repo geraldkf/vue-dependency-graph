@@ -18,3 +18,6 @@ export type {
   UseQueryNodes,
   UseQueryResult,
 } from "./use-query";
+
+export { createBrowserRefreshPolicyEnvironment } from "./browser-refresh-policy-environment";
+export type { BrowserRefreshPolicyEnvironmentOptions } from "./browser-refresh-policy-environment";

@@ -2,7 +2,7 @@
 
 ## Status
 
-Implementation prepared. Offline repository validation pending.
+Complete and validated as part of the combined Milestone 8 checkout.
 
 ## Scope
 
@@ -68,7 +68,7 @@ Compile-time tests cover polling value types, mismatched policy values, reusable
 - Strict TypeScript compilation of `src/core/**/*.ts` passed with the available compiler.
 - Focused strict TypeScript compilation of the new compile-time policy test passed.
 
-Repository dependencies are unavailable in the contained environment, so the exact project commands remain pending.
+The exact repository command suite subsequently passed against the combined Milestone 8 checkout.
 
 ## Offline validation
 

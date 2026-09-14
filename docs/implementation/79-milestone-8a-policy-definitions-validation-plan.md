@@ -2,7 +2,7 @@
 
 ## Status
 
-Detailed implementation plan prepared for review. No source or test implementation has been applied by this planning step.
+Historical implementation plan. M8A and the combined Milestone 8 checkout are complete and validated.
 
 ## Objective
 
@@ -541,7 +541,7 @@ pnpm test:run --reporter verbose --no-color
 pnpm build
 ```
 
-M8A remains `Prepared; offline validation pending` until all four commands pass and their results are reported.
+M8A validation is complete. All four commands passed against the combined Milestone 8 checkout.
 
 No manual playground validation is required for M8A because policies are intentionally inert and no playground behaviour changes.
 
