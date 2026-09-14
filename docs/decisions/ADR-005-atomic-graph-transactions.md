@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted for design. Not yet implemented — scheduled for Milestone 5. This ADR records where the implementation will live and why, so Milestone 5 does not have to re-derive it, and so Milestone 9 (optimistic mutations) starts from a known constraint rather than discovering it after the fact.
+Implemented for Milestone 5. Automated repository and manual playground validation pending. This ADR records where the implementation will live and why, so Milestone 5 does not have to re-derive it, and so Milestone 9 (optimistic mutations) starts from a known constraint rather than discovering it after the fact.
 
 ## Context
 
@@ -61,3 +61,13 @@ Milestone 5 therefore adopts these narrower rules:
 This clarification deliberately replaces the earlier assumption that execution attempt-completion writes must always be intercepted by the same staging overlay. Execution race safety is instead preserved through existing generation and attempt-token checks, with commit-time context invalidation advancing affected generations once and aborting attempts that remain active.
 
 The detailed consistency model, commit ordering, rollback behaviour, risks, and implementation slices are recorded in `docs/implementation/29-milestone-5-atomic-transactions-plan.md`.
+
+
+## Overlapping transaction calls
+
+Milestone 5H.1 clarifies that overlapping calls on one runtime join one transaction group. The first call is the root and owns the commit or rollback outcome. All joined calls share staged context state and must settle before the root promise and group lifecycle complete. A joined failure remains caller-visible but does not poison a successful root unless it propagates into root work. This preserves caught nested failure behaviour and avoids completion-order-dependent outcomes without changing the public API.
+
+
+## Internal contract cleanup
+
+Milestone 5H.3 confirms that notification-buffer depth is private to dispatch deferral, while transaction-state decisions belong to the transaction coordinator. The accidental pre-release `RuntimeNotificationBuffer` type re-export was removed from the core public barrel because it represents composition wiring rather than a consumer capability. Staging and invalidation now share one internal `ContextChange` boundary type without exposing transaction storage publicly.

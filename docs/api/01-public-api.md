@@ -203,7 +203,7 @@ await runtime.transaction(async () => {
 });
 ```
 
-Milestone 5 context staging, commit-wide invalidation, and rollback behaviour are in progress. Context writes are held until the successful outer transaction completes, public reads remain committed reads while work is open, and synchronous or asynchronous outer failure discards staged context values without invalidation, abort, context notification, or context scheduling. Independent execution that completes while work is open remains committed and its buffered notification is released when the transaction closes. Settlement and execution-race validation remain incomplete until the later Milestone 5 slices are validated.
+Atomic local context transactions are implemented with validation pending. Context writes are held until the successful outer transaction completes, and public reads remain committed reads while work is open. Final values commit together, shared descendants invalidate once, and affected attempts abort after generation advancement. Synchronous or asynchronous failure discards staged context changes. Transaction-time `whenSettled()` waits through successful commit scheduling, while rollback settles without phantom work. Explicit `execute`, `prefetch`, and `refresh` calls are rejected inside a transaction. Overlapping transaction calls on one runtime join a single group: the first call is the root, all joined calls settle before the group closes, and the root outcome controls commit or rollback. Transactions do not provide backend rollback.
 
 ## Planned APIs
 

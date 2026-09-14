@@ -21,6 +21,7 @@
 <script setup lang="ts">
 import { computed, ref, type Component } from "vue";
 import AggregateQueryScenario from "./scenarios/AggregateQueryScenario.vue";
+import AtomicTransactionScenario from "./scenarios/AtomicTransactionScenario.vue";
 import ConcurrentConsumersScenario from "./scenarios/ConcurrentConsumersScenario.vue";
 import ConcurrencyLimitScenario from "./scenarios/ConcurrencyLimitScenario.vue";
 import ContextSwitchingScenario from "./scenarios/ContextSwitchingScenario.vue";
@@ -38,6 +39,11 @@ const scenarios = [
     id: "context-switching",
     label: "Context Switching",
     component: ContextSwitchingScenario,
+  },
+  {
+    id: "atomic-transaction",
+    label: "Atomic Transaction",
+    component: AtomicTransactionScenario,
   },
   {
     id: "concurrent-consumers",

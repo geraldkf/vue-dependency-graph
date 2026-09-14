@@ -64,3 +64,22 @@ Manual validation:
 3. With unlimited selected, all four loaders run before any completes.
 4. Reset clears counts, start order, and loader states.
 5. Switching tabs while work is active does not leave suspended scenario work behind.
+
+### Atomic Transaction
+
+The Atomic Transaction scenario uses two related context values and one derived result in a dedicated runtime.
+
+Use **Start transaction** to stage the first context update and pause at an awaited gap. While the transaction is open, the displayed committed values, combined result, derivation count, and observer snapshot history remain unchanged.
+
+Use **Complete transaction** to stage the second value and commit the outer transaction. The scenario then displays the final pair, recomputes the combined result once, and records only the coherent committed observer snapshot.
+
+Manual validation:
+
+1. Confirm the initial committed values are `1 + 10` and the combined result is `11`.
+2. Select **Start transaction**.
+3. Confirm the transaction state is `open` and no `2 + 10` snapshot appears.
+4. Select **Complete transaction**.
+5. Confirm the committed values are `2 + 20` and the combined result is `22`.
+6. Confirm observer history contains `2 + 20` but never `2 + 10` or `1 + 20`.
+7. Confirm the derivation count advances only for the committed result.
+8. Select **Reset** and confirm the scenario returns to its initial values with a cleared snapshot history.

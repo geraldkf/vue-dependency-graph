@@ -27,7 +27,6 @@ export interface RuntimeNotificationBuffer {
    * outermost transaction's single commit.
    */
   readonly runTransaction: <T>(work: () => T | Promise<T>) => Promise<T>;
-  readonly isInsideTransaction: () => boolean;
 }
 
 /**
@@ -119,6 +118,5 @@ export const createRuntimeNotificationBuffer = (
     resolveSettlementIfIdle,
     whenSettled,
     runTransaction,
-    isInsideTransaction: () => depth > 0,
   });
 };

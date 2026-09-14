@@ -1,8 +1,0 @@
-src/core/demand.ts
-tests/core/demand-registration.spec.ts
-tests/core/demand-propagation.spec.ts
-tests/core/demand-lifecycle.spec.ts
-tests/core/demand-types.test.ts
-docs/implementation/08-demand-registration-implementation-note.md
-docs/implementation/prompts/004-implement-demand-registration-and-lifecycle.md
-docs/implementation/prompts/005-implement-automatic-demand-scheduler.md

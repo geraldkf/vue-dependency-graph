@@ -1,9 +1,5 @@
 import type { ContextNodeDefinition } from "../graph/node";
-
-export interface StagedContextValue {
-  readonly node: ContextNodeDefinition<unknown>;
-  readonly value: unknown;
-}
+import type { ContextChange } from "./types";
 
 export interface RuntimeTransactionCoordinator {
   readonly runTransaction: <T>(
@@ -25,7 +21,7 @@ export interface RuntimeTransactionCoordinatorDependencies {
     node: ContextNodeDefinition<TValue>
   ) => ContextNodeDefinition<TValue>;
   readonly commitContexts: (
-    changes: readonly StagedContextValue[]
+    changes: readonly ContextChange[]
   ) => void;
 }
 
@@ -39,7 +35,10 @@ export const createRuntimeTransactionCoordinator = ({
   commitContexts,
 }: RuntimeTransactionCoordinatorDependencies): RuntimeTransactionCoordinator => {
   let depth = 0;
-  let stagedContexts = new Map<string, StagedContextValue>();
+  let rootSucceeded = false;
+  let resolveJoinedTransactions: (() => void) | undefined;
+  let joinedTransactionsSettled: Promise<void> | undefined;
+  let stagedContexts = new Map<string, ContextChange>();
 
   const commitStagedContexts = (): void => {
     const contexts = stagedContexts;
@@ -52,21 +51,46 @@ export const createRuntimeTransactionCoordinator = ({
     stagedContexts = new Map();
   };
 
+  const waitForJoinedTransactions = (): Promise<void> => {
+    joinedTransactionsSettled ??= new Promise<void>(resolve => {
+      resolveJoinedTransactions = resolve;
+    });
+    return joinedTransactionsSettled;
+  };
+
+  const resetJoinedTransactionSettlement = (): void => {
+    resolveJoinedTransactions = undefined;
+    joinedTransactionsSettled = undefined;
+  };
+
   const runTransaction = <T>(
     work: () => T | Promise<T>
   ): Promise<T> =>
     runWithBufferedNotifications(async () => {
+      const isRoot = depth === 0;
       let completed = false;
+
+      if (isRoot) rootSucceeded = false;
       depth += 1;
+
       try {
         const result = await work();
         completed = true;
         return result;
       } finally {
+        if (isRoot) rootSucceeded = completed;
         depth -= 1;
-        if (depth === 0) {
-          if (completed) commitStagedContexts();
+
+        if (!isRoot && depth === 0) {
+          resolveJoinedTransactions?.();
+        }
+
+        if (isRoot) {
+          if (depth > 0) await waitForJoinedTransactions();
+
+          if (rootSucceeded) commitStagedContexts();
           else discardStagedContexts();
+          resetJoinedTransactionSettlement();
         }
       }
     });

@@ -101,6 +101,27 @@ Use fake timers.
 - Backoff and jitter bounds
 - Subscription removal cleanup
 
+### Atomic transactions
+
+Use deferred promises and public runtime behaviour.
+
+Verify:
+
+- Committed reads while a transaction is open
+- Final-value reconciliation and reverted no-ops
+- Nested success, propagated failure, and caught inner failure
+- Shared and diamond descendants invalidate once
+- Generation changes and aborts occur at commit
+- Synchronous and asynchronous rollback
+- Independent execution remains committed across rollback
+- Transaction-time settlement on commit and rollback
+- Completion before commit is preserved as stale data
+- Ignored-abort completion after commit remains obsolete
+- Execute, prefetch, and refresh guards
+- Playground observers never receive partial related context values
+
+Keep transaction integration coverage grouped by behaviour: staging, invalidation, rollback, settlement, execution races, and overlapping transaction calls. Prefer adding a test to the narrowest matching suite rather than rebuilding one broad transaction file.
+
 ### Mutations
 
 - Success invalidation

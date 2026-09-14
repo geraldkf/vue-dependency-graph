@@ -36,6 +36,7 @@ describe("playground shell", () => {
     ).toBeTruthy();
 
     const tabs = [
+      "Atomic Transaction",
       "Concurrent Consumers",
       "Error and Retry",
       "Unmount Cleanup",

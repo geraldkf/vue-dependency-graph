@@ -7,11 +7,7 @@ import type {
   ContextNodeDefinition,
   Graph,
 } from "../graph/node";
-
-export interface ContextChange {
-  readonly node: ContextNodeDefinition<unknown>;
-  readonly value: unknown;
-}
+import type { ContextChange } from "../transactions/types";
 
 export interface RuntimeInvalidationController {
   readonly resolveContextNode: <TValue>(

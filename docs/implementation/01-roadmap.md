@@ -199,29 +199,42 @@ This does not satisfy any Milestone 5 checklist item below: state mutations are 
 
 ## Milestone 5: Transactions and invalidation
 
-Status: Planning prepared; offline validation pending.  
+Status: Implementation prepared; automated and manual validation pending.  
 Implementation plan: `docs/implementation/29-milestone-5-atomic-transactions-plan.md`
 
 - [x] Atomicity model, mutation-path inventory, and implementation sequence prepared
 - [ ] Planning offline validation
-- [ ] Atomic context updates
+- [x] Atomic context updates prepared
 - [x] M5B transaction coordinator and operation guards prepared
 - [x] M5C staged context values prepared
 - [x] M5D atomic commit and coalesced invalidation prepared
 - [x] M5E rollback and failure-path behaviour prepared
+- [x] M5F settlement and execution-race behaviour prepared
+- [x] M5G playground and maintained documentation prepared
+- [ ] M5G automated and manual validation
+- [ ] M5F offline validation
 - [ ] M5E offline validation
 - [ ] M5D offline validation
 - [ ] M5C offline validation
 - [ ] M5B offline validation
-- [ ] Nested transactions
-- [ ] Deferred invalidation
-- [ ] Deferred scheduling
+- [x] Nested transactions prepared
+- [x] Deferred invalidation prepared
+- [x] Deferred scheduling prepared
 - [x] Transaction rollback for local synchronous and asynchronous failure prepared
-- [ ] Generation changes and abort behaviour
+- [x] Generation changes and abort behaviour prepared
 
 Exit criteria: observers do not see partially committed related context values.
 
 Design decision recorded ahead of implementation: `docs/decisions/ADR-005-atomic-graph-transactions.md`.
+
+Post-validation follow-up: M5H transaction hardening and test organisation is planned in `docs/implementation/36-milestone-5-review-and-follow-up-plan.md`. It is not a blocker for Milestone 5 validation.
+
+- [x] M5H.1 overlapping transaction semantics prepared
+- [ ] M5H.1 offline validation
+- [x] M5H.2 transaction test organisation prepared
+- [ ] M5H.2 offline validation
+- [x] M5H.3 internal transaction contracts prepared
+- [ ] M5H.3 offline validation
 
 ## Milestone 6: Typed events
 
