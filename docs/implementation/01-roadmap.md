@@ -296,12 +296,14 @@ Exit criterion: only operations performed through a `GraphTransaction` participa
 
 ## Milestone 7: Query groups
 
-Status: M7A through M7D prepared; automated and manual validation pending.  
+Status: Implementation and maintained documentation complete; final combined automated and manual validation pending.  
 Implementation plan: `docs/implementation/71-milestone-7-query-groups-plan.md`  
 M7A implementation note: `docs/implementation/72-milestone-7a-query-definitions-note.md`  
 M7B implementation note: `docs/implementation/73-milestone-7b-vue-use-query-note.md`  
 M7C implementation note: `docs/implementation/74-milestone-7c-query-operations-note.md`  
-M7D implementation note: `docs/implementation/75-milestone-7d-query-groups-playground-note.md`
+M7D implementation note: `docs/implementation/75-milestone-7d-query-groups-playground-note.md`  
+Implementation summary: `docs/implementation/76-milestone-7-implementation-summary.md`  
+Validation handoff: `docs/implementation/77-milestone-7-validation-handoff.md`
 
 - [x] M7A immutable `defineQuery(...)` definitions
 - [x] M7A alias and node-handle type preservation
@@ -314,8 +316,13 @@ M7D implementation note: `docs/implementation/75-milestone-7d-query-groups-playg
 - [ ] M7C offline validation
 - [x] M7D deterministic playground scenario prepared
 - [ ] M7D automated and manual validation
-- [ ] M7E maintained documentation reconciliation
-- [ ] M7E final automated and manual validation
+- [x] M7E maintained documentation reconciliation prepared
+- [x] M7E final validation handoff prepared
+- [ ] Core boundary check against final combined checkout
+- [ ] Repository typecheck
+- [ ] Full Vitest suite
+- [ ] Production build
+- [ ] Manual Query Groups playground validation
 
 Exit criteria: representative page requirements are declared once and reused.
 

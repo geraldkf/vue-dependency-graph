@@ -6,9 +6,9 @@ This repository begins as an isolated research and development project. The exis
 
 ## Status
 
-Design and prototyping. Milestones 1 through 6 are implemented, including the framework-agnostic runtime, subscription scheduler, Vue composables, Pinia-owned runtime integration, atomic local context transactions, and typed event-driven invalidation.
+Design and prototyping. Milestones 1 through 7 are implemented, including the framework-agnostic runtime, subscription scheduler, Vue composables, Pinia-owned runtime integration, atomic local context transactions, typed event-driven invalidation, and reusable query groups.
 
-Milestone 6 and the Transaction Ownership Isolation corrective work are implemented and prepared for final combined validation. Core boundary and standalone strict core TypeScript checks pass; repository typecheck, tests, build, and manual playground validation remain pending. Transactions now use an explicit `GraphTransaction` handle, plain runtime operations remain independent while a transaction is open, and same-context conflicts reject atomically. Milestone 7, query groups, is the next implementation milestone after final validation. APIs remain subject to change until the existing-application migration trial is complete.
+Milestone 7 query groups are implemented and documented with final combined automated and manual validation pending. Query definitions preserve aliases and exact node types, `useQuery(...)` reuses the existing combined subscription path, and query prefetch and refresh delegate to existing runtime operations. The latest validation feedback exposed one test-expectation mismatch and two implicit `any` parameters; those narrow issues are corrected, and the full command suite must be rerun. APIs remain subject to change until the existing-application migration trial is complete. Milestone 8, refresh policies and polling, is the next numbered implementation milestone after validation.
 
 ## Repository model
 

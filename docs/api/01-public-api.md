@@ -246,9 +246,9 @@ Data and derived nodes may declare unconditional or conditional `invalidatedBy` 
 
 Publication invalidates matched nodes synchronously and schedules subscribed stale work through the existing scheduler. It is silent when no declaration matches. Predicate evaluation completes before mutation, so a predicate failure applies no partial event invalidation. Plain `runtime.publish(...)` is always immediate, even while another transaction is open. Only `transaction.publish(...)` is staged and follows the root transaction outcome. Observer notification and automatic scheduling for these plain runtime operations are also immediate and are not held behind the unrelated transaction.
 
-## Query definitions
+## Query groups
 
-Milestone 7A introduces immutable query definitions as typed groups of existing nodes:
+Milestone 7 implements immutable query definitions as typed groups of existing nodes:
 
 ```ts
 const AppointmentsPage = defineQuery({
@@ -298,4 +298,4 @@ pollUntil(...);
 runtime.mutate(...);
 ```
 
-The remaining query-group playground and final validation work, polling policies, optimistic mutations, diagnostics, snapshots, and devtools are not yet stable public APIs.
+Polling policies, optimistic mutations, diagnostics, snapshots, and devtools are not yet stable public APIs. Query-group implementation is complete with final combined validation pending.

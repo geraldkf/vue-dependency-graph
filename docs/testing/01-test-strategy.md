@@ -154,6 +154,12 @@ Verify:
 - Two consumers share one load
 - Reactive status and data changes
 - `useNodes` tuple typing and runtime values
+- `defineQuery(...)` alias and exact node-handle typing
+- `useQuery(...)` aliased result typing and aggregate runtime values
+- One combined query subscription and cleanup on scope disposal
+- Query prefetch without persistent subscription ownership
+- Query refresh forwarding only data and derived members
+- Query Groups playground fresh-prefetch reuse and tab cleanup
 - Aggregate partial failure and retained successful data
 - Explicit runtime precedence over injection
 - One stable runtime per Pinia instance
@@ -176,6 +182,8 @@ Compile-time `.test.ts` files are checked by `vue-tsc` and excluded from Vitest.
 Add a type-test mechanism to verify:
 
 - Node result inference
+- Query alias and node-map inference
+- Query operation argument and result types
 - Context set value type
 - Event payload type
 - Query alias result type

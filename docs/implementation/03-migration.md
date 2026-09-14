@@ -32,6 +32,24 @@ clearNodeData     -> invalidate/refresh
 mutateNode        -> update or mutate
 ```
 
+For a page that repeats the same node list across mounting, route prefetch, and manual refresh, define one query group and reuse it:
+
+```ts
+const PageQuery = defineQuery({
+  key: "page-query",
+  nodes: {
+    primary: PrimaryNode,
+    permissions: PermissionsNode,
+  },
+});
+
+await runtime.prefetchQuery(PageQuery);
+const page = useQuery(PageQuery, { runtime });
+await page.refresh();
+```
+
+Query aliases are consumer-facing names and do not change graph node identity or topology. Keep context changes explicit through `setContext(...)`; query refresh intentionally skips context aliases.
+
 ### Stage 3: Shadow validation
 
 Where practical, compare execution plans or results in non-production development builds. Avoid duplicate real mutations.

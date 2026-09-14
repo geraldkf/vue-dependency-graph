@@ -2,7 +2,7 @@
 
 ## Status
 
-M7A through M7D are prepared. Automated and manual validation is pending.
+M7A through M7E are prepared. Final combined automated and manual validation is pending.
 
 ## Objective
 
@@ -98,6 +98,8 @@ Status: Prepared; automated and manual validation pending. See `docs/implementat
 Exit condition: the playground visibly demonstrates one reusable page requirement declaration across loading and refresh workflows.
 
 ### M7E: Documentation and final validation
+
+Status: Maintained documentation and final validation handoff prepared. See `docs/implementation/76-milestone-7-implementation-summary.md` and `docs/implementation/77-milestone-7-validation-handoff.md`.
 
 - Reconcile the public API, Vue architecture, roadmap, test strategy, playground guide, and README status.
 - Run the full offline validation suite.
