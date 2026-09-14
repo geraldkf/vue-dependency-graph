@@ -47,6 +47,9 @@ import type { AnyEventDefinition, EventPayload } from "./events/types";
 import { createRuntimeEventMatcher } from "./events/event-matcher";
 import type { AnyQueryDefinition } from "./queries/types";
 import { getQueryNodes, getQueryRefreshableNodes } from "./queries/query";
+import { createDefaultRefreshPolicyEnvironment } from "./refresh-policies/environment";
+import { createRuntimeRefreshPolicyController } from "./refresh-policies/policy-controller";
+import type { RefreshPolicyEnvironment } from "./refresh-policies/types";
 
 export interface GraphRuntimeOptions {
   /**
@@ -54,6 +57,11 @@ export interface GraphRuntimeOptions {
    * within this runtime. Defaults to unlimited concurrency.
    */
   readonly maxConcurrentLoads?: number;
+  /**
+   * Clock and timer services used by runtime refresh policies. Tests may
+   * inject a deterministic environment. Defaults to platform timers.
+   */
+  readonly refreshPolicyEnvironment?: RefreshPolicyEnvironment;
 }
 
 export interface GraphRuntime {
@@ -95,8 +103,10 @@ export interface GraphRuntime {
   ) => Promise<T>;
 }
 
-const isSchedulerOnlyAttempt = (attempt: ActiveAttempt): boolean =>
-  attempt.origins.size === 1 && attempt.origins.has("scheduler");
+const isAutomaticOnlyAttempt = (attempt: ActiveAttempt): boolean =>
+  [...attempt.origins].every(
+    origin => origin === "scheduler" || origin === "refresh-policy"
+  );
 
 export const createGraphRuntime = (
   graph: Graph,
@@ -195,7 +205,7 @@ export const createGraphRuntime = (
         if (
           node &&
           !subscriptions.hasSubscribers(node) &&
-          isSchedulerOnlyAttempt(attempt)
+          isAutomaticOnlyAttempt(attempt)
         ) {
           attempt.controller.abort();
         }
@@ -254,6 +264,25 @@ export const createGraphRuntime = (
     execute: (targets, origin) => execution.execute(targets, origin),
     notify: emitNotify,
   });
+
+  const refreshPolicies = createRuntimeRefreshPolicyController({
+    graph,
+    environment:
+      options?.refreshPolicyEnvironment ??
+      createDefaultRefreshPolicyEnvironment(),
+    getMutableState,
+    hasSubscribers: subscriptions.hasSubscribers,
+    refreshPolicyNode: operations.refreshPolicyNode,
+    failPolicyNode: (node, generation, error) => {
+      const state = getMutableState(node.key);
+      if (state.generation !== generation) return;
+      state.status = "error";
+      state.freshness = "stale";
+      state.error = error;
+      emitNotify();
+    },
+  });
+  onChange(refreshPolicies.reconcile);
 
   return Object.freeze({
     getState: <TNode extends AnyNodeDefinition>(node: TNode) =>

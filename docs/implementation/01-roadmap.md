@@ -326,17 +326,24 @@ Validation handoff: `docs/implementation/77-milestone-7-validation-handoff.md`
 
 Exit criteria: representative page requirements are declared once and reused.
 
-## Milestone 8: Refresh and polling
+## Milestone 8: Refresh policies and polling
 
-- [ ] Stale time
-- [ ] Fixed interval while subscribed
-- [ ] Poll-until completion
-- [ ] Timeout
-- [ ] Retry/backoff/jitter
-- [ ] Pause and resume hooks
-- [ ] Progress playground
+Status: M8D poll-until implementation prepared with offline validation pending. Retry, lifecycle integration, and later Milestone 8 work remain unimplemented.  
+Implementation plan: docs/implementation/78-milestone-8-refresh-polling-plan.md  
+Design decision: docs/decisions/ADR-012-refresh-policies-and-polling.md
 
-Exit criteria: long-running operation progresses to completion without overlapping requests or leaked timers.
+- [ ] M8A immutable policy definitions, data-node typing, validation, and compile-time coverage prepared. Plan: docs/implementation/79-milestone-8a-policy-definitions-validation-plan.md. Implementation note: docs/implementation/80-milestone-8a-policy-definitions-validation-note.md. Offline validation pending.
+- [ ] M8B runtime policy controller, injected deterministic environment, stale-after behaviour, and automatic ownership prepared. Implementation note: docs/implementation/81-milestone-8b-stale-after-implementation-note.md. Offline validation pending.
+- [ ] M8C fixed interval while subscribed with recursive non-overlapping scheduling prepared. Implementation note: docs/implementation/82-milestone-8c-fixed-interval-implementation-note.md. Offline validation pending.
+- [ ] M8D poll-until completion, business failure, timeout, generation changes, and terminal errors prepared. Implementation note: docs/implementation/83-milestone-8d-poll-until-implementation-note.md. Offline validation pending.
+- [ ] M8E bounded retry, fixed/exponential backoff, jitter, pause/resume, and optional Vue/browser environment integration
+- [ ] M8F deterministic Polling Progress playground and Vue Testing Library coverage
+- [ ] M8G maintained documentation reconciliation, final automated validation, and manual browser validation
+- [ ] Preserve the existing execution engine, refresh preparation, runtime concurrency limit, generation protection, and stale-data semantics
+- [ ] Clear timers and automatic-only work on final unsubscribe
+- [ ] Keep `whenSettled()` scheduler-specific rather than making recurring policies permanently unsettled
+
+Exit criteria: a long-running operation progresses to completion without overlapping requests or leaked timers.
 
 ## Milestone 9: Mutation framework
 

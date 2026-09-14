@@ -1,5 +1,7 @@
 # Events, Refresh Policies, and Polling
 
+> Milestone 8D stale-after, fixed interval, and poll-until completion, failure, and timeout are implemented with offline repository validation pending. Retry, backoff, jitter, and pause/resume remain planned. The detailed implementation sequence and proposed contracts are in [the Milestone 8 plan](../implementation/78-milestone-8-refresh-polling-plan.md) and [ADR-012](../decisions/ADR-012-refresh-policies-and-polling.md). The sections below describe the target design unless explicitly marked as implemented.
+
 ## Domain events
 
 Status: Milestone 6 implementation and maintained documentation are complete, with final combined automated and manual validation pending. Typed events support graph indexing, conditional matching, immediate publication, transaction-aware publication, and the cross-domain playground. See `docs/implementation/52-milestone-6-implementation-summary.md`.

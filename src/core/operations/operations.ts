@@ -3,7 +3,11 @@ import type {
   ActiveAttempt,
   MutableNodeRuntimeState,
 } from "../state/state";
-import type { AnyNodeDefinition } from "../graph/types";
+import type {
+  AnyNodeDefinition,
+  DataNodeDefinition,
+} from "../graph/types";
+import type { ExecutionOrigin } from "../state/state";
 
 export interface RuntimeOperationsController {
   readonly prefetch: (
@@ -11,6 +15,9 @@ export interface RuntimeOperationsController {
   ) => Promise<void>;
   readonly refresh: (
     targets: readonly RefreshableNodeDefinition[]
+  ) => Promise<void>;
+  readonly refreshPolicyNode: (
+    node: DataNodeDefinition<unknown, readonly AnyNodeDefinition[]>
   ) => Promise<void>;
 }
 
@@ -27,7 +34,7 @@ export interface RuntimeOperationsDependencies {
   ) => AnyNodeDefinition;
   readonly execute: (
     targets: readonly AnyNodeDefinition[],
-    origin: "prefetch" | "refresh"
+    origin: "prefetch" | "refresh" | "refresh-policy"
   ) => Promise<void>;
   readonly notify: () => void;
 }
@@ -55,18 +62,17 @@ export const createRuntimeOperationsController = ({
     targets: readonly AnyNodeDefinition[]
   ): Promise<void> => execute(targets, "prefetch");
 
-  const refresh = (
-    requestedTargets: readonly RefreshableNodeDefinition[]
+  const refreshWithOrigin = (
+    requestedTargets: readonly RefreshableNodeDefinition[],
+    origin: Extract<ExecutionOrigin, "refresh" | "refresh-policy">,
+    purpose: string
   ): Promise<void> => {
     if (requestedTargets.length === 0) return Promise.resolve();
 
     const targets: RefreshableNodeDefinition[] = [];
     const keys = new Set<string>();
     for (const requested of requestedTargets) {
-      const registered = resolveRegisteredNode(
-        requested,
-        "manual refresh"
-      );
+      const registered = resolveRegisteredNode(requested, purpose);
       if (!isRefreshableNode(registered)) {
         return Promise.reject(
           new Error(
@@ -81,12 +87,23 @@ export const createRuntimeOperationsController = ({
 
     const operationKey = createRefreshOperationKey(keys);
     const existing = refreshOperations.get(operationKey);
-    if (existing) return existing;
+    if (existing) {
+      for (const target of targets) {
+        getActiveAttempt(target.key)?.origins.add(origin);
+      }
+      return existing;
+    }
 
     for (const target of targets) {
       const state = getMutableState(target.key);
       const active = getActiveAttempt(target.key);
-      if (active?.origins.has("refresh")) continue;
+      if (
+        active?.origins.has("refresh") ||
+        active?.origins.has("refresh-policy")
+      ) {
+        active.origins.add(origin);
+        continue;
+      }
       state.generation += 1;
       state.freshness = "stale";
       state.status = state.hasSuccessfulValue ? "success" : "idle";
@@ -94,7 +111,7 @@ export const createRuntimeOperationsController = ({
     }
     notify();
 
-    const operation = execute(targets, "refresh").finally(() => {
+    const operation = execute(targets, origin).finally(() => {
       if (refreshOperations.get(operationKey) === operation) {
         refreshOperations.delete(operationKey);
       }
@@ -103,5 +120,14 @@ export const createRuntimeOperationsController = ({
     return operation;
   };
 
-  return Object.freeze({ prefetch, refresh });
+  const refresh = (
+    targets: readonly RefreshableNodeDefinition[]
+  ): Promise<void> => refreshWithOrigin(targets, "refresh", "manual refresh");
+
+  const refreshPolicyNode = (
+    node: DataNodeDefinition<unknown, readonly AnyNodeDefinition[]>
+  ): Promise<void> =>
+    refreshWithOrigin([node], "refresh-policy", "refresh policy");
+
+  return Object.freeze({ prefetch, refresh, refreshPolicyNode });
 };

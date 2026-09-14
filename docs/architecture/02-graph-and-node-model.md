@@ -67,6 +67,12 @@ const CanModifyCredit = defineDerivedNode({
 
 Asynchronous work belongs in a data node so it shares the runtime's loading, cancellation, error, refresh, and metrics model.
 
+## Refresh policy metadata
+
+Data-node definitions may carry one immutable refresh policy created by `staleAfter(...)`, `refreshInterval(...)`, or `pollUntil<TValue>(...)`. The policy is graph metadata only. Runtime timers, retry counters, pause state, and polling sessions belong to each `GraphRuntime` and are not implemented until later Milestone 8 slices.
+
+Context and derived nodes cannot declare refresh policies. Graph creation defensively validates policy metadata but does not evaluate polling predicates or create runtime activity.
+
 ## Forward references
 
 A dependency resolver supports definitions that require forward references:

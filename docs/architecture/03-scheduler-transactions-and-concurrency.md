@@ -163,6 +163,26 @@ Refresh accepts data and derived targets, advances their generation, preserves p
 
 Callers await these operations directly. Their failures reject with `GraphExecutionError` and do not automatically become scheduler errors.
 
+## Stale-after refresh ownership
+
+A subscribed stale-after data node receives one runtime-owned timer after successful execution. Timer expiry delegates to normal refresh preparation and execution with the internal `refresh-policy` origin. Manual and policy refresh of the same target share work.
+
+Final unsubscribe aborts an active attempt only when all owners are automatic (`scheduler` or `refresh-policy`). Any explicit, prefetch, or manual-refresh owner protects the attempt. Policy timers are not included in scheduler settlement, so `whenSettled()` remains finite for future recurring policies.
+
+## Fixed interval scheduling
+
+Interval policies use recursive timeouts rather than `setInterval(...)`. One timeout exists per subscribed interval node. Expiry requests a policy-owned refresh through the existing operation and execution controllers. The next timeout is created only after successful policy work fully settles, preventing overlapping requests and avoiding a race with shared refresh-operation cleanup.
+
+A failed interval refresh schedules no next timeout in M8C. Retry and backoff remain M8E work. Context or event invalidation closes the previous timing session; successful execution for the new generation starts a new full interval.
+
+## Poll-until sessions
+
+Poll-until uses the same recursive policy timeout and policy-owned refresh origin as fixed interval. A runtime-local session holds polling start time, evaluated generation, timer token, operation settlement state, and terminal state.
+
+Policy-owned refresh generation changes continue the same cycle. External invalidation closes the prior cycle and a later successful generation starts a clean cycle. Terminal error mutation verifies generation before preserving data and changing only status, freshness, and error.
+
+Polling timers remain outside scheduler settlement. `whenSettled()` continues to describe automatic dependency scheduling, not future polling ticks.
+
 ## Transaction seam
 
 ```ts

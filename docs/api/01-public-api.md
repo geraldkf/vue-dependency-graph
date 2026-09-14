@@ -291,6 +291,77 @@ await page.refresh();
 
 Query prefetch delegates to the existing prefetch operation for every query node. Query refresh delegates to the existing refresh operation for data and derived query nodes; context aliases are excluded because context values change through `setContext(...)`. Both methods preserve existing execution, failure, concurrency, and transaction-ownership behaviour.
 
+## Refresh policy definitions
+
+Milestone 8A defines immutable refresh-policy metadata for data nodes. Runtime interpretation begins in Milestone 8B, so these declarations do not yet create timers or automatic refresh behaviour.
+
+```ts
+const Progress = defineDataNode({
+  key: "progress",
+  initialValue: undefined as ReportProgress | undefined,
+  load: ({ signal }) => api.getProgress(signal),
+  refresh: pollUntil<ReportProgress | undefined>({
+    intervalMs: 2_000,
+    timeoutMs: 600_000,
+    stopWhen: value => value?.state === "completed",
+    failWhen: value => value?.state === "failed",
+  }),
+});
+```
+
+Use `staleAfter(...)` for age-based policy metadata and `refreshInterval(...)` for repeating policy metadata. Interval and polling policies may declare fixed or exponential retry metadata. Policies are copied and frozen. Context and derived nodes do not accept refresh policies.
+
+### Stale-after runtime behaviour
+
+Milestone 8B activates `staleAfter(...)` for subscribed data nodes. A runtime schedules one refresh after the latest successful value reaches the declared age. Final unsubscribe clears the timer and aborts policy-only work. Resubscription reuses the remaining freshness duration.
+
+```ts
+const runtime = createGraphRuntime(graph, {
+  refreshPolicyEnvironment,
+});
+```
+
+`refreshPolicyEnvironment` is optional and primarily supports deterministic clocks in tests. The default uses platform timers. `whenSettled()` remains scheduler-specific and does not wait for future policy timers.
+
+### Fixed interval while subscribed
+
+Milestone 8C activates `refreshInterval(...)` for subscribed data nodes:
+
+```ts
+const Notifications = defineDataNode({
+  key: "notifications",
+  initialValue: [] as Notification[],
+  load: ({ signal }) => api.getNotifications(signal),
+  refresh: refreshInterval({ intervalMs: 60_000 }),
+});
+```
+
+The runtime starts one timeout after successful work settles. Timer expiry delegates to the existing refresh and execution path. The next timeout begins only after successful policy work settles, so slow requests do not overlap. Final unsubscribe clears the timer, and resubscription starts a clean full interval.
+
+Retry metadata remains inert until M8E. A failed interval refresh retains existing stale data and suspends automatic interval work until a later external execution succeeds.
+
+### Poll until completion
+
+Milestone 8D activates `pollUntil<TValue>(...)` for subscribed data nodes:
+
+```ts
+const ReportProgress = defineDataNode({
+  key: "reportProgress",
+  initialValue: undefined as Progress | undefined,
+  load: ({ signal }) => api.getProgress(signal),
+  refresh: pollUntil<Progress | undefined>({
+    intervalMs: 2_000,
+    timeoutMs: 600_000,
+    failWhen: value => value?.state === "failed",
+    stopWhen: value => value?.state === "completed",
+  }),
+});
+```
+
+Every successful value is evaluated in failure, completion, timeout order. Completion leaves the successful value fresh. Business failure, predicate exception, and timeout preserve the latest successful value but expose a terminal error and stale freshness.
+
+Exported terminal error types are `GraphPollingConditionError` and `GraphPollingTimeoutError`. Retry metadata remains inert until M8E.
+
 ## Other planned APIs
 
 ```ts

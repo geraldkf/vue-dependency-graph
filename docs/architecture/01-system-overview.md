@@ -114,6 +114,10 @@ Devtools code must be tree-shakeable or excluded from production application usa
 
 A controlled Vue application where developers can change latency, failures, dependencies, contexts, event publication, mutation outcomes, and polling completion without relying on a product backend.
 
+## Refresh-policy runtime
+
+Milestone 8B adds a runtime-local policy controller for stale-after data nodes. It observes committed runtime transitions, tracks successful timestamps, owns timers, and delegates due work to the existing refresh and execution capabilities. Graph definitions remain immutable and carry metadata only.
+
 ## Why one package
 
 A single package is preferred during research and development because:

@@ -1,4 +1,5 @@
 import type { AnyEventDefinition, EventPayload } from "../events/types";
+import type { RefreshPolicy } from "../refresh-policies/types";
 
 export type NodeKind = "context" | "data" | "derived";
 
@@ -77,6 +78,7 @@ export interface DataNodeDefinition<
 > extends NodeDefinition<TValue, "data", TDependencies> {
   readonly initialValue: TValue;
   readonly invalidatedBy: TInvalidatedBy;
+  readonly refresh: RefreshPolicy<TValue> | undefined;
   readonly load: (context: LoadContext<TDependencies>) => Promise<TValue>;
 }
 
@@ -102,6 +104,7 @@ export interface DataNodeOptions<
   readonly key: string;
   readonly dependencies?: DependencySource<TDependencies>;
   readonly invalidatedBy?: TInvalidatedBy;
+  readonly refresh?: RefreshPolicy<TValue>;
   readonly initialValue: TValue;
   readonly load: (context: LoadContext<TDependencies>) => Promise<TValue>;
 }

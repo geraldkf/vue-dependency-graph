@@ -24,7 +24,8 @@ export type ExecutionOrigin =
   | "explicit"
   | "scheduler"
   | "prefetch"
-  | "refresh";
+  | "refresh"
+  | "refresh-policy";
 
 export interface ActiveAttempt {
   readonly generation: number;

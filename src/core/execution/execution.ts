@@ -172,7 +172,8 @@ export const createRuntimeExecutionController = ({
         notify();
 
         if (
-          currentAttempt.origins.has("refresh") &&
+          (currentAttempt.origins.has("refresh") ||
+            currentAttempt.origins.has("refresh-policy")) &&
           hadSuccessfulValue &&
           !Object.is(previousData, value)
         ) {

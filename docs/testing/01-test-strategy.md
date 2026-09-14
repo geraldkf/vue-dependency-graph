@@ -177,6 +177,24 @@ Use a real `createPinia()` instance and the real dependency graph store for Pini
 
 Compile-time `.test.ts` files are checked by `vue-tsc` and excluded from Vitest. Register Vue Testing Library cleanup globally. Use fake timers only for deterministic playground delays, not for graph execution ordering.
 
+## Refresh policy tests
+
+M8A adds behavioural coverage for immutable policy descriptors, normalized defaults, invalid configuration, data-node integration, and defensive graph validation. Compile-time coverage verifies polling value types and confirms context and derived nodes reject refresh metadata.
+
+Later Milestone 8 timer and polling tests must use an injected deterministic environment rather than real delays.
+
+### Stale-after runtime coverage
+
+M8B uses an injected deterministic environment rather than real delays. Coverage verifies timer creation, duration expiry, remaining age after resubscription, timer cleanup, automatic-only cancellation, and shared manual-refresh ownership.
+
+### Fixed-interval runtime coverage
+
+M8C uses the injected deterministic environment to verify repeated settled refresh, non-overlap during slow loads, full-delay restart after settlement and resubscription, context-invalidation restart, timer cleanup, and isolation between runtimes.
+
+### Poll-until runtime coverage
+
+M8D uses the deterministic environment to verify intermediate progress, completion, business failure, failure-before-completion ordering, timeout, predicate exceptions, generation changes, obsolete-result protection, retained successful data, and final-unsubscribe cleanup.
+
 ## Compile-time type tests
 
 Add a type-test mechanism to verify:

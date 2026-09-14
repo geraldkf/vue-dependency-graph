@@ -1,4 +1,5 @@
 import { GraphValidationError } from "./errors";
+import { assertValidRefreshPolicy } from "../refresh-policies/policy";
 import {
   registerEventInvalidationIndex,
   type EventInvalidationCandidate,
@@ -56,6 +57,28 @@ const readEventInvalidation = (
       ? declaration.when as EventInvalidationCandidate["when"]
       : undefined,
   };
+};
+
+const validateRefreshPolicy = (node: AnyNodeDefinition): void => {
+  const refresh = (node as unknown as Record<string, unknown>).refresh;
+  if (refresh === undefined) return;
+
+  if (node.kind !== "data") {
+    throw new GraphValidationError(
+      "INVALID_REFRESH_POLICY",
+      `Node "${node.key}" cannot declare a refresh policy because it is not a data node.`
+    );
+  }
+
+  try {
+    assertValidRefreshPolicy(refresh, node.key);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    throw new GraphValidationError(
+      "INVALID_REFRESH_POLICY",
+      `Node "${node.key}" has an invalid refresh policy: ${reason}`
+    );
+  }
 };
 
 const buildEventInvalidationIndex = (
@@ -163,6 +186,7 @@ export const createGraph = (options: CreateGraphOptions): Graph => {
         `Duplicate node key "${node.key}".`
       );
     }
+    validateRefreshPolicy(node);
     nodesByKey.set(node.key, node);
   }
 

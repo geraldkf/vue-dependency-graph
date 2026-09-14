@@ -1,3 +1,22 @@
+export { pollUntil, refreshInterval, staleAfter } from "./refresh-policies/policy";
+export { GraphPollingConditionError, GraphPollingTimeoutError } from "./refresh-policies/errors";
+export type {
+  ExponentialRetryOptions,
+  ExponentialRetryPolicy,
+  FixedRetryOptions,
+  FixedRetryPolicy,
+  PollUntilOptions,
+  PollUntilPolicy,
+  RefreshIntervalOptions,
+  RefreshIntervalPolicy,
+  RefreshPolicy,
+  RefreshPolicyEnvironment,
+  RetryOptions,
+  RetryPolicy,
+  RetryStrategy,
+  StaleAfterOptions,
+  StaleAfterPolicy,
+} from "./refresh-policies/types";
 export { GraphTransactionConflictError } from "./transactions/errors";
 export type { GraphTransaction } from "./transactions/types";
 export type { RefreshableNodeDefinition } from "./operations/types";

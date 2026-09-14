@@ -15,6 +15,7 @@ Decision records capture choices that materially affect correctness, compatibili
 - ADR-009: Polling as a refresh policy
 - ADR-010: Diagnostics designed into the core
 - ADR-011: Execution concurrency limit
+- ADR-012: Subscription-aware refresh policies and polling
 
 ## Template
 
