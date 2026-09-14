@@ -2,7 +2,9 @@
 
 ## Status
 
-Prepared; offline validation pending.
+Historical implementation note. Superseded by the completed Milestone 5 implementation and M5H internal contract cleanup. Final combined offline validation remains pending.
+
+The current notification buffer lives at `src/core/transactions/notification-buffer.ts`, remains dispatch-only, and no longer exposes transaction-state inspection. Transaction lifecycle and staged context values are owned by `src/core/transactions/transaction-coordinator.ts`.
 
 ## Objective
 
@@ -12,14 +14,14 @@ Add a seam that a future Milestone 5 transaction API can defer dispatch through,
 
 The scheduler's automatic coalescing (`scheduled` flag + `queueMicrotask`) already batches multiple *synchronous* `setContext` calls into one flush for free — this is existing, unchanged behavior, exercised by `tests/core/scheduler-coalescing.spec.ts`.
 
-It does not cover a caller-driven update that spans an `await`. Two `setContext` calls separated by an `await` each call `schedule()` on their own synchronous turn, and the microtask queued by the first call runs before the second `setContext` executes, so the scheduler flushes twice with two separate loads instead of once with the final value. `tests/core/transaction.spec.ts` (`"without a transaction, an async-spanning update causes two loads"`) demonstrates this directly against the pre-existing code path and continues to pass unchanged — the wasteful behavior is still there when a transaction isn't used, by design; this change only adds a way to opt out of it.
+It does not cover a caller-driven update that spans an `await`. Two `setContext` calls separated by an `await` each call `schedule()` on their own synchronous turn, and the microtask queued by the first call runs before the second `setContext` executes, so the scheduler flushes twice with two separate loads instead of once with the final value. `tests/core/transaction-staging.spec.ts` (`"without a transaction, an async-spanning update causes two loads"`) demonstrates this directly against the pre-existing code path and continues to pass unchanged — the wasteful behavior is still there when a transaction isn't used, by design; this change only adds a way to opt out of it.
 
 ## Files changed
 
-- `src/core/runtime-notification-buffer.ts` (new)
+- `src/core/transactions/notification-buffer.ts` (originally introduced before the feature-folder restructure)
 - `src/core/runtime.ts`
 - `src/core/index.ts`
-- `tests/core/transaction.spec.ts` (new)
+- `tests/core/transaction-staging.spec.ts` and `tests/core/transaction-settlement.spec.ts` (current locations after M5H.2)
 - `docs/implementation/01-roadmap.md`
 - `docs/implementation/23-transaction-notification-buffer-implementation-note.md` (this file)
 
@@ -27,7 +29,7 @@ No `docs/implementation/prompts/` file was added for this change. The existing R
 
 ## Buffer contract
 
-`createRuntimeNotificationBuffer(sinks)` wraps four real functions — `notify`, `schedule`, `resolveSettlementIfIdle`, `whenSettled` — behind a depth counter, and returns drop-in replacements for the first three plus `whenSettled`, plus `runTransaction` and `isInsideTransaction`.
+`createRuntimeNotificationBuffer(sinks)` wraps four real functions — `notify`, `schedule`, `resolveSettlementIfIdle`, `whenSettled` — behind a depth counter, and returns drop-in replacements for the first three plus `whenSettled` and `runTransaction`. The original `isInsideTransaction` member was removed in M5H.3 because transaction-state decisions belong to the coordinator.
 
 - At depth 0 (no transaction open), every call passes straight through to the real sink, synchronously, in the same order as before this seam existed. This is a hard invariant: outside `transaction(...)`, this wrapper is never observable.
 - At depth > 0, `notify()`/`schedule()` calls are recorded as pending flags rather than dispatched. `resolveSettlementIfIdle()` is a no-op — it is always re-checked once at commit instead, because a mid-transaction call (for example from an unsubscribe) would otherwise be evaluated against transient mid-transaction scheduler state rather than the final post-commit state. `whenSettled()` calls made mid-transaction are parked and only resolve once commit's own dispatch has itself settled.
@@ -48,13 +50,13 @@ Mechanical only, no logic changes to any existing capability:
 
 ## What this does not do
 
-- Does not batch, defer, or roll back state mutations. `setContext`, invalidation's descendant walk, and execution's state commits still happen immediately, synchronously, at the point they are called — a transaction only defers when observers are told about them. `tests/core/transaction.spec.ts` (`"does not roll back partial state when the transaction body throws"`) asserts this directly.
+- At the time of this original seam, it did not batch, defer, or roll back state mutations. That limitation was later removed by Milestone 5 context staging and commit reconciliation. The former no-rollback test was replaced by rollback coverage in `tests/core/transaction-rollback.spec.ts`.
 - Does not defer or reconcile subscription lifecycle abort behavior. `afterUnsubscribe`'s scan for scheduler-only attempts to cancel still runs synchronously on `unsubscribe()`, not at commit. A component that unsubscribes and immediately resubscribes to the same node within one transaction can still have its in-flight attempt aborted prematurely. This is a separate mechanism from notification buffering and is not addressed here.
 - Does not satisfy any Milestone 5 checklist item. See the roadmap addition in `docs/implementation/01-roadmap.md`.
 
 ## Tests
 
-`tests/core/transaction.spec.ts` (new, 6 tests):
+The original six tests were later distributed across the focused transaction suites introduced by M5H.2:
 
 - Confirms the pre-existing async-spanning double-load gap still exists without a transaction.
 - Confirms a transaction wrapping the same async-spanning update produces exactly one load with the final value.

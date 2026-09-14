@@ -119,6 +119,8 @@ Verify:
 - Ignored-abort completion after commit remains obsolete
 - Execute, prefetch, and refresh guards
 - Playground observers never receive partial related context values
+- Playground transaction progress remains explicitly local and separate from committed runtime state
+- Playground rollback displays a caller-visible outcome and error without graph notification
 
 Keep transaction integration coverage grouped by behaviour: staging, invalidation, rollback, settlement, execution races, and overlapping transaction calls. Prefer adding a test to the narrowest matching suite rather than rebuilding one broad transaction file.
 

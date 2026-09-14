@@ -69,17 +69,36 @@ Manual validation:
 
 The Atomic Transaction scenario uses two related context values and one derived result in a dedicated runtime.
 
-Use **Start transaction** to stage the first context update and pause at an awaited gap. While the transaction is open, the displayed committed values, combined result, derivation count, and observer snapshot history remain unchanged.
+Use **Start transaction** to stage the first context update. The Transaction progress section shows the local draft `2 + 10` and preview `12`, while Committed runtime state remains `1 + 10 = 11`.
 
-Use **Complete transaction** to stage the second value and commit the outer transaction. The scenario then displays the final pair, recomputes the combined result once, and records only the coherent committed observer snapshot.
+Use **Stage second value** to advance the draft to `2 + 20` and preview `22`. Committed runtime state and committed observer snapshots remain unchanged.
+
+Use **Commit transaction** to release the final gate. Both context values then become committed together, the derived result becomes `22`, and the local transaction draft is cleared.
+
+Alternatively, use **Rollback with error** after staging the second value. The scenario throws a local transaction error, clears the draft, displays the rollback outcome and error, and leaves committed runtime state at `1 + 10 = 11` with no committed observer snapshot. This demonstrates local graph rollback, not rollback of remote API work.
 
 Manual validation:
 
-1. Confirm the initial committed values are `1 + 10` and the combined result is `11`.
+1. Confirm committed values are `1 + 10`, committed result is `11`, and in-progress values are `none`.
 2. Select **Start transaction**.
-3. Confirm the transaction state is `open` and no `2 + 10` snapshot appears.
-4. Select **Complete transaction**.
-5. Confirm the committed values are `2 + 20` and the combined result is `22`.
-6. Confirm observer history contains `2 + 20` but never `2 + 10` or `1 + 20`.
-7. Confirm the derivation count advances only for the committed result.
-8. Select **Reset** and confirm the scenario returns to its initial values with a cleared snapshot history.
+3. Confirm phase is `first-staged`, committed state remains `1 + 10 = 11`, and transaction progress shows `2 + 10 = 12`.
+4. Confirm committed observer snapshots remain empty.
+5. Select **Stage second value**.
+6. Confirm phase is `second-staged`, committed state remains `1 + 10 = 11`, and transaction progress shows `2 + 20 = 22`.
+7. Select **Commit transaction**.
+8. Confirm phase is `committed`, committed state is `2 + 20 = 22`, and in-progress values are `none`.
+9. Confirm observer history contains `2 + 20` but never `2 + 10` or `1 + 20`.
+10. Select **Reset** and confirm the scenario returns atomically to `1 + 10`, shows result `11`, and clears progress, snapshot history, and the displayed derivation count.
+11. Start another transaction, optionally stage the second value, switch to a different scenario before commit, and confirm no warning is shown.
+12. Return to Atomic Transaction and confirm a clean dedicated scenario is shown with no suspended transaction.
+
+Rollback path:
+
+1. Reset the scenario.
+2. Select **Start transaction**, then **Stage second value**.
+3. Confirm transaction progress shows `2 + 20 = 22` while committed runtime state remains `1 + 10 = 11`.
+4. Select **Rollback with error**.
+5. Confirm phase is `rolled-back`, outcome is `rolled back`, and the error `Playground transaction rollback` is displayed.
+6. Confirm committed runtime state remains `1 + 10 = 11`.
+7. Confirm in-progress values are `none` and committed observer snapshots remain empty.
+8. Select **Reset** and confirm outcome returns to `none` and the error is cleared.

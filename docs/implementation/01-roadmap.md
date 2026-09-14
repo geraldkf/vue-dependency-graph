@@ -235,6 +235,18 @@ Post-validation follow-up: M5H transaction hardening and test organisation is pl
 - [ ] M5H.2 offline validation
 - [x] M5H.3 internal transaction contracts prepared
 - [ ] M5H.3 offline validation
+- [x] M5H.4 playground lifecycle hardening prepared
+- [ ] M5H.4 automated and manual validation
+- [x] M5H.5 documentation reconciliation and validation handoff prepared
+- [x] M5H.6A transaction progress playground prepared
+- [ ] M5H.6A automated and manual validation
+- [x] M5H.6B error-driven rollback playground prepared
+- [ ] M5H.6B automated and manual validation
+- [x] M5H.6C playground validation coverage and handoff prepared
+- [ ] M5H.6C automated and manual validation
+- [x] M5H.6C initial observer snapshot test issue fixed
+- [ ] M5H.6C validation rerun
+- [ ] Final combined automated and manual validation
 
 ## Milestone 6: Typed events
 

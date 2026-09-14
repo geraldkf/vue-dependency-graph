@@ -65,12 +65,35 @@ Implementation details: `docs/implementation/39-milestone-5h3-internal-transacti
 
 ### M5H.4 Playground lifecycle polish
 
-Review the Atomic Transaction scenario after manual browser validation:
+Prepared with offline automated and manual browser validation pending. Open transactions are released without post-unmount reactive updates, and reset now restores both related context values atomically before clearing scenario counters.
 
-- confirm leaving the tab while the transaction is open releases the awaited gate cleanly;
-- confirm no post-unmount warning is emitted when the transaction promise settles;
-- confirm reset behaviour and derivation count are understandable to a user;
-- add only the smallest lifecycle change required by observed browser behaviour.
+Implementation details: `docs/implementation/40-milestone-5h4-playground-lifecycle-note.md`.
+
+### M5H.6 Transaction progress and rollback playground
+
+#### M5H.6A Transaction progress display
+
+Prepared with offline validation pending. The playground now separates committed runtime state from a scenario-local transaction draft, exposes first-staged and second-staged phases, and shows a local preview before atomic commit.
+
+Implementation details: `docs/implementation/42-milestone-5h6a-transaction-progress-playground-note.md`.
+
+#### M5H.6B Error-driven rollback
+
+Prepared with offline validation pending. The playground now offers commit and rollback-with-error decisions after both values are staged, displays outcome and rollback error, and proves the committed graph and observer history remain unchanged after rollback.
+
+Implementation details: `docs/implementation/43-milestone-5h6b-error-rollback-playground-note.md`.
+
+#### M5H.6C Playground validation coverage and handoff
+
+Prepared with offline validation pending. Five focused component tests now cover progress, commit, rollback, unmount, and reset-after-rollback, and the final validation handoff reflects both commit and rollback manual paths.
+
+Implementation details: `docs/implementation/44-milestone-5h6c-playground-validation-coverage-note.md`.
+
+### M5H.5 Documentation reconciliation and validation handoff
+
+Prepared. Historical transaction documentation now points to the current implementation and focused test suites, and one authoritative final validation and result-recording checklist is available.
+
+Implementation details: `docs/implementation/41-milestone-5h5-validation-handoff.md`.
 
 ## Validation workflow
 
