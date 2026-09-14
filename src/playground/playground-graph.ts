@@ -12,6 +12,12 @@ import {
   capabilityJobSeekerId,
   unrelatedAppointmentStatus,
 } from "./scenarios/typed-events-nodes";
+import {
+  queryGroupsAppointments,
+  queryGroupsCapabilityStatus,
+  queryGroupsJobSeekerId,
+  queryGroupsSummary,
+} from "./scenarios/query-groups-nodes";
 
 /**
  * One graph shared by the playground's Pinia-owned runtime.
@@ -30,5 +36,9 @@ export const playgroundGraph = createGraph({
     capabilityJobSeekerId,
     capabilityInterviewStatus,
     unrelatedAppointmentStatus,
+    queryGroupsJobSeekerId,
+    queryGroupsAppointments,
+    queryGroupsCapabilityStatus,
+    queryGroupsSummary,
   ],
 });

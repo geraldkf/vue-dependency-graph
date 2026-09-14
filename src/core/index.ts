@@ -14,6 +14,14 @@ export type {
   NodeExecutionFailureKind,
 } from "./execution/types";
 export { defineEvent } from "./events/event";
+export { defineQuery } from "./queries/query";
+export type {
+  AnyQueryDefinition,
+  DefineQueryOptions,
+  QueryDefinition,
+  QueryNodeMap,
+  QueryNodes,
+} from "./queries/types";
 export type {
   AnyEventDefinition,
   EventDefinition,

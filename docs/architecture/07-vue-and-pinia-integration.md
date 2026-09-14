@@ -19,6 +19,8 @@ Vue component
 
 Both paths use the same `useNode` and `useNodes` implementations and the same core runtime.
 
+Both paths also support `useQuery(...)` for immutable aliased query definitions. `useQuery(...)` delegates to the same combined subscription and observation path as `useNodes(...)`; it does not create query-owned runtime state. Its `prefetch()` and `refresh()` methods delegate to the query-aware core runtime wrappers, which reuse the existing operation controller.
+
 ## Runtime resolution
 
 Vue graph composables accept an optional explicit runtime:
@@ -26,6 +28,7 @@ Vue graph composables accept an optional explicit runtime:
 ```ts
 useNode(Targets, { runtime });
 useNodes([Targets, Permissions], { runtime });
+useQuery(AppointmentsPage, { runtime });
 ```
 
 Resolution order is:

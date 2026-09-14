@@ -246,13 +246,56 @@ Data and derived nodes may declare unconditional or conditional `invalidatedBy` 
 
 Publication invalidates matched nodes synchronously and schedules subscribed stale work through the existing scheduler. It is silent when no declaration matches. Predicate evaluation completes before mutation, so a predicate failure applies no partial event invalidation. Plain `runtime.publish(...)` is always immediate, even while another transaction is open. Only `transaction.publish(...)` is staged and follows the root transaction outcome. Observer notification and automatic scheduling for these plain runtime operations are also immediate and are not held behind the unrelated transaction.
 
+## Query definitions
+
+Milestone 7A introduces immutable query definitions as typed groups of existing nodes:
+
+```ts
+const AppointmentsPage = defineQuery({
+  key: "appointments-page",
+  nodes: {
+    appointments: Appointments,
+    capabilityStatus: CapabilityStatus,
+  },
+});
+
+type AppointmentsPageNodes = QueryNodes<typeof AppointmentsPage>;
+```
+
+Aliases and exact node-handle types are retained. Query definitions own no runtime state and are not graph topology.
+
+Vue consumers may subscribe to the complete query through its aliases:
+
+```ts
+const page = useQuery(AppointmentsPage, { runtime });
+
+page.nodes.appointments.data.value;
+page.nodes.capabilityStatus.status.value;
+page.isLoading.value;
+page.isError.value;
+page.errors.value;
+page.isSuccess.value;
+```
+
+Each aliased entry exposes the same computed refs as `useNode(...)`. Aggregate semantics, runtime resolution, effect-scope enforcement, and cleanup are consistent with `useNodes(...)`.
+
+The same definition drives caller-owned prefetch and refresh:
+
+```ts
+await runtime.prefetchQuery(AppointmentsPage);
+await runtime.refreshQuery(AppointmentsPage);
+
+await page.prefetch();
+await page.refresh();
+```
+
+Query prefetch delegates to the existing prefetch operation for every query node. Query refresh delegates to the existing refresh operation for data and derived query nodes; context aliases are excluded because context values change through `setContext(...)`. Both methods preserve existing execution, failure, concurrency, and transaction-ownership behaviour.
+
 ## Other planned APIs
 
 ```ts
-defineQuery(...);
-useQuery(...);
 pollUntil(...);
 runtime.mutate(...);
 ```
 
-Query groups, polling policies, optimistic mutations, diagnostics, snapshots, and devtools are not yet stable public APIs.
+The remaining query-group playground and final validation work, polling policies, optimistic mutations, diagnostics, snapshots, and devtools are not yet stable public APIs.

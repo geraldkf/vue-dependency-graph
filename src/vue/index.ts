@@ -13,3 +13,8 @@ export type {
   UseNodesResult,
   UseNodesResults,
 } from "./use-nodes";
+export { useQuery } from "./use-query";
+export type {
+  UseQueryNodes,
+  UseQueryResult,
+} from "./use-query";

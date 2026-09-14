@@ -91,6 +91,7 @@ Do not start with random failures because deterministic scenarios are easier to 
 - Unmount Cleanup
 - Aggregate Query
 - Typed Events
+- Query Groups
 
 The Concurrency Limit scenario uses four manually controlled loaders and runtime limits of `1`, `2`, or unlimited. It exposes active and maximum-observed counts, FIFO start order, per-loader state, manual completion controls, and clean reset behaviour.
 
@@ -116,3 +117,5 @@ The Concurrency Limit scenario uses four manually controlled loaders and runtime
 ## Definition of useful playground
 
 A contributor should be able to reproduce a graph behaviour by selecting a named scenario, run it repeatedly, and inspect identical diagnostic output without modifying application code.
+
+The Query Groups scenario uses one aliased `defineQuery(...)` declaration for prefetch, `useQuery(...)` subscription, aggregate state, and refresh. It demonstrates fresh prefetch reuse and subscription cleanup with deterministic request counts.

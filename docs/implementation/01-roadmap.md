@@ -296,10 +296,26 @@ Exit criterion: only operations performed through a `GraphTransaction` participa
 
 ## Milestone 7: Query groups
 
-- [ ] `defineQuery`
-- [ ] `useQuery`
-- [ ] Aliased typed result shape
-- [ ] Query refresh and prefetch
+Status: M7A through M7D prepared; automated and manual validation pending.  
+Implementation plan: `docs/implementation/71-milestone-7-query-groups-plan.md`  
+M7A implementation note: `docs/implementation/72-milestone-7a-query-definitions-note.md`  
+M7B implementation note: `docs/implementation/73-milestone-7b-vue-use-query-note.md`  
+M7C implementation note: `docs/implementation/74-milestone-7c-query-operations-note.md`  
+M7D implementation note: `docs/implementation/75-milestone-7d-query-groups-playground-note.md`
+
+- [x] M7A immutable `defineQuery(...)` definitions
+- [x] M7A alias and node-handle type preservation
+- [x] M7A behavioural and compile-time coverage prepared
+- [ ] M7A offline validation
+- [x] M7B `useQuery(...)` with aliased typed results prepared
+- [x] M7B aggregate state and scope cleanup prepared
+- [ ] M7B offline validation
+- [x] M7C query prefetch and refresh prepared
+- [ ] M7C offline validation
+- [x] M7D deterministic playground scenario prepared
+- [ ] M7D automated and manual validation
+- [ ] M7E maintained documentation reconciliation
+- [ ] M7E final automated and manual validation
 
 Exit criteria: representative page requirements are declared once and reused.
 

@@ -161,3 +161,17 @@ The Typed Events scenario now includes an unrelated event target and a **Publish
 3. Confirm the unrelated target reloads before transaction closure.
 4. Roll back the appointment event transaction.
 5. Confirm the capability request count is unchanged and the unrelated event result remains committed.
+
+### Query Groups
+
+The **Query Groups** scenario demonstrates one immutable aliased query definition reused for prefetch, component subscription, aggregate state, and refresh.
+
+Manual validation:
+
+- Open **Query Groups** and confirm both request counts are 0 and direct subscriptions are 0.
+- Select **Prefetch page** and confirm both request counts become 1 while direct subscriptions remain 0.
+- Select **Mount consumer** and confirm the prefetched appointment, capability status, and derived summary appear without another request.
+- Confirm aggregate state reports loading false, error false, and success true.
+- Select **Refresh page** and confirm both request counts become 2 and all aliased results update together.
+- Select **Unmount consumer** and confirm direct subscriptions return to 0.
+- Mount the consumer again, switch to another scenario tab, and confirm the query subscriptions are released without warnings.

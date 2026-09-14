@@ -28,6 +28,7 @@ import ContextSwitchingScenario from "./scenarios/ContextSwitchingScenario.vue";
 import ErrorAndRetryScenario from "./scenarios/ErrorAndRetryScenario.vue";
 import UnmountCleanupScenario from "./scenarios/UnmountCleanupScenario.vue";
 import TypedEventsScenario from "./scenarios/TypedEventsScenario.vue";
+import QueryGroupsScenario from "./scenarios/QueryGroupsScenario.vue";
 
 interface PlaygroundScenario {
   readonly id: string;
@@ -75,6 +76,11 @@ const scenarios = [
     id: "aggregate-query",
     label: "Aggregate Query",
     component: AggregateQueryScenario,
+  },
+  {
+    id: "query-groups",
+    label: "Query Groups",
+    component: QueryGroupsScenario,
   },
 ] as const satisfies readonly PlaygroundScenario[];
 

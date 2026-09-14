@@ -4,6 +4,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "../../src/playground/App.vue";
 import { useDependencyGraphStore } from "../../src/playground/dependency-graph-store";
 import { metricA, metricB, metricC } from "../../src/playground/scenarios/aggregate-query-nodes";
+import {
+  queryGroupsAppointments,
+  queryGroupsCapabilityStatus,
+} from "../../src/playground/scenarios/query-groups-nodes";
 import { sharedResource } from "../../src/playground/scenarios/concurrent-consumers-nodes";
 import {
   selectedUserId,
@@ -97,10 +101,28 @@ describe("playground shell", () => {
     expect(runtime.getSubscriptionState(metricC).direct).toBe(1);
 
     await fireEvent.click(
-      screen.getByRole("button", { name: "Context Switching" })
+      screen.getByRole("button", { name: "Query Groups" })
     );
 
     expect(runtime.getSubscriptionState(metricA).direct).toBe(0);
+    expect(runtime.getSubscriptionState(metricB).direct).toBe(0);
+    expect(runtime.getSubscriptionState(metricC).direct).toBe(0);
+    expect(runtime.getSubscriptionState(queryGroupsAppointments).direct).toBe(0);
+    expect(runtime.getSubscriptionState(queryGroupsCapabilityStatus).direct).toBe(0);
+
+    await fireEvent.click(
+      screen.getByRole("button", { name: "Mount consumer" })
+    );
+
+    expect(runtime.getSubscriptionState(queryGroupsAppointments).direct).toBe(1);
+    expect(runtime.getSubscriptionState(queryGroupsCapabilityStatus).direct).toBe(1);
+
+    await fireEvent.click(
+      screen.getByRole("button", { name: "Context Switching" })
+    );
+
+    expect(runtime.getSubscriptionState(queryGroupsAppointments).direct).toBe(0);
+    expect(runtime.getSubscriptionState(queryGroupsCapabilityStatus).direct).toBe(0);
     expect(runtime.getSubscriptionState(metricB).direct).toBe(0);
     expect(runtime.getSubscriptionState(metricC).direct).toBe(0);
     expect(runtime.getSubscriptionState(selectedUserId).direct).toBe(1);

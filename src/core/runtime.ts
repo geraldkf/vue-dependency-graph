@@ -45,6 +45,8 @@ import type {
 } from "./graph/types";
 import type { AnyEventDefinition, EventPayload } from "./events/types";
 import { createRuntimeEventMatcher } from "./events/event-matcher";
+import type { AnyQueryDefinition } from "./queries/types";
+import { getQueryNodes, getQueryRefreshableNodes } from "./queries/query";
 
 export interface GraphRuntimeOptions {
   /**
@@ -64,9 +66,11 @@ export interface GraphRuntime {
   ) => void;
   readonly execute: (nodes: readonly AnyNodeDefinition[]) => Promise<void>;
   readonly prefetch: (nodes: readonly AnyNodeDefinition[]) => Promise<void>;
+  readonly prefetchQuery: (query: AnyQueryDefinition) => Promise<void>;
   readonly refresh: (
     nodes: readonly RefreshableNodeDefinition[],
   ) => Promise<void>;
+  readonly refreshQuery: (query: AnyQueryDefinition) => Promise<void>;
   readonly publish: <TEvent extends AnyEventDefinition>(
     event: TEvent,
     payload: EventPayload<TEvent>,
@@ -257,7 +261,11 @@ export const createGraphRuntime = (
     setContext: transactions.setContext,
     execute,
     prefetch: operations.prefetch,
+    prefetchQuery: (query: AnyQueryDefinition) =>
+      operations.prefetch(getQueryNodes(query)),
     refresh: operations.refresh,
+    refreshQuery: (query: AnyQueryDefinition) =>
+      operations.refresh(getQueryRefreshableNodes(query)),
     publish: transactions.publish,
     subscribeNodes: subscriptions.subscribeNodes,
     getSubscriptionState: subscriptions.getSubscriptionState,
