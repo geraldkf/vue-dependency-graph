@@ -2,7 +2,11 @@
 
 ## Status
 
-Prepared for final offline validation. No runtime or test behaviour changed in this step.
+Completed. Final automated repository and manual playground validation were reported successful on 14 September 2026.
+
+## Final result
+
+The project owner reported that all four automated commands and the complete Atomic Transaction manual browser checklist passed on 14 September 2026. Milestone 5 is closed. The exact command output and test totals were not retained in this repository.
 
 ## Objective
 
@@ -128,7 +132,7 @@ If validation fails:
 
 ## Implementation-side conclusion
 
-No further Milestone 5 refactor is currently recommended before validation.
+No further Milestone 5 refactor is required. The milestone is closed and the next numbered milestone is Milestone 6.
 
 M5H.1 through M5H.4 addressed the review findings:
 

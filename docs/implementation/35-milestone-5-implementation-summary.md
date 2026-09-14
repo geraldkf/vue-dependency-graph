@@ -2,7 +2,7 @@
 
 ## Status
 
-Implementation prepared. Automated repository and manual browser validation pending.
+Complete and validated on 14 September 2026.
 
 ## Delivered capability
 
@@ -76,18 +76,9 @@ Core transaction tests cover:
 
 The playground adds a deterministic Atomic Transaction scenario and component test proving intermediate related values are not observer-visible.
 
-## Validation completed in the contained environment
+## Validation
 
-```text
-node scripts/check-boundaries.mjs
-tsc -p /tmp/tsconfig-core.json --pretty false
-```
-
-Both passed. The TypeScript command is a temporary strict check over `src/core/**/*.ts`.
-
-## Validation pending
-
-Run in the normal repository environment:
+The project owner reported successful final validation on 14 September 2026:
 
 ```text
 pnpm check:boundaries
@@ -96,6 +87,14 @@ pnpm test:run --reporter verbose --no-color
 pnpm build
 ```
 
-Then run the playground and complete the Atomic Transaction manual validation in `docs/PLAYGROUND.md`.
+Manual browser validation of the Atomic Transaction playground was also reported successful for:
 
-Do not mark Milestone 5 validated or complete until these results are reported successfully.
+- staged progress remaining separate from committed runtime state;
+- atomic commit without intermediate committed context pairs;
+- error-driven rollback preserving committed state;
+- observer history recording only committed context-pair changes;
+- reset restoring both context values atomically and clearing scenario state;
+- tab switching and unmount releasing open transaction work without warnings.
+
+The exact command output and final test totals were not stored in the repository. This summary records the reported successful outcome without reconstructing or inventing those details.
+

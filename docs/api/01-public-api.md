@@ -203,7 +203,7 @@ await runtime.transaction(async () => {
 });
 ```
 
-Atomic local context transactions are implemented with validation pending. Context writes are held until the successful outer transaction completes, and public reads remain committed reads while work is open. Final values commit together, shared descendants invalidate once, and affected attempts abort after generation advancement. Synchronous or asynchronous failure discards staged context changes. Transaction-time `whenSettled()` waits through successful commit scheduling, while rollback settles without phantom work. Explicit `execute`, `prefetch`, and `refresh` calls are rejected inside a transaction. Overlapping transaction calls on one runtime join a single group: the first call is the root, all joined calls settle before the group closes, and the root outcome controls commit or rollback. Transactions do not provide backend rollback.
+Atomic local context transactions are implemented and validated. Context writes are held until the successful outer transaction completes, and public reads remain committed reads while work is open. Final values commit together, shared descendants invalidate once, and affected attempts abort after generation advancement. Synchronous or asynchronous failure discards staged context changes. Transaction-time `whenSettled()` waits through successful commit scheduling, while rollback settles without phantom work. Explicit `execute`, `prefetch`, and `refresh` calls are rejected inside a transaction. Overlapping transaction calls on one runtime join a single group: the first call is the root, all joined calls settle before the group closes, and the root outcome controls commit or rollback. Transactions do not provide backend rollback.
 
 ## Planned APIs
 

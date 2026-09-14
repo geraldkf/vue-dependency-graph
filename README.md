@@ -6,9 +6,9 @@ This repository begins as an isolated research and development project. The exis
 
 ## Status
 
-Design and prototyping. Milestones 1 through 4 are implemented, including the framework-agnostic runtime, subscription scheduler, Vue composables, Pinia-owned runtime integration, and the executable playground.
+Design and prototyping. Milestones 1 through 5 are implemented, including the framework-agnostic runtime, subscription scheduler, Vue composables, Pinia-owned runtime integration, the executable playground, and atomic local context transactions.
 
-Milestone 4 is complete and manual browser validation of the Pinia-backed playground was reported successful. APIs remain subject to change until the existing-application migration trial is complete.
+Milestone 5 is complete and validated. The next numbered milestone is Milestone 6, typed events. APIs remain subject to change until the existing-application migration trial is complete.
 
 ## Repository model
 

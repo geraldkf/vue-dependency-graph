@@ -2,7 +2,7 @@
 
 ## Status
 
-Focused test and documentation coverage prepared. Offline automated and manual browser validation pending.
+Validated as part of the final Milestone 5 automated and manual validation reported successful on 14 September 2026.
 
 ## Objective
 

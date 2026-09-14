@@ -199,54 +199,35 @@ This does not satisfy any Milestone 5 checklist item below: state mutations are 
 
 ## Milestone 5: Transactions and invalidation
 
-Status: Implementation prepared; automated and manual validation pending.  
-Implementation plan: `docs/implementation/29-milestone-5-atomic-transactions-plan.md`
+Status: Complete and validated on 14 September 2026.
 
-- [x] Atomicity model, mutation-path inventory, and implementation sequence prepared
-- [ ] Planning offline validation
-- [x] Atomic context updates prepared
-- [x] M5B transaction coordinator and operation guards prepared
-- [x] M5C staged context values prepared
-- [x] M5D atomic commit and coalesced invalidation prepared
-- [x] M5E rollback and failure-path behaviour prepared
-- [x] M5F settlement and execution-race behaviour prepared
-- [x] M5G playground and maintained documentation prepared
-- [ ] M5G automated and manual validation
-- [ ] M5F offline validation
-- [ ] M5E offline validation
-- [ ] M5D offline validation
-- [ ] M5C offline validation
-- [ ] M5B offline validation
-- [x] Nested transactions prepared
-- [x] Deferred invalidation prepared
-- [x] Deferred scheduling prepared
-- [x] Transaction rollback for local synchronous and asynchronous failure prepared
-- [x] Generation changes and abort behaviour prepared
+Implementation plan: `docs/implementation/29-milestone-5-atomic-transactions-plan.md`  
+Implementation summary: `docs/implementation/35-milestone-5-implementation-summary.md`
 
-Exit criteria: observers do not see partially committed related context values.
+- [x] Atomicity model, mutation-path inventory, and implementation sequence
+- [x] Atomic context updates
+- [x] Transaction coordinator and operation guards
+- [x] Staged context values with committed public reads
+- [x] Atomic commit and coalesced invalidation
+- [x] Rollback and failure-path behaviour
+- [x] Settlement and execution-race behaviour
+- [x] Nested and overlapping transaction semantics
+- [x] Deferred invalidation and scheduling
+- [x] Generation advancement and abort ordering
+- [x] Focused transaction test organisation
+- [x] Internal transaction contract cleanup
+- [x] Playground lifecycle hardening
+- [x] Transaction progress and error-driven rollback playground flows
+- [x] Observer snapshot filtering fix
+- [x] Boundary validation reported successful
+- [x] Type checking reported successful
+- [x] Complete automated test suite reported successful
+- [x] Production build reported successful
+- [x] Manual Atomic Transaction commit, rollback, reset, and tab-switch validation reported successful
 
-Design decision recorded ahead of implementation: `docs/decisions/ADR-005-atomic-graph-transactions.md`.
+Exit criteria met: observers do not see partially committed related context values.
 
-Post-validation follow-up: M5H transaction hardening and test organisation is planned in `docs/implementation/36-milestone-5-review-and-follow-up-plan.md`. It is not a blocker for Milestone 5 validation.
-
-- [x] M5H.1 overlapping transaction semantics prepared
-- [ ] M5H.1 offline validation
-- [x] M5H.2 transaction test organisation prepared
-- [ ] M5H.2 offline validation
-- [x] M5H.3 internal transaction contracts prepared
-- [ ] M5H.3 offline validation
-- [x] M5H.4 playground lifecycle hardening prepared
-- [ ] M5H.4 automated and manual validation
-- [x] M5H.5 documentation reconciliation and validation handoff prepared
-- [x] M5H.6A transaction progress playground prepared
-- [ ] M5H.6A automated and manual validation
-- [x] M5H.6B error-driven rollback playground prepared
-- [ ] M5H.6B automated and manual validation
-- [x] M5H.6C playground validation coverage and handoff prepared
-- [ ] M5H.6C automated and manual validation
-- [x] M5H.6C initial observer snapshot test issue fixed
-- [ ] M5H.6C validation rerun
-- [ ] Final combined automated and manual validation
+The project owner reported the final combined automated and manual validation as successful on 14 September 2026. Exact command output and test totals were not stored in the repository, so this roadmap records the reported outcome without inventing counts. The pnpm 12.4.1 lockfile update remains tracked separately under Milestone 0.
 
 ## Milestone 6: Typed events
 

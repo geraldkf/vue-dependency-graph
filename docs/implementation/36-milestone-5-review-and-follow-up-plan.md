@@ -2,7 +2,7 @@
 
 ## Status
 
-Review completed after the first offline unit-test run. One test integration issue was fixed. No runtime correctness defect was found in the reported test output.
+Review and follow-up work completed. Final automated repository and manual playground validation were reported successful on 14 September 2026. No runtime correctness defect remains open for Milestone 5.
 
 ## Unit-test issue fixed
 
@@ -29,7 +29,7 @@ Reviewed:
 
 ### Findings
 
-No mandatory runtime refactor is recommended before offline validation.
+No further runtime refactor is required before Milestone 6.
 
 The current capability boundaries remain appropriate:
 
@@ -43,7 +43,7 @@ Changing these boundaries before validation would add risk without correcting an
 
 ## Recommended follow-up: M5H transaction hardening and test organisation
 
-M5H is recommended after Milestone 5 validation. It is not a blocker for the current offline validation pass.
+M5H was completed and included in the final successful Milestone 5 validation.
 
 ### M5H.1 Define overlapping transaction-call semantics
 

@@ -2,7 +2,7 @@
 
 ## Status
 
-Implemented for Milestone 5. Automated repository and manual playground validation pending. This ADR records where the implementation will live and why, so Milestone 5 does not have to re-derive it, and so Milestone 9 (optimistic mutations) starts from a known constraint rather than discovering it after the fact.
+Implemented and validated for Milestone 5 on 14 September 2026. This ADR records where the implementation will live and why, so Milestone 5 does not have to re-derive it, and so Milestone 9 (optimistic mutations) starts from a known constraint rather than discovering it after the fact.
 
 ## Context
 

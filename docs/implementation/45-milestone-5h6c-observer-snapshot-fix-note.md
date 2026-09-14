@@ -2,7 +2,7 @@
 
 ## Status
 
-Fix prepared. Offline validation pending.
+Fix validated as part of the final Milestone 5 automated and manual validation reported successful on 14 September 2026.
 
 ## Issue
 
