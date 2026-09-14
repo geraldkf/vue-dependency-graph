@@ -99,8 +99,25 @@ const observeRuntime = (): void => {
 };
 observeRuntime();
 
+// Policy-driven refreshes (triggered by the fake timers below) run
+// through execute() directly rather than the subscription scheduler, so
+// runtime.whenSettled() cannot observe them, and the promise chain from
+// timer callback -> refresh -> reconcile -> next scheduled timer varies
+// in depth by scenario (plain success, retry, multi-step polling, ...).
+// Counting a fixed number of microtask ticks -- or even waiting for the
+// observable state to look "stable" for a few ticks -- is fragile: a
+// longer chain can look quiescent before it actually is, and callers
+// that invoke advance() back-to-back (e.g. triggerTimeout's loop) then
+// advance the fake clock again before the previous cycle finished
+// scheduling its next timer, permanently losing a poll interval.
+//
+// A real macrotask boundary sidesteps the guesswork: the JS engine
+// always drains the *entire* microtask queue -- however deep, including
+// microtasks scheduled by other microtasks -- before running the next
+// macrotask. So awaiting a single real setTimeout is sufficient to
+// guarantee every pending .then()/.finally() in the chain above has run.
 const settle = async (): Promise<void> => {
-  for (let turn = 0; turn < 8; turn += 1) await Promise.resolve();
+  await new Promise<void>(resolve => setTimeout(resolve, 0));
   sync();
 };
 
