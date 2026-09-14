@@ -22,8 +22,9 @@ flowchart TB
         Execution["Execution controller"]
         Limiter["FIFO concurrency limiter"]
         Operations["Prefetch and refresh"]
+        Events["Typed events and event index"]
         Invalidation["Invalidation"]
-        Transactions["Transaction notification buffer"]
+        Transactions["Atomic transaction coordinator"]
     end
 
     Application --> Vue
@@ -39,6 +40,7 @@ flowchart TB
     Runtime --> Scheduler
     Runtime --> Execution
     Runtime --> Operations
+    Runtime --> Events
     Runtime --> Invalidation
     Runtime --> Transactions
 
@@ -48,12 +50,13 @@ flowchart TB
     Execution --> Limiter
     Limiter --> Loaders
     Execution --> State
+    Events --> Invalidation
     Invalidation --> State
     Transactions --> Observation
     Transactions --> Scheduler
 ```
 
-The diagram shows the current implemented runtime composition. Devtools remains a future consumer of public inspection contracts. Later roadmap capabilities are described in their dedicated architecture documents and are not presented here as current runtime components.
+The diagram shows the current implemented runtime composition, including typed event indexing, publication matching, and transaction-aware event staging. Devtools remains a future consumer of public inspection contracts. Later roadmap capabilities are described in their dedicated architecture documents and are not presented here as current runtime components.
 
 The playground and devtools consume public inspection APIs. They must not reach into private core internals.
 

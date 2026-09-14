@@ -90,6 +90,7 @@ Do not start with random failures because deterministic scenarios are easier to 
 - Error and Retry
 - Unmount Cleanup
 - Aggregate Query
+- Typed Events
 
 The Concurrency Limit scenario uses four manually controlled loaders and runtime limits of `1`, `2`, or unlimited. It exposes active and maximum-observed counts, FIFO start order, per-loader state, manual completion controls, and clean reset behaviour.
 
@@ -103,7 +104,7 @@ The Concurrency Limit scenario uses four manually controlled loaders and runtime
 6. Independent branch failure.
 7. Parent failure blocks only dependent descendants.
 8. Refresh failure retains stale data.
-9. Domain event condition matches one job seeker only.
+9. Domain event condition matches one job seeker only. Implemented by the Typed Events scenario; validation pending.
 10. Polling completes.
 11. Polling fails.
 12. Polling times out.

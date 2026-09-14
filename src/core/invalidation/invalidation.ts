@@ -18,10 +18,14 @@ export interface RuntimeInvalidationController {
     value: TValue
   ) => void;
   readonly commitContexts: (
-    changes: readonly ContextChange[]
+    changes: readonly ContextChange[],
+    invalidationRoots?: readonly AnyNodeDefinition[]
   ) => void;
   readonly invalidateChangedResultDescendants: (
     node: AnyNodeDefinition
+  ) => void;
+  readonly invalidateNodesAndDescendants: (
+    nodes: readonly AnyNodeDefinition[]
   ) => void;
 }
 
@@ -112,18 +116,44 @@ export const createRuntimeInvalidationController = ({
     return subscribedDescendantChanged;
   };
 
+  const collectNodesAndDescendants = (
+    nodes: readonly AnyNodeDefinition[]
+  ): readonly AnyNodeDefinition[] => {
+    const affected = new Map<string, AnyNodeDefinition>();
+    for (const node of nodes) affected.set(node.key, node);
+    for (const descendant of collectDescendants(nodes)) {
+      affected.set(descendant.key, descendant);
+    }
+    return [...affected.values()];
+  };
+
   const invalidateDescendants = (
     node: AnyNodeDefinition
   ): boolean =>
     invalidateNodes(collectDescendants([node]));
 
+  const invalidateNodesAndDescendants = (
+    nodes: readonly AnyNodeDefinition[]
+  ): void => {
+    if (nodes.length === 0) return;
+
+    const subscribedNodeChanged = invalidateNodes(
+      collectNodesAndDescendants(nodes)
+    );
+    notify();
+    if (subscribedNodeChanged) schedule();
+  };
+
   const commitContexts = (
-    changes: readonly ContextChange[]
+    changes: readonly ContextChange[],
+    invalidationRoots: readonly AnyNodeDefinition[] = []
   ): void => {
     const effectiveChanges = changes.filter(({ node, value }) =>
       !Object.is(getMutableState(node.key).data, value)
     );
-    if (effectiveChanges.length === 0) return;
+    if (effectiveChanges.length === 0 && invalidationRoots.length === 0) {
+      return;
+    }
 
     for (const { node, value } of effectiveChanges) {
       const contextState = getMutableState(node.key);
@@ -135,13 +165,20 @@ export const createRuntimeInvalidationController = ({
       contextState.hasSuccessfulValue = true;
     }
 
-    const descendants = collectDescendants(
+    const affected = new Map<string, AnyNodeDefinition>();
+    for (const descendant of collectDescendants(
       effectiveChanges.map(({ node }) => node)
-    );
-    const subscribedDescendantChanged = invalidateNodes(descendants);
+    )) {
+      affected.set(descendant.key, descendant);
+    }
+    for (const node of collectNodesAndDescendants(invalidationRoots)) {
+      affected.set(node.key, node);
+    }
+
+    const subscribedNodeChanged = invalidateNodes([...affected.values()]);
 
     notify();
-    if (subscribedDescendantChanged) schedule();
+    if (subscribedNodeChanged) schedule();
   };
 
   const setContext = <TValue>(
@@ -169,5 +206,6 @@ export const createRuntimeInvalidationController = ({
     setContext,
     commitContexts,
     invalidateChangedResultDescendants,
+    invalidateNodesAndDescendants,
   });
 };

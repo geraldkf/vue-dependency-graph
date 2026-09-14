@@ -7,6 +7,10 @@ import {
 } from "./scenarios/context-switching-nodes";
 import { flakyResource } from "./scenarios/error-and-retry-nodes";
 import { toggleableResource } from "./scenarios/unmount-cleanup-nodes";
+import {
+  capabilityInterviewStatus,
+  capabilityJobSeekerId,
+} from "./scenarios/typed-events-nodes";
 
 /**
  * One graph shared by the playground's Pinia-owned runtime.
@@ -22,5 +26,7 @@ export const playgroundGraph = createGraph({
     metricA,
     metricB,
     metricC,
+    capabilityJobSeekerId,
+    capabilityInterviewStatus,
   ],
 });

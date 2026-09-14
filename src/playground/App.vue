@@ -27,6 +27,7 @@ import ConcurrencyLimitScenario from "./scenarios/ConcurrencyLimitScenario.vue";
 import ContextSwitchingScenario from "./scenarios/ContextSwitchingScenario.vue";
 import ErrorAndRetryScenario from "./scenarios/ErrorAndRetryScenario.vue";
 import UnmountCleanupScenario from "./scenarios/UnmountCleanupScenario.vue";
+import TypedEventsScenario from "./scenarios/TypedEventsScenario.vue";
 
 interface PlaygroundScenario {
   readonly id: string;
@@ -44,6 +45,11 @@ const scenarios = [
     id: "atomic-transaction",
     label: "Atomic Transaction",
     component: AtomicTransactionScenario,
+  },
+  {
+    id: "typed-events",
+    label: "Typed Events",
+    component: TypedEventsScenario,
   },
   {
     id: "concurrent-consumers",

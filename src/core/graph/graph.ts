@@ -1,9 +1,111 @@
 import { GraphValidationError } from "./errors";
+import {
+  registerEventInvalidationIndex,
+  type EventInvalidationCandidate,
+} from "../events/event-index";
+import type { AnyEventDefinition } from "../events/event";
 import type {
   AnyNodeDefinition,
   Graph,
   NodeOrKey,
 } from "./node";
+
+const isRecord = (value: unknown): value is Readonly<Record<string, unknown>> =>
+  typeof value === "object" && value !== null;
+
+const readEventInvalidation = (
+  declaration: unknown,
+  nodeKey: string
+): {
+  readonly event: AnyEventDefinition;
+  readonly when: EventInvalidationCandidate["when"];
+} => {
+  if (!isRecord(declaration)) {
+    throw new GraphValidationError(
+      "INVALID_EVENT_DECLARATION",
+      `Node "${nodeKey}" has an invalid event invalidation declaration.`
+    );
+  }
+
+  const conditional = "event" in declaration;
+  const eventValue = conditional ? declaration.event : declaration;
+  if (!isRecord(eventValue) || typeof eventValue.key !== "string") {
+    throw new GraphValidationError(
+      "INVALID_EVENT_DECLARATION",
+      `Node "${nodeKey}" has an invalid event invalidation declaration.`
+    );
+  }
+
+  if (eventValue.key.trim().length === 0) {
+    throw new GraphValidationError(
+      "INVALID_EVENT_KEY",
+      `Node "${nodeKey}" declares an event with a blank key.`
+    );
+  }
+
+  if (conditional && typeof declaration.when !== "function") {
+    throw new GraphValidationError(
+      "INVALID_EVENT_DECLARATION",
+      `Node "${nodeKey}" has an invalid conditional declaration for event "${eventValue.key}".`
+    );
+  }
+
+  return {
+    event: eventValue as unknown as AnyEventDefinition,
+    when: conditional
+      ? declaration.when as EventInvalidationCandidate["when"]
+      : undefined,
+  };
+};
+
+const buildEventInvalidationIndex = (
+  nodes: readonly AnyNodeDefinition[]
+): ReadonlyMap<string, readonly EventInvalidationCandidate[]> => {
+  const candidatesByEvent = new Map<string, EventInvalidationCandidate[]>();
+
+  for (const node of nodes) {
+    const invalidatedBy = "invalidatedBy" in node
+      ? (node as AnyNodeDefinition & { readonly invalidatedBy?: unknown }).invalidatedBy
+      : undefined;
+
+    if (invalidatedBy === undefined) continue;
+    if (!Array.isArray(invalidatedBy)) {
+      throw new GraphValidationError(
+        "INVALID_EVENT_DECLARATION",
+        `Node "${node.key}" must declare invalidatedBy as an array.`
+      );
+    }
+    if (node.kind === "context" && invalidatedBy.length > 0) {
+      throw new GraphValidationError(
+        "INVALID_EVENT_DECLARATION",
+        `Context node "${node.key}" cannot declare event invalidation.`
+      );
+    }
+
+    const eventKeys = new Set<string>();
+    for (const declaration of invalidatedBy) {
+      const { event, when } = readEventInvalidation(declaration, node.key);
+      if (eventKeys.has(event.key)) {
+        throw new GraphValidationError(
+          "DUPLICATE_EVENT_INVALIDATION",
+          `Node "${node.key}" declares event "${event.key}" more than once.`
+        );
+      }
+      eventKeys.add(event.key);
+
+      const candidates = candidatesByEvent.get(event.key) ?? [];
+      candidates.push(Object.freeze({ event, node, when }));
+      candidatesByEvent.set(event.key, candidates);
+    }
+  }
+
+  return new Map(
+    [...candidatesByEvent].map(([key, candidates]) => [
+      key,
+      Object.freeze([...candidates]),
+    ])
+  );
+};
 
 export interface CreateGraphOptions {
   readonly nodes: readonly AnyNodeDefinition[];
@@ -118,7 +220,7 @@ export const createGraph = (options: CreateGraphOptions): Graph => {
       })
     );
 
-  return Object.freeze({
+  const graph = Object.freeze({
     getNode: (key: string) => nodesByKey.get(key),
     hasNode: (key: string) => nodesByKey.has(key),
     getParents: (nodeOrKey: NodeOrKey) =>
@@ -127,4 +229,11 @@ export const createGraph = (options: CreateGraphOptions): Graph => {
       getNodesByKeys(childKeysByNode.get(keyOf(nodeOrKey))),
     getNodes: () => Object.freeze([...nodes]),
   });
+
+  registerEventInvalidationIndex(
+    graph,
+    buildEventInvalidationIndex(nodes)
+  );
+
+  return graph;
 };

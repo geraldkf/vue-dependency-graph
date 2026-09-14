@@ -4,6 +4,7 @@ import {
   defineContextNode,
   defineDataNode,
   defineDerivedNode,
+  defineEvent,
 } from "../../src/core";
 
 const context = defineContextNode({ key: "context", initialValue: 1 });
@@ -21,3 +22,9 @@ runtime.refresh([context]);
 runtime.prefetch(["data"]);
 // @ts-expect-error refresh accepts handles, not string keys
 runtime.refresh(["data"]);
+
+
+const changed = defineEvent<{ id: number }>("domain.changed");
+runtime.publish(changed, { id: 1 });
+// @ts-expect-error publish payload must match the selected event
+runtime.publish(changed, { id: "invalid" });

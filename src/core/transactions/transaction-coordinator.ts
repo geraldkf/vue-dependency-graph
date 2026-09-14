@@ -1,5 +1,12 @@
+import type {
+  AnyEventDefinition,
+  EventPayload,
+} from "../events/event";
 import type { ContextNodeDefinition } from "../graph/node";
-import type { ContextChange } from "./types";
+import type {
+  ContextChange,
+  EventPublication,
+} from "./types";
 
 export interface RuntimeTransactionCoordinator {
   readonly runTransaction: <T>(
@@ -11,6 +18,10 @@ export interface RuntimeTransactionCoordinator {
     node: ContextNodeDefinition<TValue>,
     value: TValue
   ) => void;
+  readonly publish: <TEvent extends AnyEventDefinition>(
+    event: TEvent,
+    payload: EventPayload<TEvent>
+  ) => void;
 }
 
 export interface RuntimeTransactionCoordinatorDependencies {
@@ -20,35 +31,40 @@ export interface RuntimeTransactionCoordinatorDependencies {
   readonly resolveContextNode: <TValue>(
     node: ContextNodeDefinition<TValue>
   ) => ContextNodeDefinition<TValue>;
-  readonly commitContexts: (
-    changes: readonly ContextChange[]
+  readonly commit: (
+    contextChanges: readonly ContextChange[],
+    eventPublications: readonly EventPublication[]
   ) => void;
 }
 
 /**
- * Owns runtime transaction lifecycle and transaction-local context values.
+ * Owns runtime transaction lifecycle and transaction-local context/event work.
  * Notification dispatch remains a separate capability.
  */
 export const createRuntimeTransactionCoordinator = ({
   runWithBufferedNotifications,
   resolveContextNode,
-  commitContexts,
+  commit,
 }: RuntimeTransactionCoordinatorDependencies): RuntimeTransactionCoordinator => {
   let depth = 0;
   let rootSucceeded = false;
   let resolveJoinedTransactions: (() => void) | undefined;
   let joinedTransactionsSettled: Promise<void> | undefined;
   let stagedContexts = new Map<string, ContextChange>();
+  let stagedEvents: EventPublication[] = [];
 
-  const commitStagedContexts = (): void => {
+  const commitStagedWork = (): void => {
     const contexts = stagedContexts;
+    const events = stagedEvents;
     stagedContexts = new Map();
+    stagedEvents = [];
 
-    commitContexts([...contexts.values()]);
+    commit([...contexts.values()], events);
   };
 
-  const discardStagedContexts = (): void => {
+  const discardStagedWork = (): void => {
     stagedContexts = new Map();
+    stagedEvents = [];
   };
 
   const waitForJoinedTransactions = (): Promise<void> => {
@@ -88,8 +104,8 @@ export const createRuntimeTransactionCoordinator = ({
         if (isRoot) {
           if (depth > 0) await waitForJoinedTransactions();
 
-          if (rootSucceeded) commitStagedContexts();
-          else discardStagedContexts();
+          if (rootSucceeded) commitStagedWork();
+          else discardStagedWork();
           resetJoinedTransactionSettlement();
         }
       }
@@ -109,20 +125,31 @@ export const createRuntimeTransactionCoordinator = ({
     node: ContextNodeDefinition<TValue>,
     value: TValue
   ): void => {
+    const registered = resolveContextNode(node);
+    const change: ContextChange = {
+      node: registered as ContextNodeDefinition<unknown>,
+      value,
+    };
+
     if (!isInsideTransaction()) {
-      const registered = resolveContextNode(node);
-      commitContexts([{
-        node: registered as ContextNodeDefinition<unknown>,
-        value,
-      }]);
+      commit([change], []);
       return;
     }
 
-    const registered = resolveContextNode(node);
-    stagedContexts.set(registered.key, {
-      node: registered as ContextNodeDefinition<unknown>,
-      value,
-    });
+    stagedContexts.set(registered.key, change);
+  };
+
+  const publish = <TEvent extends AnyEventDefinition>(
+    event: TEvent,
+    payload: EventPayload<TEvent>
+  ): void => {
+    const publication: EventPublication = { event, payload };
+    if (!isInsideTransaction()) {
+      commit([], [publication]);
+      return;
+    }
+
+    stagedEvents.push(publication);
   };
 
   return Object.freeze({
@@ -130,5 +157,6 @@ export const createRuntimeTransactionCoordinator = ({
     isInsideTransaction,
     assertOperationAllowed,
     setContext,
+    publish,
   });
 };

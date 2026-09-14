@@ -1,9 +1,9 @@
-import type {
-  AnyNodeDefinition,
-  DataNodeDefinition,
-  DerivedNodeDefinition,
-} from "../graph/node";
+import type { AnyNodeDefinition } from "../graph/node";
 
-export type RefreshableNodeDefinition =
-  | DataNodeDefinition<unknown, readonly AnyNodeDefinition[]>
-  | DerivedNodeDefinition<unknown, readonly AnyNodeDefinition[]>;
+/**
+ * Any registered non-context node may be refreshed, regardless of its
+ * dependency tuple or event invalidation declarations.
+ */
+export type RefreshableNodeDefinition = AnyNodeDefinition & {
+  readonly kind: "data" | "derived";
+};

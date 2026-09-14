@@ -1,3 +1,5 @@
+import type { AnyEventDefinition, EventPayload } from "../events/event";
+
 export type NodeKind = "context" | "data" | "derived";
 
 export interface NodeDefinition<
@@ -42,18 +44,48 @@ export interface ContextNodeDefinition<TValue>
   readonly initialValue: TValue;
 }
 
+export interface EventInvalidationContext<
+  TEvent extends AnyEventDefinition,
+  TDependencies extends DependencyList,
+> {
+  readonly payload: EventPayload<TEvent>;
+  readonly get: GetDependencyValue<TDependencies>;
+}
+
+export interface ConditionalEventInvalidation<
+  TEvent extends AnyEventDefinition,
+  TDependencies extends DependencyList,
+> {
+  readonly event: TEvent;
+  readonly when: (
+    context: EventInvalidationContext<TEvent, TDependencies>
+  ) => boolean;
+}
+
+export type EventInvalidationDeclaration<
+  TEvent extends AnyEventDefinition,
+  TDependencies extends DependencyList,
+> = TEvent | ConditionalEventInvalidation<TEvent, TDependencies>;
+
+export type EventInvalidationList<TDependencies extends DependencyList> =
+  readonly EventInvalidationDeclaration<AnyEventDefinition, TDependencies>[];
+
 export interface DataNodeDefinition<
   TValue,
   TDependencies extends DependencyList,
+  TInvalidatedBy extends EventInvalidationList<TDependencies> = readonly [],
 > extends NodeDefinition<TValue, "data", TDependencies> {
   readonly initialValue: TValue;
+  readonly invalidatedBy: TInvalidatedBy;
   readonly load: (context: LoadContext<TDependencies>) => Promise<TValue>;
 }
 
 export interface DerivedNodeDefinition<
   TValue,
   TDependencies extends DependencyList,
+  TInvalidatedBy extends EventInvalidationList<TDependencies> = readonly [],
 > extends NodeDefinition<TValue, "derived", TDependencies> {
+  readonly invalidatedBy: TInvalidatedBy;
   readonly derive: (context: DeriveContext<TDependencies>) => TValue;
 }
 
@@ -65,9 +97,11 @@ export interface ContextNodeOptions<TValue> {
 export interface DataNodeOptions<
   TValue,
   TDependencies extends DependencyList = readonly [],
+  TInvalidatedBy extends EventInvalidationList<TDependencies> = readonly [],
 > {
   readonly key: string;
   readonly dependencies?: DependencySource<TDependencies>;
+  readonly invalidatedBy?: TInvalidatedBy;
   readonly initialValue: TValue;
   readonly load: (context: LoadContext<TDependencies>) => Promise<TValue>;
 }
@@ -75,9 +109,11 @@ export interface DataNodeOptions<
 export interface DerivedNodeOptions<
   TValue,
   TDependencies extends DependencyList,
+  TInvalidatedBy extends EventInvalidationList<TDependencies> = readonly [],
 > {
   readonly key: string;
   readonly dependencies: DependencySource<TDependencies>;
+  readonly invalidatedBy?: TInvalidatedBy;
   readonly derive: (context: DeriveContext<TDependencies>) => TValue;
 }
 

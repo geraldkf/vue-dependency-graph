@@ -2,6 +2,8 @@
 
 ## Domain events
 
+Status: Milestone 6 implementation and maintained documentation are complete, with final combined automated and manual validation pending. Typed events support graph indexing, conditional matching, immediate publication, transaction-aware publication, and the cross-domain playground. See `docs/implementation/52-milestone-6-implementation-summary.md`.
+
 Cross-store integration should use typed events rather than direct store imports.
 
 ```ts
@@ -22,6 +24,10 @@ const CapabilityInterviewStatus = defineDataNode({
 });
 ```
 
+## Graph event index
+
+Graph creation validates event declaration shapes, blank keys, duplicate event keys on one node, and defensive context-node declarations. It then builds a graph-local immutable candidate index keyed by event key. Candidate order follows graph registration order. The index is internal and does not expand the public `Graph` inspection API. Runtime publication consumes this index directly, avoiding a full graph scan per publication.
+
 ## Event matching
 
 Invalidating every instance for every event can be wasteful. A node may provide a predicate:
@@ -29,11 +35,18 @@ Invalidating every instance for every event can be wasteful. A node may provide 
 ```ts
 invalidatedBy: [{
   event: AppointmentBooked,
-  when: ({ event, get }) => event.jobSeekerId === get(JobSeekerId),
+  when: ({ payload, get }: EventInvalidationContext<
+    typeof AppointmentBooked,
+    readonly [typeof JobSeekerId]
+  >) => payload.jobSeekerId === get(JobSeekerId),
 }]
 ```
 
 Predicates must be synchronous and side-effect free.
+
+## Immediate publication
+
+`runtime.publish(event, payload)` evaluates every indexed predicate against committed successful dependency values before applying mutation. A matching publication invalidates the directly declared nodes and their transitive descendants, preserves successful stale data, advances generations once, aborts affected attempts after generation advancement, emits one notification, and requests at most one scheduler pass. No-match and unused events are silent. Inside a transaction, publications are staged in call order and participate in the root transaction commit or rollback outcome.
 
 ## Delivery semantics
 
@@ -46,7 +59,7 @@ It does not guarantee:
 - Durable replay
 - Exactly-once processing
 
-External transports can call `graph.publish` when they receive messages.
+External transports can validate and map received messages, then call `runtime.publish(...)`.
 
 ## Refresh policies
 
@@ -99,7 +112,7 @@ Consumers should read progress from node data. The polling engine should not req
 
 ## Event and transaction interaction
 
-Events published inside a graph transaction are applied at commit. Duplicate events may be coalesced for invalidation, but diagnostic history should preserve what was published.
+Events published inside a graph transaction are staged in call order and discarded on rollback. On successful commit, context values commit first, event predicates evaluate against committed values, and the combined affected-node set is invalidated once. Publication records are not deduplicated by key or payload; only their resulting graph effects are deduplicated. Diagnostic history remains deferred to Milestone 10.
 
 ### Implemented manual refresh
 

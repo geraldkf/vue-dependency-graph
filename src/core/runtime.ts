@@ -41,6 +41,11 @@ import type {
   ContextNodeDefinition,
   Graph,
 } from "./graph/node";
+import type {
+  AnyEventDefinition,
+  EventPayload,
+} from "./events/event";
+import { createRuntimeEventController } from "./events/events";
 
 export interface GraphRuntimeOptions {
   /**
@@ -67,6 +72,10 @@ export interface GraphRuntime {
   readonly refresh: (
     nodes: readonly RefreshableNodeDefinition[]
   ) => Promise<void>;
+  readonly publish: <TEvent extends AnyEventDefinition>(
+    event: TEvent,
+    payload: EventPayload<TEvent>
+  ) => void;
   readonly subscribeNodes: (
     nodes: readonly AnyNodeDefinition[]
   ) => NodeSubscription;
@@ -78,13 +87,9 @@ export interface GraphRuntime {
   readonly whenSettled: () => Promise<void>;
   readonly onChange: (listener: RuntimeListener) => () => void;
   /**
-   * Runs `work`, coalescing every notify/schedule dispatch caused by it
-   * into a single commit once `work` settles. Depth stays open across any
-   * awaited gap inside `work`, so a `transaction` spanning multiple async
-   * steps still produces one flush instead of one per step. Nested
-   * transactions collapse into the outermost one's commit. State mutations
-   * inside `work` are applied immediately and are not rolled back on
-   * failure — this defers observation, it does not provide isolation.
+   * Stages context writes until the successful root transaction commits.
+   * Joined and nested calls share one transaction group. Failure discards
+   * staged context values; transactions do not roll back remote work.
    */
   readonly transaction: <T>(work: () => T | Promise<T>) => Promise<T>;
 }
@@ -211,10 +216,21 @@ export const createGraphRuntime = (
     schedule: buffer.schedule,
   });
 
+  const events = createRuntimeEventController({
+    graph,
+    getMutableState,
+  });
+
   const transactions = createRuntimeTransactionCoordinator({
     runWithBufferedNotifications: buffer.runTransaction,
     resolveContextNode: invalidation.resolveContextNode,
-    commitContexts: invalidation.commitContexts,
+    commit: (contextChanges, eventPublications) => {
+      const eventTargets = events.matchPublications(
+        eventPublications,
+        contextChanges
+      );
+      invalidation.commitContexts(contextChanges, eventTargets);
+    },
   });
 
   const operations = createRuntimeOperationsController({
@@ -233,6 +249,7 @@ export const createGraphRuntime = (
     execute,
     prefetch: operations.prefetch,
     refresh: operations.refresh,
+    publish: transactions.publish,
     subscribeNodes: subscriptions.subscribeNodes,
     getSubscriptionState: subscriptions.getSubscriptionState,
     hasSubscribers: subscriptions.hasSubscribers,

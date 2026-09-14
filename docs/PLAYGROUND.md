@@ -102,3 +102,21 @@ Rollback path:
 6. Confirm committed runtime state remains `1 + 10 = 11`.
 7. Confirm in-progress values are `none` and committed observer snapshots remain empty.
 8. Select **Reset** and confirm outcome returns to `none` and the error is cleared.
+
+
+## Typed Events
+
+The **Typed Events** scenario demonstrates cross-domain event invalidation. An appointments-domain publisher emits `appointment.booked`; a capability-status node conditionally matches the payload against its declared job-seeker context dependency.
+
+The publisher does not import the capability node, loader, or a compliance store. The capability node does not import an appointments store or publishing service.
+
+Manual validation:
+
+1. Confirm job seeker `101` and initial request count `1`.
+2. Publish a matching event and confirm one capability reload.
+3. Publish a non-matching event and confirm no additional request.
+4. Start an event transaction and confirm request count remains unchanged while phase is `staged`.
+5. Commit and confirm exactly one reload and phase `committed`.
+6. Reset and confirm request count `1`, phase `idle`, outcome `ready`, and empty history.
+7. Start another transaction, roll it back, and confirm no reload.
+8. Start a transaction, switch tabs, return, and confirm no suspended transaction or warning.

@@ -205,17 +205,35 @@ await runtime.transaction(async () => {
 
 Atomic local context transactions are implemented and validated. Context writes are held until the successful outer transaction completes, and public reads remain committed reads while work is open. Final values commit together, shared descendants invalidate once, and affected attempts abort after generation advancement. Synchronous or asynchronous failure discards staged context changes. Transaction-time `whenSettled()` waits through successful commit scheduling, while rollback settles without phantom work. Explicit `execute`, `prefetch`, and `refresh` calls are rejected inside a transaction. Overlapping transaction calls on one runtime join a single group: the first call is the root, all joined calls settle before the group closes, and the root outcome controls commit or rollback. Transactions do not provide backend rollback.
 
-## Planned APIs
+## Typed event definitions
 
-The following remain planned for later milestones:
+M6A implements typed event handles and node declarations. M6B adds graph validation and indexing. M6C implements immediate publication, and M6D implements transaction-aware publication.
 
 ```ts
-defineEvent(...);
-runtime.publish(...);
+const AppointmentBooked = defineEvent<{
+  jobSeekerId: number;
+  appointmentId: number;
+}>("appointment.booked");
+
+runtime.publish(AppointmentBooked, {
+  jobSeekerId: 123,
+  appointmentId: 456,
+});
+```
+
+Data and derived nodes may declare unconditional or conditional `invalidatedBy` entries. Conditional predicates receive the typed `payload` and a `get(...)` function restricted to the node's declared dependencies. Events published inside a transaction are staged in call order. Successful commit evaluates predicates against final staged context values and applies one combined context/event invalidation commit. Rollback discards staged publications.
+
+`defineEvent(...)`, `invalidatedBy`, graph validation, indexing, predicate matching, and immediate `runtime.publish(...)` invalidation are implemented. Transaction-aware publication is implemented with final combined validation pending. See `docs/implementation/52-milestone-6-implementation-summary.md`.
+
+Publication invalidates matched nodes synchronously and schedules subscribed stale work through the existing scheduler. It is silent when no declaration matches. Predicate evaluation completes before mutation, so a predicate failure applies no partial event invalidation. Inside transactions, publication is staged and follows the root transaction outcome.
+
+## Other planned APIs
+
+```ts
 defineQuery(...);
 useQuery(...);
 pollUntil(...);
 runtime.mutate(...);
 ```
 
-Events, query groups, polling policies, optimistic mutations, diagnostics, snapshots, and devtools are not yet stable public APIs.
+Query groups, polling policies, optimistic mutations, diagnostics, snapshots, and devtools are not yet stable public APIs.

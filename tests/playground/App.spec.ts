@@ -37,6 +37,7 @@ describe("playground shell", () => {
 
     const tabs = [
       "Atomic Transaction",
+      "Typed Events",
       "Concurrent Consumers",
       "Error and Retry",
       "Unmount Cleanup",

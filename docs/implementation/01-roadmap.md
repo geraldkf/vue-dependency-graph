@@ -231,13 +231,29 @@ The project owner reported the final combined automated and manual validation as
 
 ## Milestone 6: Typed events
 
-- [ ] Event handles and payload typing
-- [ ] Event invalidation index
-- [ ] Conditional event matching
-- [ ] Transaction-aware event publication
-- [ ] Cross-domain playground scenario
+Status: Implementation and maintained documentation complete; final combined automated and manual validation pending.
 
-Exit criteria: appointment events invalidate capability status without either store importing the other.
+Implementation plan: `docs/implementation/46-milestone-6-typed-events-plan.md`  
+Implementation summary: `docs/implementation/52-milestone-6-implementation-summary.md`  
+Validation handoff: `docs/implementation/53-milestone-6-validation-handoff.md`  
+Design decision: `docs/decisions/ADR-006-domain-events.md`
+
+- [x] Detailed scope, consistency model, and implementation sequence prepared
+- [x] Planning review
+- [x] M6A public event handles and node declaration types
+- [ ] M6A offline validation
+- [x] M6B graph validation and event invalidation index
+- [ ] M6B offline validation
+- [x] M6C immediate runtime publication
+- [ ] M6C offline validation
+- [x] M6D transaction-aware event publication
+- [ ] M6D offline validation
+- [x] M6E cross-domain playground scenario
+- [ ] M6E automated and manual validation
+- [x] M6F maintained documentation reconciliation
+- [ ] M6F final combined automated and manual validation
+
+Exit criteria prepared for final validation: appointment events invalidate capability status without either store importing the other.
 
 ## Milestone 7: Query groups
 

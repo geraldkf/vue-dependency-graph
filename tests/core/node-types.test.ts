@@ -2,6 +2,9 @@ import {
   defineContextNode,
   defineDataNode,
   defineDerivedNode,
+  defineEvent,
+  type EventInvalidationContext,
+  type EventPayload,
   type NodeValue,
 } from "../../src/core";
 
@@ -49,4 +52,63 @@ void defineDerivedNode<number, readonly [typeof count]>({
   dependencies: [count] as const,
   // @ts-expect-error explicit derived value type must match the derive result
   derive: () => "wrong",
+});
+
+
+const appointmentBooked = defineEvent<{
+  jobSeekerId: number;
+  appointmentId: number;
+}>("appointment.booked");
+
+type AppointmentBookedPayload = EventPayload<typeof appointmentBooked>;
+const appointmentPayload: AppointmentBookedPayload = {
+  jobSeekerId: 123,
+  appointmentId: 456,
+};
+void appointmentPayload;
+
+const eventInvalidatedData = defineDataNode({
+  key: "event-invalidated-data",
+  dependencies: [count] as const,
+  invalidatedBy: [
+    appointmentBooked,
+    {
+      event: appointmentBooked,
+      when: ({ payload, get }: EventInvalidationContext<
+        typeof appointmentBooked,
+        readonly [typeof count]
+      >) => {
+        const jobSeekerId: number = payload.jobSeekerId;
+        const currentCount: number = get(count);
+        // @ts-expect-error event predicates can read only declared dependencies
+        get(other);
+        return jobSeekerId === currentCount;
+      },
+    },
+  ] as const,
+  initialValue: "",
+  load: async () => "value",
+});
+
+const eventInvalidatedDerived = defineDerivedNode({
+  key: "event-invalidated-derived",
+  dependencies: [eventInvalidatedData] as const,
+  invalidatedBy: [appointmentBooked] as const,
+  derive: ({ get }) => get(eventInvalidatedData),
+});
+
+void [eventInvalidatedData, eventInvalidatedDerived];
+
+const invalidAppointmentPayload: AppointmentBookedPayload = {
+  // @ts-expect-error event payload fields retain their declared types
+  jobSeekerId: "invalid",
+  appointmentId: 456,
+};
+void invalidAppointmentPayload;
+
+defineContextNode({
+  key: "invalid-event-context",
+  initialValue: 1,
+  // @ts-expect-error context nodes do not support event invalidation declarations
+  invalidatedBy: [appointmentBooked],
 });

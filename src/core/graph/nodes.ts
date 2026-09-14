@@ -8,6 +8,7 @@ import type {
   DependencySource,
   DerivedNodeDefinition,
   DerivedNodeOptions,
+  EventInvalidationList,
 } from "./node";
 
 const validateKey = (key: string): void => {
@@ -26,6 +27,11 @@ const resolveDependencies = <TDependencies extends DependencyList>(
   return (dependencies ?? []) as unknown as TDependencies;
 };
 
+const freezeInvalidatedBy = <TInvalidatedBy extends readonly unknown[]>(
+  invalidatedBy: TInvalidatedBy | undefined
+): TInvalidatedBy =>
+  Object.freeze([...(invalidatedBy ?? [])]) as unknown as TInvalidatedBy;
+
 export const defineContextNode = <TValue>(
   options: ContextNodeOptions<TValue>
 ): ContextNodeDefinition<TValue> => {
@@ -42,17 +48,20 @@ export const defineContextNode = <TValue>(
 export const defineDataNode = <
   TValue,
   const TDependencies extends DependencyList = readonly [],
+  const TInvalidatedBy extends EventInvalidationList<TDependencies> = readonly [],
 >(
-  options: DataNodeOptions<TValue, TDependencies>
-): DataNodeDefinition<TValue, TDependencies> => {
+  options: DataNodeOptions<TValue, TDependencies, TInvalidatedBy>
+): DataNodeDefinition<TValue, TDependencies, TInvalidatedBy> => {
   validateKey(options.key);
 
+  const invalidatedBy = freezeInvalidatedBy(options.invalidatedBy);
   const definition = {
     key: options.key,
     kind: "data" as const,
     get dependencies(): TDependencies {
       return Object.freeze([...resolveDependencies(options.dependencies)]) as unknown as TDependencies;
     },
+    invalidatedBy,
     initialValue: options.initialValue,
     load: options.load,
   };
@@ -63,17 +72,20 @@ export const defineDataNode = <
 export const defineDerivedNode = <
   TValue,
   const TDependencies extends DependencyList,
+  const TInvalidatedBy extends EventInvalidationList<TDependencies> = readonly [],
 >(
-  options: DerivedNodeOptions<TValue, TDependencies>
-): DerivedNodeDefinition<TValue, TDependencies> => {
+  options: DerivedNodeOptions<TValue, TDependencies, TInvalidatedBy>
+): DerivedNodeDefinition<TValue, TDependencies, TInvalidatedBy> => {
   validateKey(options.key);
 
+  const invalidatedBy = freezeInvalidatedBy(options.invalidatedBy);
   const definition = {
     key: options.key,
     kind: "derived" as const,
     get dependencies(): TDependencies {
       return Object.freeze([...resolveDependencies(options.dependencies)]) as unknown as TDependencies;
     },
+    invalidatedBy,
     derive: options.derive,
   };
 

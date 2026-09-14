@@ -124,6 +124,10 @@ Verify:
 
 Keep transaction integration coverage grouped by behaviour: staging, invalidation, rollback, settlement, execution races, and overlapping transaction calls. Prefer adding a test to the narrowest matching suite rather than rebuilding one broad transaction file.
 
+### Typed event publication
+
+Event tests cover payload typing, declaration validation, deterministic graph indexing, conditional matching, atomic predicate failure, direct and descendant invalidation, stale-data retention, unrelated branches, scheduler reload, shared-descendant deduplication, generation-before-abort ordering, and ignored-abort protection. M6D adds transaction coverage for staged visibility, rollback, final-context predicate matching, combined invalidation deduplication, publication order, predicate-failure atomicity, joined transactions, and scheduler settlement.
+
 ### Mutations
 
 - Success invalidation

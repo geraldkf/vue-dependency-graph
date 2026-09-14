@@ -15,6 +15,12 @@ export type {
   NodeExecutionFailure,
   NodeExecutionFailureKind,
 } from "./execution/types";
+export { defineEvent } from "./events/event";
+export type {
+  AnyEventDefinition,
+  EventDefinition,
+  EventPayload,
+} from "./events/event";
 export { createGraph } from "./graph/graph";
 export type { CreateGraphOptions } from "./graph/graph";
 export {
@@ -37,10 +43,14 @@ export type {
   ContextNodeOptions,
   DataNodeDefinition,
   DataNodeOptions,
+  ConditionalEventInvalidation,
   DependencyList,
   DeriveContext,
   DerivedNodeDefinition,
   DerivedNodeOptions,
+  EventInvalidationContext,
+  EventInvalidationDeclaration,
+  EventInvalidationList,
   GetDependencyValue,
   Graph,
   LoadContext,
