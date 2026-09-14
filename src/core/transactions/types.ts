@@ -1,4 +1,4 @@
-import type { AnyEventDefinition } from "../events/types";
+import type { AnyEventDefinition, EventPayload } from "../events/types";
 import type { ContextNodeDefinition } from "../graph/types";
 
 export interface ContextChange {
@@ -9,4 +9,15 @@ export interface ContextChange {
 export interface EventPublication {
   readonly event: AnyEventDefinition;
   readonly payload: unknown;
+}
+
+export interface GraphTransaction {
+  readonly setContext: <TValue>(
+    node: ContextNodeDefinition<TValue>,
+    value: TValue,
+  ) => void;
+  readonly publish: <TEvent extends AnyEventDefinition>(
+    event: TEvent,
+    payload: EventPayload<TEvent>,
+  ) => void;
 }

@@ -166,8 +166,8 @@ const startTransaction = (): void => {
   transactionOutcome.value = "none";
   transactionError.value = null;
 
-  void runtime.transaction(async () => {
-    runtime.setContext(firstValue, 2);
+  void runtime.transaction(async transaction => {
+    transaction.setContext(firstValue, 2);
     draft.value = {
       first: 2,
       second: runtime.getState(secondValue).data,
@@ -179,7 +179,7 @@ const startTransaction = (): void => {
     });
     if (!isMounted) return;
 
-    runtime.setContext(secondValue, 20);
+    transaction.setContext(secondValue, 20);
     draft.value = { first: 2, second: 20 };
     transactionPhase.value = "second-staged";
 
@@ -224,9 +224,9 @@ const rollbackTransaction = (): void => {
 };
 
 const resetScenario = async (): Promise<void> => {
-  await runtime.transaction(() => {
-    runtime.setContext(firstValue, 1);
-    runtime.setContext(secondValue, 10);
+  await runtime.transaction(transaction => {
+    transaction.setContext(firstValue, 1);
+    transaction.setContext(secondValue, 10);
   });
   await runtime.whenSettled();
 

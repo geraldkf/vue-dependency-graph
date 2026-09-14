@@ -9,6 +9,11 @@ import type {
 } from "../graph/types";
 import type { ContextChange } from "../transactions/types";
 
+export interface InvalidationDispatch {
+  readonly notify: () => void;
+  readonly schedule: () => void;
+}
+
 export interface RuntimeInvalidationController {
   readonly resolveContextNode: <TValue>(
     node: ContextNodeDefinition<TValue>
@@ -19,7 +24,8 @@ export interface RuntimeInvalidationController {
   ) => void;
   readonly commitContexts: (
     changes: readonly ContextChange[],
-    invalidationRoots?: readonly AnyNodeDefinition[]
+    invalidationRoots?: readonly AnyNodeDefinition[],
+    dispatch?: InvalidationDispatch
   ) => void;
   readonly invalidateChangedResultDescendants: (
     node: AnyNodeDefinition
@@ -146,7 +152,8 @@ export const createRuntimeInvalidationController = ({
 
   const commitContexts = (
     changes: readonly ContextChange[],
-    invalidationRoots: readonly AnyNodeDefinition[] = []
+    invalidationRoots: readonly AnyNodeDefinition[] = [],
+    dispatch: InvalidationDispatch = { notify, schedule }
   ): void => {
     const effectiveChanges = changes.filter(({ node, value }) =>
       !Object.is(getMutableState(node.key).data, value)
@@ -177,8 +184,8 @@ export const createRuntimeInvalidationController = ({
 
     const subscribedNodeChanged = invalidateNodes([...affected.values()]);
 
-    notify();
-    if (subscribedNodeChanged) schedule();
+    dispatch.notify();
+    if (subscribedNodeChanged) dispatch.schedule();
   };
 
   const setContext = <TValue>(

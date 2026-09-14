@@ -115,8 +115,8 @@ const startTransaction = (): void => {
   transactionPhase.value = "staged";
   outcome.value = "event staged; committed capability state is unchanged";
 
-  void runtime.transaction(async () => {
-    publishAppointmentBooked(runtime, {
+  void runtime.transaction(async transaction => {
+    publishAppointmentBooked(transaction, {
       jobSeekerId: runtime.getState(capabilityJobSeekerId).data,
       appointmentId: nextHistoryId,
     });
@@ -157,8 +157,8 @@ const rollbackTransaction = (): void => {
 const resetScenario = async (): Promise<void> => {
   resolveDecision?.("rollback");
   resolveDecision = undefined;
-  await runtime.transaction(() => {
-    runtime.setContext(capabilityJobSeekerId, 101);
+  await runtime.transaction(transaction => {
+    transaction.setContext(capabilityJobSeekerId, 101);
   }).catch(() => {});
   capabilityStatusLoader.reset();
   await runtime.refresh([capabilityInterviewStatus]).catch(() => {});

@@ -5,31 +5,20 @@
 
  RUN  v3.0.7 C:/Developer/git/vue-dependency-graph
 
+ Ô£ô tests/core/transaction-staging.spec.ts > transaction staging and operation boundaries > without a transaction, an async-spanning update causes two loads
+ Ô£ô tests/core/transaction-staging.spec.ts > transaction staging and operation boundaries > coalesces an async-spanning update into a single load inside a transaction
+ Ô£ô tests/core/transaction-staging.spec.ts > transaction staging and operation boundaries > collapses nested transactions into one commit
+ Ô£ô tests/core/transaction-staging.spec.ts > transaction staging and operation boundaries > keeps staged context values hidden until the outer transaction commits
+ Ô£ô tests/core/transaction-staging.spec.ts > transaction staging and operation boundaries > uses the final staged value across nested transactions
+ Ô£ô tests/core/transaction-staging.spec.ts > transaction staging and operation boundaries > does not commit when the final staged value equals the committed value
+ Ô£ô tests/core/transaction-staging.spec.ts > transaction staging and operation boundaries > allows guarded operations again after a transaction completes
+ Ô£ô tests/core/transaction-staging.spec.ts > transaction staging and operation boundaries > behaves as a plain passthrough outside a transaction (existing call sites unaffected)
  Ô£ô tests/core/event-index.spec.ts > graph event invalidation index > indexes unconditional and conditional declarations in graph registration order
  Ô£ô tests/core/event-index.spec.ts > graph event invalidation index > resolves equivalent event handles by key and returns an immutable empty result for unused events
  Ô£ô tests/core/event-index.spec.ts > graph event invalidation index > keeps event indexes isolated between graphs
  Ô£ô tests/core/event-index.spec.ts > graph event invalidation index > rejects duplicate event keys on one node
  Ô£ô tests/core/event-index.spec.ts > graph event invalidation index > rejects malformed and blank event declarations from untyped input
  Ô£ô tests/core/event-index.spec.ts > graph event invalidation index > rejects event invalidation metadata on context nodes from untyped input
- Ô£ô tests/core/transaction-staging.spec.ts > transaction staging and operation boundaries > without a transaction, an async-spanning update causes two loads
- Ô£ô tests/core/transaction-staging.spec.ts > transaction staging and operation boundaries > coalesces an async-spanning update into a single load inside a transaction
- Ô£ô tests/core/transaction-staging.spec.ts > transaction staging and operation boundaries > collapses nested transactions into one commit
- Ô£ô tests/core/transaction-staging.spec.ts > transaction staging and operation boundaries > rejects execute inside a transaction without starting or invalidating work
- Ô£ô tests/core/transaction-staging.spec.ts > transaction staging and operation boundaries > rejects prefetch inside a transaction without starting or invalidating work
- Ô£ô tests/core/transaction-staging.spec.ts > transaction staging and operation boundaries > rejects refresh inside a transaction without starting or invalidating work
- Ô£ô tests/core/transaction-staging.spec.ts > transaction staging and operation boundaries > keeps staged context values hidden until the outer transaction commits
- Ô£ô tests/core/transaction-staging.spec.ts > transaction staging and operation boundaries > uses the final staged value across nested transactions
- Ô£ô tests/core/transaction-staging.spec.ts > transaction staging and operation boundaries > does not commit when the final staged value equals the committed value
- Ô£ô tests/core/transaction-staging.spec.ts > transaction staging and operation boundaries > allows guarded operations again after a transaction completes
- Ô£ô tests/core/transaction-staging.spec.ts > transaction staging and operation boundaries > behaves as a plain passthrough outside a transaction (existing call sites unaffected)
- Ô£ô tests/core/transaction-rollback.spec.ts > transaction rollback > discards staged context values when the outer transaction fails
- Ô£ô tests/core/transaction-rollback.spec.ts > transaction rollback > rolls back staged contexts after a synchronous throw
- Ô£ô tests/core/transaction-rollback.spec.ts > transaction rollback > rolls back staged contexts after a asynchronous rejection
- Ô£ô tests/core/transaction-rollback.spec.ts > transaction rollback > rolls back the outer transaction when an inner failure propagates
- Ô£ô tests/core/transaction-rollback.spec.ts > transaction rollback > allows the outer transaction to commit when an inner failure is caught
- Ô£ô tests/core/transaction-rollback.spec.ts > transaction rollback > rolls back outer work after an inner transaction succeeds
- Ô£ô tests/core/transaction-rollback.spec.ts > transaction rollback > does not abort affected active work when staged context changes roll back
- Ô£ô tests/core/transaction-rollback.spec.ts > transaction rollback > publishes independent execution completion after a transaction rolls back
  Ô£ô tests/core/event-publication.spec.ts > event publication > invalidates matching nodes and descendants while retaining successful data
  Ô£ô tests/core/event-publication.spec.ts > event publication > evaluates conditional matches against committed declared dependency values
  Ô£ô tests/core/event-publication.spec.ts > event publication > applies no invalidation when any predicate throws
@@ -42,6 +31,15 @@
  Ô£ô tests/core/transaction-invalidation.spec.ts > transaction commit invalidation > invalidates each node once across diamond descendant paths
  Ô£ô tests/core/transaction-invalidation.spec.ts > transaction commit invalidation > aborts affected active work at commit rather than while staging
  Ô£ô tests/core/transaction-invalidation.spec.ts > transaction commit invalidation > does not abort active work unaffected by committed contexts
+ Ô£ô tests/core/transaction-rollback.spec.ts > transaction rollback > discards staged context values when the outer transaction fails
+ Ô£ô tests/core/transaction-rollback.spec.ts > transaction rollback > rolls back staged contexts after a synchronous throw
+ Ô£ô tests/core/transaction-rollback.spec.ts > transaction rollback > rolls back staged contexts after a asynchronous rejection
+ Ô£ô tests/core/transaction-rollback.spec.ts > transaction rollback > rolls back the outer transaction when an inner failure propagates
+ Ô£ô tests/core/transaction-rollback.spec.ts > transaction rollback > allows the outer transaction to commit when an inner failure is caught
+ Ô£ô tests/core/transaction-rollback.spec.ts > transaction rollback > rolls back outer work after an inner transaction succeeds
+ Ô£ô tests/core/transaction-rollback.spec.ts > transaction rollback > does not abort affected active work when staged context changes roll back
+ ├ù tests/core/transaction-rollback.spec.ts > transaction rollback > publishes independent execution completion after a transaction rolls back
+   ÔåÆ expected [Function] to throw error including 'rollback context only' but got 'expected [ +0, 42 ] to deeply equal []'
  Ô£ô tests/core/transaction-events.spec.ts > transaction event publication > keeps event effects staged until successful commit
  Ô£ô tests/core/transaction-events.spec.ts > transaction event publication > discards staged publications when the transaction rolls back
  Ô£ô tests/core/transaction-events.spec.ts > transaction event publication > evaluates predicates against final staged context values
@@ -51,17 +49,16 @@
  Ô£ô tests/core/transaction-events.spec.ts > transaction event publication > shares staged publications across joined transactions and follows root outcome
  Ô£ô tests/core/transaction-events.spec.ts > transaction event publication > does not abort affected work until the transaction commits
  ├ù tests/core/transaction-events.spec.ts > transaction event publication > keeps transaction settlement pending through event-triggered scheduler work
-   ÔåÆ Condition was not reached: event-triggered scheduler load
+   ÔåÆ expected true to be false // Object.is equality
  Ô£ô tests/playground/scenarios/atomic-transaction.spec.ts > AtomicTransactionScenario > shows transaction progress separately from committed runtime state
  Ô£ô tests/playground/scenarios/atomic-transaction.spec.ts > AtomicTransactionScenario > commits both staged values without exposing an intermediate snapshot
  Ô£ô tests/playground/scenarios/atomic-transaction.spec.ts > AtomicTransactionScenario > rolls back both staged values when the transaction throws
  Ô£ô tests/playground/scenarios/atomic-transaction.spec.ts > AtomicTransactionScenario > releases either open transaction stage without post-unmount Vue warnings
  Ô£ô tests/playground/scenarios/atomic-transaction.spec.ts > AtomicTransactionScenario > resets committed state and clears rollback progress, outcome, and error
- Ô£ô tests/core/refresh-interaction.spec.ts > refresh interactions and races > supersedes active normal work and prevents its old result from committing
- Ô£ô tests/core/refresh-interaction.spec.ts > refresh interactions and races > shares overlapping refresh calls and runs a later refresh again
- Ô£ô tests/core/refresh-interaction.spec.ts > refresh interactions and races > does not let final unsubscribe cancel caller-owned refresh
- Ô£ô tests/core/refresh-interaction.spec.ts > refresh interactions and races > shares overlapping refreshes regardless of target order and duplicates
- Ô£ô tests/core/refresh-interaction.spec.ts > refresh interactions and races > keeps distinct refresh target sets independent
+ Ô£ô tests/core/transaction-event-isolation.spec.ts > transaction event ownership > applies a plain runtime publication while another transaction is open
+ Ô£ô tests/core/transaction-event-isolation.spec.ts > transaction event ownership > preserves a plain runtime publication when another transaction rolls back
+ ├ù tests/core/transaction-event-isolation.spec.ts > transaction event ownership > notifies and schedules an unrelated publication before the transaction closes
+   ÔåÆ expected "spy" to be called 1 times, but got 2 times
  Ô£ô tests/core/graph-validation.spec.ts > graph validation > rejects duplicate node keys
  Ô£ô tests/core/graph-validation.spec.ts > graph validation > rejects duplicate dependencies
  Ô£ô tests/core/graph-validation.spec.ts > graph validation > rejects missing dependencies in connected and disconnected components
@@ -69,16 +66,18 @@
  Ô£ô tests/core/graph-validation.spec.ts > graph validation > rejects two-node cycles
  Ô£ô tests/core/graph-validation.spec.ts > graph validation > rejects longer cycles in disconnected components
  Ô£ô tests/core/graph-validation.spec.ts > graph validation > accepts a valid diamond graph
+ Ô£ô tests/core/refresh-interaction.spec.ts > refresh interactions and races > supersedes active normal work and prevents its old result from committing
+ Ô£ô tests/core/refresh-interaction.spec.ts > refresh interactions and races > shares overlapping refresh calls and runs a later refresh again
+ Ô£ô tests/core/refresh-interaction.spec.ts > refresh interactions and races > does not let final unsubscribe cancel caller-owned refresh
+ Ô£ô tests/core/refresh-interaction.spec.ts > refresh interactions and races > shares overlapping refreshes regardless of target order and duplicates
+ Ô£ô tests/core/refresh-interaction.spec.ts > refresh interactions and races > keeps distinct refresh target sets independent
+ Ô£ô tests/playground/scenarios/aggregate-query.spec.ts > AggregateQueryScenario > aggregate reflects full success when every metric loads
  Ô£ô tests/core/refresh.spec.ts > manual refresh > reloads fresh data and preserves its value while refreshing
  Ô£ô tests/core/refresh.spec.ts > manual refresh > recomputes a derived node without reloading its fresh ancestor
  Ô£ô tests/core/refresh.spec.ts > manual refresh > deduplicates targets and supports empty input
  Ô£ô tests/core/refresh.spec.ts > manual refresh > resolves equivalent refreshable handles through registered keys
  Ô£ô tests/core/refresh.spec.ts > manual refresh > validates the full refresh list before changing generations
  Ô£ô tests/core/refresh.spec.ts > manual refresh > defensively rejects context-node refresh
- Ô£ô tests/core/transaction-settlement.spec.ts > transaction settlement > does not resolve whenSettled mid-transaction even when an unsubscribe would otherwise settle it
- Ô£ô tests/core/transaction-settlement.spec.ts > transaction settlement > keeps transaction-time whenSettled pending through commit scheduling
- Ô£ô tests/core/transaction-settlement.spec.ts > transaction settlement > settles transaction-time whenSettled after rollback without phantom scheduler work
- Ô£ô tests/playground/scenarios/aggregate-query.spec.ts > AggregateQueryScenario > aggregate reflects full success when every metric loads
  Ô£ô tests/playground/scenarios/aggregate-query.spec.ts > AggregateQueryScenario > aggregate reflects partial failure while the other metrics stay correct
  Ô£ô tests/playground/scenarios/aggregate-query.spec.ts > AggregateQueryScenario > isSuccess is false when a metric has never had a successful value
  Ô£ô tests/playground/scenarios/typed-events.spec.ts > TypedEventsScenario > reloads capability status for a matching appointment event
@@ -87,52 +86,69 @@
  Ô£ô tests/playground/scenarios/typed-events.spec.ts > TypedEventsScenario > discards a staged event when the transaction rolls back
  Ô£ô tests/playground/scenarios/typed-events.spec.ts > TypedEventsScenario > resets scenario state deterministically
  Ô£ô tests/playground/scenarios/typed-events.spec.ts > TypedEventsScenario > releases an open event transaction when unmounted
+ Ô£ô tests/core/transaction-context-isolation.spec.ts > transaction context ownership > commits a plain runtime context write while another transaction is open
+ Ô£ô tests/core/transaction-context-isolation.spec.ts > transaction context ownership > preserves a plain runtime context write when another transaction rolls back
+ ├ù tests/core/transaction-context-isolation.spec.ts > transaction context ownership > notifies and schedules an unrelated context write before the transaction closes
+   ÔåÆ expected "spy" to be called 1 times, but got 2 times
+ Ô£ô tests/core/runtime-context.spec.ts > runtime context updates > invalidates transitive descendants once and preserves their data
+ Ô£ô tests/core/runtime-context.spec.ts > runtime context updates > resolves equivalent context handles through the registered key
+ Ô£ô tests/core/runtime-context.spec.ts > runtime context updates > rejects invalid context handles without changing state or notifying
+ Ô£ô tests/core/runtime-context.spec.ts > runtime context updates > invalidates each descendant once across diamond paths
  Ô£ô tests/vue/use-node.spec.ts > useNode > mount creates a subscription
  Ô£ô tests/vue/use-node.spec.ts > useNode > unmount releases the subscription
  Ô£ô tests/vue/use-node.spec.ts > useNode > reacts to status and data changes
  Ô£ô tests/vue/use-node.spec.ts > useNode > two consumers on the same node share one load
  Ô£ô tests/vue/use-node.spec.ts > useNode > throws when called outside an active effect scope
- Ô£ô tests/core/runtime-context.spec.ts > runtime context updates > invalidates transitive descendants once and preserves their data
- Ô£ô tests/core/runtime-context.spec.ts > runtime context updates > resolves equivalent context handles through the registered key
- Ô£ô tests/core/runtime-context.spec.ts > runtime context updates > rejects invalid context handles without changing state or notifying
- Ô£ô tests/core/runtime-context.spec.ts > runtime context updates > invalidates each descendant once across diamond paths
- Ô£ô tests/core/execution-order.spec.ts > dependency-aware execution > resolves an empty target list
- Ô£ô tests/core/execution-order.spec.ts > dependency-aware execution > executes ancestors before descendants and skips unrelated nodes
- Ô£ô tests/core/execution-order.spec.ts > dependency-aware execution > executes independent parents concurrently before their child
- Ô£ô tests/core/execution-order.spec.ts > dependency-aware execution > resolves equivalent targets and validates the full list before execution
  Ô£ô tests/core/execution-failure.spec.ts > execution failures > normalises initial and derived failures
  Ô£ô tests/core/execution-failure.spec.ts > execution failures > blocks dependent nodes while allowing independent branches to settle
  Ô£ô tests/core/execution-failure.spec.ts > execution failures > retains stale data after refresh failure and clears the error after recovery
  Ô£ô tests/core/runtime-races.spec.ts > runtime cancellation and races > aborts affected work, preserves unrelated work, and discards obsolete results
  Ô£ô tests/core/runtime-races.spec.ts > runtime cancellation and races > does not reuse an obsolete generation attempt
- Ô£ô tests/playground/App.spec.ts > playground shell > mounts every scenario tab through the Pinia-owned runtime 446ms
- Ô£ô tests/playground/App.spec.ts > playground shell > releases the previous scenario subscriptions when tabs change
+ Ô£ô tests/core/execution-order.spec.ts > dependency-aware execution > resolves an empty target list
+ Ô£ô tests/core/execution-order.spec.ts > dependency-aware execution > executes ancestors before descendants and skips unrelated nodes
+ Ô£ô tests/core/execution-order.spec.ts > dependency-aware execution > executes independent parents concurrently before their child
+ Ô£ô tests/core/execution-order.spec.ts > dependency-aware execution > resolves equivalent targets and validates the full list before execution
  Ô£ô tests/vue/node-subscription.spec.ts > createNodeSubscription > subscribes to the node on creation
  Ô£ô tests/vue/node-subscription.spec.ts > createNodeSubscription > updates state when the node's state actually changes
  Ô£ô tests/vue/node-subscription.spec.ts > createNodeSubscription > does not replace the ref when an unrelated node changes
  Ô£ô tests/vue/node-subscription.spec.ts > createNodeSubscription > dispose releases the subscription and stops syncing
  Ô£ô tests/vue/node-subscription.spec.ts > createNodeSubscription > dispose is safe to call more than once
- Ô£ô tests/vue/use-nodes.spec.ts > useNodes > mount subscribes to every node, unmount releases every subscription
- Ô£ô tests/vue/use-nodes.spec.ts > useNodes > runtime values line up with the typed tuple order
- Ô£ô tests/vue/use-nodes.spec.ts > useNodes > aggregate reflects partial failure correctly
+ Ô£ô tests/playground/App.spec.ts > playground shell > mounts every scenario tab through the Pinia-owned runtime 464ms
+ Ô£ô tests/playground/App.spec.ts > playground shell > releases the previous scenario subscriptions when tabs change
+ Ô£ô tests/core/graph-registration.spec.ts > graph registration > exposes equivalent topology for each registration order
+ Ô£ô tests/core/graph-registration.spec.ts > graph registration > indexes roots, leaves, multiple relationships, diamonds, and disconnected nodes
+ Ô£ô tests/core/graph-registration.spec.ts > graph registration > preserves registration order and protects returned topology collections
+ Ô£ô tests/core/transaction-settlement.spec.ts > transaction settlement > reports ordinary runtime settlement independently while a transaction is open
+ Ô£ô tests/core/transaction-settlement.spec.ts > transaction settlement > waits for transaction commit scheduling when called after the transaction
+ Ô£ô tests/core/transaction-settlement.spec.ts > transaction settlement > settles after rollback without phantom scheduler work
  Ô£ô tests/core/node-subscription-registration.spec.ts > node subscription registration > starts every node at zero subscription counts with independent runtime state
  Ô£ô tests/core/node-subscription-registration.spec.ts > node subscription registration > supports direct subscriptions for all node kinds and separate subscriptions
  Ô£ô tests/core/node-subscription-registration.spec.ts > node subscription registration > does not execute synchronously when a subscription is created
  Ô£ô tests/core/node-subscription-registration.spec.ts > node subscription registration > returns independent frozen subscription snapshots
- Ô£ô tests/core/graph-registration.spec.ts > graph registration > exposes equivalent topology for each registration order
- Ô£ô tests/core/graph-registration.spec.ts > graph registration > indexes roots, leaves, multiple relationships, diamonds, and disconnected nodes
- Ô£ô tests/core/graph-registration.spec.ts > graph registration > preserves registration order and protects returned topology collections
+ Ô£ô tests/vue/use-nodes.spec.ts > useNodes > mount subscribes to every node, unmount releases every subscription
+ Ô£ô tests/vue/use-nodes.spec.ts > useNodes > runtime values line up with the typed tuple order
+ Ô£ô tests/vue/use-nodes.spec.ts > useNodes > aggregate reflects partial failure correctly
  Ô£ô tests/playground/pinia-composable-integration.spec.ts > Pinia-owned runtime composable integration > loads through useNode without installing the graph runtime plugin
  Ô£ô tests/playground/pinia-composable-integration.spec.ts > Pinia-owned runtime composable integration > shares one execution across two Pinia-backed consumers
  Ô£ô tests/playground/pinia-composable-integration.spec.ts > Pinia-owned runtime composable integration > uses the store runtime with useNodes and reacts to context changes
+ Ô£ô tests/core/transaction-overlap.spec.ts > overlapping transactions > joins overlapping transaction calls and commits after every participant settles
+ Ô£ô tests/core/transaction-overlap.spec.ts > overlapping transactions > uses the root transaction outcome when a joined overlapping call fails
+ Ô£ô tests/core/transaction-overlap.spec.ts > overlapping transactions > rolls back joined overlapping work when the root transaction fails
+ ├ù tests/core/transaction-operation-isolation.spec.ts > transaction caller operation isolation > allows unrelated execute work while a transaction is open and uses committed context
+   ÔåÆ runtime.execute is not a function
+ ├ù tests/core/transaction-operation-isolation.spec.ts > transaction caller operation isolation > allows unrelated prefetch work while a transaction is open and uses committed context
+   ÔåÆ runtime.prefetch is not a function
+ ├ù tests/core/transaction-operation-isolation.spec.ts > transaction caller operation isolation > allows unrelated refresh work while a transaction is open and uses committed context
+   ÔåÆ runtime.refresh is not a function
+ Ô£ô tests/core/transaction-operation-isolation.spec.ts > transaction caller operation isolation > publishes execution completion before an unrelated transaction closes
  Ô£ô tests/core/node-subscription-lifecycle.spec.ts > node subscription lifecycle > releases exactly one subscription and is idempotent
  Ô£ô tests/core/node-subscription-lifecycle.spec.ts > node subscription lifecycle > supports an empty no-op subscription without notification
  Ô£ô tests/core/node-subscription-lifecycle.spec.ts > node subscription lifecycle > validates all targets before applying subscription
  Ô£ô tests/core/node-subscription-lifecycle.spec.ts > node subscription lifecycle > resolves a different handle through its registered key
  Ô£ô tests/core/node-subscription-lifecycle.spec.ts > node subscription lifecycle > notifies once for add and active release while isolating listener failures
- Ô£ô tests/core/transaction-overlap.spec.ts > overlapping transactions > joins overlapping transaction calls and commits after every participant settles
- Ô£ô tests/core/transaction-overlap.spec.ts > overlapping transactions > uses the root transaction outcome when a joined overlapping call fails
- Ô£ô tests/core/transaction-overlap.spec.ts > overlapping transactions > rolls back joined overlapping work when the root transaction fails
+ Ô£ô tests/core/scheduler-cancellation.spec.ts > subscription-driven cancellation > aborts scheduler-owned work after the final subscriber unsubscribes
+ Ô£ô tests/core/scheduler-cancellation.spec.ts > subscription-driven cancellation > keeps shared work while another subscriber remains
+ Ô£ô tests/core/scheduler-cancellation.spec.ts > subscription-driven cancellation > does not cancel explicit caller-owned work when subscribers disappear
  Ô£ô tests/core/execution-concurrency-limiter.spec.ts > execution concurrency limiter > rejects an invalid maximum of 0
  Ô£ô tests/core/execution-concurrency-limiter.spec.ts > execution concurrency limiter > rejects an invalid maximum of -1
  Ô£ô tests/core/execution-concurrency-limiter.spec.ts > execution concurrency limiter > rejects an invalid maximum of NaN
@@ -143,14 +159,15 @@
  Ô£ô tests/vue/composable-runtime-options.spec.ts > graph composable runtime options > useNode uses an explicit runtime without plugin injection
  Ô£ô tests/vue/composable-runtime-options.spec.ts > graph composable runtime options > useNodes uses an explicit runtime without plugin injection
  Ô£ô tests/vue/composable-runtime-options.spec.ts > graph composable runtime options > prefers the explicit runtime over an injected runtime
- Ô£ô tests/core/scheduler-cancellation.spec.ts > subscription-driven cancellation > aborts scheduler-owned work after the final subscriber unsubscribes
- Ô£ô tests/core/scheduler-cancellation.spec.ts > subscription-driven cancellation > keeps shared work while another subscriber remains
- Ô£ô tests/core/scheduler-cancellation.spec.ts > subscription-driven cancellation > does not cancel explicit caller-owned work when subscribers disappear
  Ô£ô tests/playground/scenarios/error-and-retry.spec.ts > ErrorAndRetryScenario > shows an error with no data on initial load failure
  Ô£ô tests/playground/scenarios/error-and-retry.spec.ts > ErrorAndRetryScenario > keeps stale data visible alongside the error when a refresh fails, triggered via the UI toggle
  Ô£ô tests/core/node-subscription-propagation.spec.ts > node subscription propagation > propagates required subscription through transitive ancestors
  Ô£ô tests/core/node-subscription-propagation.spec.ts > node subscription propagation > deduplicates a diamond ancestor per subscription
  Ô£ô tests/core/node-subscription-propagation.spec.ts > node subscription propagation > uses subscription-level set semantics for parent and child targets
+ Ô£ô tests/core/transaction-handle.spec.ts > graph transaction handle lifecycle > preserves the transaction callback result type and value
+ Ô£ô tests/core/transaction-handle.spec.ts > graph transaction handle lifecycle > rejects context writes through a handle after commit
+ Ô£ô tests/core/transaction-handle.spec.ts > graph transaction handle lifecycle > rejects context writes and publications through a handle after rollback
+ Ô£ô tests/core/transaction-handle.spec.ts > graph transaction handle lifecycle > closes joined handles together when the shared group closes
  Ô£ô tests/playground/mock-loader.spec.ts > createMockLoader > increments callCount on every load
  Ô£ô tests/playground/mock-loader.spec.ts > createMockLoader > waits the configured delay before resolving
  Ô£ô tests/playground/mock-loader.spec.ts > createMockLoader > rejects when shouldFail is toggled on
@@ -158,13 +175,13 @@
  Ô£ô tests/playground/mock-loader.spec.ts > createMockLoader > uses produce() to supply the value rather than a fixed value of its own
  Ô£ô tests/core/transaction-races.spec.ts > transaction execution races > preserves a completion that commits before context generation advances as stale data
  Ô£ô tests/core/transaction-races.spec.ts > transaction execution races > prevents an ignored-abort completion after commit from overwriting stale state
+ Ô£ô tests/core/runtime-state.spec.ts > graph runtime state > creates accurate independent initial state
+ Ô£ô tests/core/runtime-state.spec.ts > graph runtime state > notifies committed changes and supports idempotent unsubscribe
+ Ô£ô tests/core/runtime-state.spec.ts > graph runtime state > returns independent snapshots for each read
  Ô£ô tests/core/scheduler-settlement.spec.ts > scheduler settlement > resolves immediately when idle and exposes a frozen state snapshot
  Ô£ô tests/core/scheduler-settlement.spec.ts > scheduler settlement > waits for queued and active work and resolves multiple waiters
  Ô£ô tests/core/scheduler-settlement.spec.ts > scheduler settlement > returns independent frozen scheduler snapshots
  Ô£ô tests/core/scheduler-settlement.spec.ts > scheduler observation > exposes committed scheduler transitions without recursive scheduling
- Ô£ô tests/core/runtime-state.spec.ts > graph runtime state > creates accurate independent initial state
- Ô£ô tests/core/runtime-state.spec.ts > graph runtime state > notifies committed changes and supports idempotent unsubscribe
- Ô£ô tests/core/runtime-state.spec.ts > graph runtime state > returns independent snapshots for each read
  Ô£ô tests/core/prefetch.spec.ts > prefetch > loads a target and required ancestors without subscriptions
  Ô£ô tests/core/prefetch.spec.ts > prefetch > skips fresh nodes and satisfies a later subscription
  Ô£ô tests/core/prefetch.spec.ts > prefetch > supports equivalent handles, empty input, and atomic validation
@@ -190,15 +207,15 @@ At line:1 char:1
  Ô£ô tests/vue/plugin.spec.ts > Vue plugin and injection > resolves the runtime provided via global.provide
  Ô£ô tests/vue/plugin.spec.ts > Vue plugin and injection > resolves the runtime installed via createGraphRuntimePlugin
  Ô£ô tests/vue/plugin.spec.ts > Vue plugin and injection > confirms render() creates a real effect scope that onScopeDispose fires within
- Ô£ô tests/playground/scenarios/concurrency-limit.spec.ts > ConcurrencyLimitScenario > limits active loaders and admits queued loaders in FIFO order
- Ô£ô tests/playground/scenarios/concurrency-limit.spec.ts > ConcurrencyLimitScenario > starts all independent loaders when unlimited is selected
- Ô£ô tests/playground/scenarios/concurrency-limit.spec.ts > ConcurrencyLimitScenario > reset completes running work and restores clean scenario state
  Ô£ô tests/core/scheduler-failure.spec.ts > scheduler failures > stores automatic execution failure and settles without retrying
  Ô£ô tests/core/scheduler-failure.spec.ts > scheduler failures > retries after a new subscription and clears errors after success
  Ô£ô tests/core/scheduler-failure.spec.ts > scheduler failures > retries a subscribed branch after context change
  Ô£ô tests/core/runtime-deduplication.spec.ts > runtime in-flight deduplication > shares one attempt across overlapping executions
  Ô£ô tests/core/runtime-deduplication.spec.ts > runtime in-flight deduplication > loads a shared ancestor once for overlapping targets
  Ô£ô tests/core/runtime-deduplication.spec.ts > runtime in-flight deduplication > does not share work across runtime instances
+ Ô£ô tests/playground/scenarios/concurrency-limit.spec.ts > ConcurrencyLimitScenario > limits active loaders and admits queued loaders in FIFO order
+ Ô£ô tests/playground/scenarios/concurrency-limit.spec.ts > ConcurrencyLimitScenario > starts all independent loaders when unlimited is selected
+ Ô£ô tests/playground/scenarios/concurrency-limit.spec.ts > ConcurrencyLimitScenario > reset completes running work and restores clean scenario state
  Ô£ô tests/core/scheduler-subscription.spec.ts > automatic node subscription execution > loads a subscribed data node and settles
  Ô£ô tests/core/scheduler-subscription.spec.ts > automatic node subscription execution > loads required ancestors and derives the subscribed target
  Ô£ô tests/core/scheduler-subscription.spec.ts > automatic node subscription execution > settles a subscribed context without loading anything
@@ -211,17 +228,6 @@ At line:1 char:1
  Ô£ô tests/core/event-definitions.spec.ts > event definitions > rejects blank event key "\t\n"
  Ô£ô tests/core/event-definitions.spec.ts > event definitions > retains immutable event invalidation declarations without evaluating predicates
  Ô£ô tests/core/event-definitions.spec.ts > event definitions > uses an immutable empty invalidation list when none is declared
- Ô£ô tests/core/prefetch-interaction.spec.ts > prefetch interactions > shares work with the scheduler and survives final unsubscribe
- Ô£ô tests/core/prefetch-interaction.spec.ts > prefetch interactions > shares work with explicit execution
- Ô£ô tests/core/prefetch-interaction.spec.ts > prefetch interactions > rejects caller-visible failure without setting scheduler error
- Ô£ô tests/playground/scenarios/concurrent-consumers.spec.ts > ConcurrentConsumersScenario > mounting two independent consumers of the same node causes one load
- Ô£ô tests/core/runtime-observer.spec.ts > runtime observation > defers listeners added during dispatch until a later transition
- Ô£ô tests/core/runtime-observer.spec.ts > runtime observation > finishes the current dispatch snapshot when a listener is removed
- Ô£ô tests/core/runtime-observer.spec.ts > runtime observation > keeps listeners isolated between runtime instances
- Ô£ô tests/core/scheduler-context.spec.ts > scheduler context invalidation > runs one follow-up using the latest context and discards the obsolete result
- Ô£ô tests/core/scheduler-context.spec.ts > scheduler context invalidation > does not load stale descendants without subscribers
- Ô£ô tests/core/refresh-failure.spec.ts > refresh failures > retains successful data and allows later recovery
- Ô£ô tests/core/refresh-failure.spec.ts > refresh failures > normalises derived refresh failures
  Ô£ô tests/vue/states-equal.spec.ts > statesEqual > returns true for identical states
  Ô£ô tests/vue/states-equal.spec.ts > statesEqual > returns true when only generation differs
  Ô£ô tests/vue/states-equal.spec.ts > statesEqual > returns false when data differs
@@ -229,43 +235,142 @@ At line:1 char:1
  Ô£ô tests/vue/states-equal.spec.ts > statesEqual > returns false when freshness differs
  Ô£ô tests/vue/states-equal.spec.ts > statesEqual > returns false when error differs
  Ô£ô tests/vue/states-equal.spec.ts > statesEqual > returns false when hasSuccessfulValue differs
+ Ô£ô tests/core/runtime-observer.spec.ts > runtime observation > defers listeners added during dispatch until a later transition
+ Ô£ô tests/core/runtime-observer.spec.ts > runtime observation > finishes the current dispatch snapshot when a listener is removed
+ Ô£ô tests/core/runtime-observer.spec.ts > runtime observation > keeps listeners isolated between runtime instances
+ Ô£ô tests/core/prefetch-interaction.spec.ts > prefetch interactions > shares work with the scheduler and survives final unsubscribe
+ Ô£ô tests/core/prefetch-interaction.spec.ts > prefetch interactions > shares work with explicit execution
+ Ô£ô tests/core/prefetch-interaction.spec.ts > prefetch interactions > rejects caller-visible failure without setting scheduler error
+ Ô£ô tests/core/scheduler-context.spec.ts > scheduler context invalidation > runs one follow-up using the latest context and discards the obsolete result
+ Ô£ô tests/core/scheduler-context.spec.ts > scheduler context invalidation > does not load stale descendants without subscribers
+ Ô£ô tests/core/refresh-failure.spec.ts > refresh failures > retains successful data and allows later recovery
+ Ô£ô tests/core/refresh-failure.spec.ts > refresh failures > normalises derived refresh failures
  Ô£ô tests/core/node-definitions.spec.ts > node definitions > defines immutable context, data, and derived descriptors without executing functions
  Ô£ô tests/core/node-definitions.spec.ts > node definitions > rejects blank key ""
  Ô£ô tests/core/node-definitions.spec.ts > node definitions > rejects blank key "   "
  Ô£ô tests/core/node-definitions.spec.ts > node definitions > rejects blank key "\t\n"
- Ô£ô tests/playground/scenarios/context-switching.spec.ts > ContextSwitchingScenario > loads the initial user's profile and switches users on click
+ Ô£ô tests/playground/scenarios/concurrent-consumers.spec.ts > ConcurrentConsumersScenario > mounting two independent consumers of the same node causes one load
+ Ô£ô tests/core/index.spec.ts > core public entry point > exposes the core layer placeholder
+ Ô£ô tests/vue/index.spec.ts > Vue public entry point > can consume the public core layer
  Ô£ô tests/playground/dependency-graph-store.spec.ts > dependency graph store > returns one stable runtime for one Pinia instance
  Ô£ô tests/playground/dependency-graph-store.spec.ts > dependency graph store > keeps the runtime outside Vue reactivity
  Ô£ô tests/playground/dependency-graph-store.spec.ts > dependency graph store > creates an independent runtime for each Pinia instance
- Ô£ô tests/vue/scope-guard.spec.ts > assertActiveEffectScope > throws when called with no active effect scope
- Ô£ô tests/vue/scope-guard.spec.ts > assertActiveEffectScope > does not throw when called from inside a mounted component's setup()
  Ô£ô tests/core/runtime-options.spec.ts > graph runtime options > preserves unlimited concurrency when options are omitted
  Ô£ô tests/core/runtime-options.spec.ts > graph runtime options > rejects an invalid maxConcurrentLoads value of 0
  Ô£ô tests/core/runtime-options.spec.ts > graph runtime options > rejects an invalid maxConcurrentLoads value of -1
  Ô£ô tests/core/runtime-options.spec.ts > graph runtime options > rejects an invalid maxConcurrentLoads value of NaN
  Ô£ô tests/devtools/index.spec.ts > devtools public entry point > can consume the public core layer
- Ô£ô tests/core/index.spec.ts > core public entry point > exposes the core layer placeholder
- Ô£ô tests/vue/index.spec.ts > Vue public entry point > can consume the public core layer
+ Ô£ô tests/vue/scope-guard.spec.ts > assertActiveEffectScope > throws when called with no active effect scope
+ Ô£ô tests/vue/scope-guard.spec.ts > assertActiveEffectScope > does not throw when called from inside a mounted component's setup()
+ Ô£ô tests/playground/scenarios/context-switching.spec.ts > ContextSwitchingScenario > loads the initial user's profile and switches users on click
 
-ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ» Failed Tests 1 ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ» Failed Tests 7 ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»
+
+ FAIL  tests/core/transaction-context-isolation.spec.ts > transaction context ownership > notifies and schedules an unrelated context write before the transaction closes
+AssertionError: expected "spy" to be called 1 times, but got 2 times
+ ÔØ» tests/core/transaction-context-isolation.spec.ts:122:22
+    120|     runtime.setContext(immediateContext, 999);
+    121| 
+    122|     expect(listener).toHaveBeenCalledTimes(1);
+       |                      ^
+    123|     await runtime.whenSettled();
+    124|     expect(load).toHaveBeenCalledTimes(1);
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[1/7]ÔÄ»
+
+ FAIL  tests/core/transaction-event-isolation.spec.ts > transaction event ownership > notifies and schedules an unrelated publication before the transaction closes
+AssertionError: expected "spy" to be called 1 times, but got 2 times
+ ÔØ» tests/core/transaction-event-isolation.spec.ts:128:22
+    126|     runtime.publish(immediateEvent, undefined);
+    127| 
+    128|     expect(listener).toHaveBeenCalledTimes(1);
+       |                      ^
+    129|     await runtime.whenSettled();
+    130|     expect(load).toHaveBeenCalledTimes(1);
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[2/7]ÔÄ»
 
  FAIL  tests/core/transaction-events.spec.ts > transaction event publication > keeps transaction settlement pending through event-triggered scheduler work
-Error: Condition was not reached: event-triggered scheduler load
- ÔØ» waitForCondition tests/core/test-helpers.ts:31:9
-     29|   }
-     30| 
-     31|   throw new Error(`Condition was not reached: ${description}`);
-       |         ^
-     32| };
-     33| 
- ÔØ» tests/core/transaction-events.spec.ts:279:5
+AssertionError: expected true to be false // Object.is equality
 
-ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[1/1]ÔÄ»
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- false[39m
+[31m+ true[39m
+
+ ÔØ» tests/core/transaction-events.spec.ts:279:23
+    277|       });
+    278|       await Promise.resolve();
+    279|       expect(settled).toBe(false);
+       |                       ^
+    280|     });
+    281| 
+ ÔØ» src/core/transactions/transaction-coordinator.ts:143:24
+ ÔØ» runTransaction src/core/transactions/notification-buffer.ts:108:14
+ ÔØ» tests/core/transaction-events.spec.ts:273:5
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[3/7]ÔÄ»
+
+ FAIL  tests/core/transaction-operation-isolation.spec.ts > transaction caller operation isolation > allows unrelated execute work while a transaction is open and uses committed context
+TypeError: runtime.execute is not a function
+ ÔØ» tests/core/transaction-operation-isolation.spec.ts:12:78
+     10| describe("transaction caller operation isolation", () => {
+     11|   it.each([
+     12|     ["execute", async (runtime: ReturnType<typeof createRuntime>) => rÔÇª
+       |                                                                              ^
+     13|     ["prefetch", async (runtime: ReturnType<typeof createRuntime>) => ÔÇª
+     14|     ["refresh", async (runtime: ReturnType<typeof createRuntime>) => rÔÇª
+ ÔØ» tests/core/transaction-operation-isolation.spec.ts:29:13
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[4/7]ÔÄ»
+
+ FAIL  tests/core/transaction-operation-isolation.spec.ts > transaction caller operation isolation > allows unrelated prefetch work while a transaction is open and uses committed context
+TypeError: runtime.prefetch is not a function
+ ÔØ» tests/core/transaction-operation-isolation.spec.ts:13:79
+     11|   it.each([
+     12|     ["execute", async (runtime: ReturnType<typeof createRuntime>) => rÔÇª
+     13|     ["prefetch", async (runtime: ReturnType<typeof createRuntime>) => ÔÇª
+       |                                                                               ^
+     14|     ["refresh", async (runtime: ReturnType<typeof createRuntime>) => rÔÇª
+     15|   ] as const)(
+ ÔØ» tests/core/transaction-operation-isolation.spec.ts:29:13
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[5/7]ÔÄ»
+
+ FAIL  tests/core/transaction-operation-isolation.spec.ts > transaction caller operation isolation > allows unrelated refresh work while a transaction is open and uses committed context
+TypeError: runtime.refresh is not a function
+ ÔØ» tests/core/transaction-operation-isolation.spec.ts:14:78
+     12|     ["execute", async (runtime: ReturnType<typeof createRuntime>) => rÔÇª
+     13|     ["prefetch", async (runtime: ReturnType<typeof createRuntime>) => ÔÇª
+     14|     ["refresh", async (runtime: ReturnType<typeof createRuntime>) => rÔÇª
+       |                                                                              ^
+     15|   ] as const)(
+     16|     "allows unrelated %s work while a transaction is open and uses comÔÇª
+ ÔØ» tests/core/transaction-operation-isolation.spec.ts:29:13
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[6/7]ÔÄ»
+
+ FAIL  tests/core/transaction-rollback.spec.ts > transaction rollback > publishes independent execution completion after a transaction rolls back
+AssertionError: expected [Function] to throw error including 'rollback context only' but got 'expected [ +0, 42 ] to deeply equal []'
+
+Expected: [32m"rollback context only"[39m
+Received: [31m"expected [ +0, 42 ] to deeply equal []"[39m
+
+ ÔØ» tests/core/transaction-rollback.spec.ts:170:5
+    168|     const execution = runtime.execute([data]);
+    169| 
+    170|     await expect(
+       |     ^
+    171|       runtime.transaction(async transaction => {
+    172|         transaction.setContext(context, 2);
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[7/7]ÔÄ»
 
 
- Test Files  1 failed | 58 passed (59)
-      Tests  1 failed | 225 passed (226)
-   Start at  11:56:44
-   Duration  62.95s (transform 1.56s, setup 131.28s, collect 8.46s, tests 3.13s, environment 242.77s, prepare 20.75s)
+ Test Files  5 failed | 58 passed (63)
+      Tests  7 failed | 230 passed (237)
+   Start at  13:41:06
+   Duration  51.90s (transform 1.86s, setup 149.41s, collect 8.72s, tests 3.33s, environment 139.30s, prepare 25.34s)
 
 ÔÇëELIFECYCLEÔÇë Command failed with exit code 1.

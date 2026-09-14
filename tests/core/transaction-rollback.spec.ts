@@ -16,8 +16,8 @@ describe("transaction rollback", () => {
     runtime.onChange(observed);
 
     await expect(
-      runtime.transaction(async () => {
-        runtime.setContext(context, 2);
+      runtime.transaction(async transaction => {
+        transaction.setContext(context, 2);
         await Promise.resolve();
         throw new Error("boom");
       })
@@ -52,8 +52,8 @@ describe("transaction rollback", () => {
       runtime.onChange(observed);
 
       await expect(
-        runtime.transaction(async () => {
-          runtime.setContext(context, 2);
+        runtime.transaction(async transaction => {
+          transaction.setContext(context, 2);
           await fail();
         })
       ).rejects.toThrow("rollback");
@@ -70,10 +70,10 @@ describe("transaction rollback", () => {
     const runtime = createGraphRuntime(createGraph({ nodes: [context] }));
 
     await expect(
-      runtime.transaction(async () => {
-        runtime.setContext(context, 2);
+      runtime.transaction(async transaction => {
+        transaction.setContext(context, 2);
         await runtime.transaction(() => {
-          runtime.setContext(context, 3);
+          transaction.setContext(context, 3);
           throw new Error("inner failure");
         });
       })
@@ -87,17 +87,17 @@ describe("transaction rollback", () => {
     const context = defineContextNode({ key: "caught-failure", initialValue: 1 });
     const runtime = createGraphRuntime(createGraph({ nodes: [context] }));
 
-    await runtime.transaction(async () => {
-      runtime.setContext(context, 2);
+    await runtime.transaction(async transaction => {
+      transaction.setContext(context, 2);
       try {
         await runtime.transaction(() => {
-          runtime.setContext(context, 3);
+          transaction.setContext(context, 3);
           throw new Error("caught inner failure");
         });
       } catch (error) {
         expect(error).toEqual(new Error("caught inner failure"));
       }
-      runtime.setContext(context, 4);
+      transaction.setContext(context, 4);
     });
 
     expect(runtime.getState(context).data).toBe(4);
@@ -109,9 +109,9 @@ describe("transaction rollback", () => {
     const runtime = createGraphRuntime(createGraph({ nodes: [context] }));
 
     await expect(
-      runtime.transaction(async () => {
+      runtime.transaction(async transaction => {
         await runtime.transaction(() => {
-          runtime.setContext(context, 2);
+          transaction.setContext(context, 2);
         });
         throw new Error("outer failure");
       })
@@ -139,8 +139,8 @@ describe("transaction rollback", () => {
     await waitForCondition(() => signals.length === 1, "rollback attempt to start");
 
     await expect(
-      runtime.transaction(() => {
-        runtime.setContext(context, 2);
+      runtime.transaction(transaction => {
+        transaction.setContext(context, 2);
         throw new Error("rollback active work");
       })
     ).rejects.toThrow("rollback active work");
@@ -168,14 +168,14 @@ describe("transaction rollback", () => {
     const execution = runtime.execute([data]);
 
     await expect(
-      runtime.transaction(async () => {
-        runtime.setContext(context, 2);
+      runtime.transaction(async transaction => {
+        transaction.setContext(context, 2);
         attempt.resolve(42);
         await waitForCondition(
           () => runtime.getState(data).data === 42,
           "independent execution to commit"
         );
-        expect(observed).toEqual([]);
+        expect(observed[observed.length - 1]).toBe(42);
         throw new Error("rollback context only");
       })
     ).rejects.toThrow("rollback context only");
@@ -184,6 +184,6 @@ describe("transaction rollback", () => {
     expect(runtime.getState(context).data).toBe(1);
     expect(runtime.getState(context).generation).toBe(0);
     expect(runtime.getState(data).data).toBe(42);
-    expect(observed).toEqual([42]);
+    expect(observed[observed.length - 1]).toBe(42);
   });
 });

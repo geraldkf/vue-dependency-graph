@@ -26,9 +26,9 @@ describe("transaction commit invalidation", () => {
     await runtime.whenSettled();
     load.mockClear();
 
-    await runtime.transaction(() => {
-      runtime.setContext(first, 10);
-      runtime.setContext(second, 20);
+    await runtime.transaction(transaction => {
+      transaction.setContext(first, 10);
+      transaction.setContext(second, 20);
     });
     await runtime.whenSettled();
 
@@ -51,9 +51,9 @@ describe("transaction commit invalidation", () => {
     );
     runtime.onChange(observed);
 
-    await runtime.transaction(() => {
-      runtime.setContext(first, 10);
-      runtime.setContext(second, 20);
+    await runtime.transaction(transaction => {
+      transaction.setContext(first, 10);
+      transaction.setContext(second, 20);
     });
 
     expect(runtime.getState(first).generation).toBe(1);
@@ -84,8 +84,8 @@ describe("transaction commit invalidation", () => {
       createGraph({ nodes: [bottom, left, right, context] })
     );
 
-    await runtime.transaction(() => {
-      runtime.setContext(context, 2);
+    await runtime.transaction(transaction => {
+      transaction.setContext(context, 2);
     });
 
     expect(runtime.getState(left).generation).toBe(1);
@@ -110,8 +110,8 @@ describe("transaction commit invalidation", () => {
     const execution = runtime.execute([data]);
     await waitForCondition(() => signals.length === 1, "initial attempt to start");
 
-    await runtime.transaction(async () => {
-      runtime.setContext(context, 2);
+    await runtime.transaction(async transaction => {
+      transaction.setContext(context, 2);
       expect(signals[0]?.aborted).toBe(false);
       expect(runtime.getState(data).generation).toBe(0);
       await Promise.resolve();
@@ -144,8 +144,8 @@ describe("transaction commit invalidation", () => {
     const execution = runtime.execute([data]);
     await waitForCondition(() => signals.length === 1, "unaffected attempt to start");
 
-    await runtime.transaction(() => {
-      runtime.setContext(changed, 2);
+    await runtime.transaction(transaction => {
+      transaction.setContext(changed, 2);
     });
 
     expect(signals[0]?.aborted).toBe(false);

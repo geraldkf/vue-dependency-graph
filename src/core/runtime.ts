@@ -14,10 +14,12 @@ import {
   type RuntimeNotificationBuffer,
 } from "./transactions/notification-buffer";
 import { createRuntimeTransactionCoordinator } from "./transactions/transaction-coordinator";
-import {
-  createRuntimeStateStore,
-  type ActiveAttempt,
-} from "./state/state";
+import type {
+  ContextChange,
+  EventPublication,
+  GraphTransaction,
+} from "./transactions/types";
+import { createRuntimeStateStore, type ActiveAttempt } from "./state/state";
 import type {
   NodeFreshness,
   NodeRuntimeState,
@@ -41,10 +43,7 @@ import type {
   ContextNodeDefinition,
   Graph,
 } from "./graph/types";
-import type {
-  AnyEventDefinition,
-  EventPayload,
-} from "./events/types";
+import type { AnyEventDefinition, EventPayload } from "./events/types";
 import { createRuntimeEventMatcher } from "./events/event-matcher";
 
 export interface GraphRuntimeOptions {
@@ -57,30 +56,26 @@ export interface GraphRuntimeOptions {
 
 export interface GraphRuntime {
   readonly getState: <TNode extends AnyNodeDefinition>(
-    node: TNode
+    node: TNode,
   ) => NodeRuntimeState<RuntimeNodeData<TNode>>;
   readonly setContext: <TValue>(
     node: ContextNodeDefinition<TValue>,
-    value: TValue
+    value: TValue,
   ) => void;
-  readonly execute: (
-    nodes: readonly AnyNodeDefinition[]
-  ) => Promise<void>;
-  readonly prefetch: (
-    nodes: readonly AnyNodeDefinition[]
-  ) => Promise<void>;
+  readonly execute: (nodes: readonly AnyNodeDefinition[]) => Promise<void>;
+  readonly prefetch: (nodes: readonly AnyNodeDefinition[]) => Promise<void>;
   readonly refresh: (
-    nodes: readonly RefreshableNodeDefinition[]
+    nodes: readonly RefreshableNodeDefinition[],
   ) => Promise<void>;
   readonly publish: <TEvent extends AnyEventDefinition>(
     event: TEvent,
-    payload: EventPayload<TEvent>
+    payload: EventPayload<TEvent>,
   ) => void;
   readonly subscribeNodes: (
-    nodes: readonly AnyNodeDefinition[]
+    nodes: readonly AnyNodeDefinition[],
   ) => NodeSubscription;
   readonly getSubscriptionState: (
-    node: AnyNodeDefinition
+    node: AnyNodeDefinition,
   ) => NodeSubscriptionState;
   readonly hasSubscribers: (node: AnyNodeDefinition) => boolean;
   readonly getSchedulerState: () => SchedulerState;
@@ -91,7 +86,9 @@ export interface GraphRuntime {
    * Joined and nested calls share one transaction group. Failure discards
    * staged context values; transactions do not roll back remote work.
    */
-  readonly transaction: <T>(work: () => T | Promise<T>) => Promise<T>;
+  readonly transaction: <T>(
+    work: (transaction: GraphTransaction) => T | Promise<T>,
+  ) => Promise<T>;
 }
 
 const isSchedulerOnlyAttempt = (attempt: ActiveAttempt): boolean =>
@@ -99,7 +96,7 @@ const isSchedulerOnlyAttempt = (attempt: ActiveAttempt): boolean =>
 
 export const createGraphRuntime = (
   graph: Graph,
-  options?: GraphRuntimeOptions
+  options?: GraphRuntimeOptions,
 ): GraphRuntime => {
   const {
     getMutableState,
@@ -112,7 +109,7 @@ export const createGraphRuntime = (
   const { notify: emitNotify, onChange } = createRuntimeObserver();
   const requireRegisteredNode = (
     node: AnyNodeDefinition,
-    purpose: string
+    purpose: string,
   ): AnyNodeDefinition => {
     const registered = graph.getNode(node.key);
     if (!registered) {
@@ -142,26 +139,23 @@ export const createGraphRuntime = (
   const execution = createRuntimeExecutionController({
     graph,
     concurrencyLimiter: createExecutionConcurrencyLimiter(
-      options?.maxConcurrentLoads ?? Infinity
+      options?.maxConcurrentLoads ?? Infinity,
     ),
     getMutableState,
     getActiveAttempt,
     setActiveAttempt,
     deleteActiveAttempt,
-    resolveRegisteredNode: node =>
-      requireRegisteredNode(node, "execution"),
-    notify: () => buffer.notify(),
-    onChangedRefreshResult: node =>
+    resolveRegisteredNode: (node) => requireRegisteredNode(node, "execution"),
+    notify: emitNotify,
+    onChangedRefreshResult: (node) =>
       invalidation.invalidateChangedResultDescendants(node),
   });
 
-  const execute = (targets: readonly AnyNodeDefinition[]): Promise<void> => {
-    transactions.assertOperationAllowed("execute");
-    return execution.execute(targets, "explicit");
-  };
+  const execute = (targets: readonly AnyNodeDefinition[]): Promise<void> =>
+    execution.execute(targets, "explicit");
 
   const getSubscribedTargetsNeedingWork = (): readonly AnyNodeDefinition[] =>
-    graph.getNodes().filter(node => {
+    graph.getNodes().filter((node) => {
       if (node.kind === "context") return false;
       if (!subscriptions.hasDirectSubscribers(node)) return false;
       return execution.needsExecution(node);
@@ -169,7 +163,7 @@ export const createGraphRuntime = (
 
   const scheduler = createRuntimeSchedulerController({
     getTargetsNeedingWork: getSubscribedTargetsNeedingWork,
-    execute: targets => execution.execute(targets, "scheduler"),
+    execute: (targets) => execution.execute(targets, "scheduler"),
     notify: emitNotify,
   });
 
@@ -221,16 +215,32 @@ export const createGraphRuntime = (
     getMutableState,
   });
 
+  const commitGraphChanges = (
+    contextChanges: readonly ContextChange[],
+    eventPublications: readonly EventPublication[],
+    immediate: boolean,
+  ): void => {
+    const eventTargets = events.matchPublications(
+      eventPublications,
+      contextChanges,
+    );
+    invalidation.commitContexts(
+      contextChanges,
+      eventTargets,
+      immediate
+        ? { notify: emitNotify, schedule: scheduler.schedule }
+        : undefined,
+    );
+  };
+
   const transactions = createRuntimeTransactionCoordinator({
     runWithBufferedNotifications: buffer.runTransaction,
     resolveContextNode: invalidation.resolveContextNode,
-    commit: (contextChanges, eventPublications) => {
-      const eventTargets = events.matchPublications(
-        eventPublications,
-        contextChanges
-      );
-      invalidation.commitContexts(contextChanges, eventTargets);
-    },
+    getContextGeneration: (node) => getMutableState(node.key).generation,
+    commitImmediate: (contextChanges, eventPublications) =>
+      commitGraphChanges(contextChanges, eventPublications, true),
+    commitTransaction: (contextChanges, eventPublications) =>
+      commitGraphChanges(contextChanges, eventPublications, false),
   });
 
   const operations = createRuntimeOperationsController({
@@ -238,8 +248,7 @@ export const createGraphRuntime = (
     getActiveAttempt,
     resolveRegisteredNode: requireRegisteredNode,
     execute: (targets, origin) => execution.execute(targets, origin),
-    notify: buffer.notify,
-    assertOperationAllowed: transactions.assertOperationAllowed,
+    notify: emitNotify,
   });
 
   return Object.freeze({
@@ -254,7 +263,7 @@ export const createGraphRuntime = (
     getSubscriptionState: subscriptions.getSubscriptionState,
     hasSubscribers: subscriptions.hasSubscribers,
     getSchedulerState: scheduler.getSchedulerState,
-    whenSettled: buffer.whenSettled,
+    whenSettled: scheduler.whenSettled,
     onChange,
     transaction: transactions.runTransaction,
   });

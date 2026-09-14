@@ -80,3 +80,10 @@ Rejected because converging context and event effects could advance one node's g
 ### Deduplicate staged events by key
 
 Rejected because repeated publications may carry different payloads and match different nodes. Deduplicate graph effects, not publication records.
+
+
+## Amendment: explicit event ownership
+
+TOI-2 introduces `GraphTransaction`, and TOI-4 removes ambient event staging. Transaction-owned event publications must use `transaction.publish(...)`. Plain `runtime.publish(...)` always evaluates and applies its event effects immediately, even while another transaction group is open. A transaction rollback discards only publications staged through its handle.
+
+This amendment corrects the ownership gap in the original runtime-wide depth model. TOI-5 completes dispatch isolation: observer notification and automatic scheduling for an unrelated immediate publication bypass the transaction-owned buffer.

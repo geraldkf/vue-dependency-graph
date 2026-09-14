@@ -8,37 +8,31 @@ import {
 import { deferred, waitForCondition } from "./test-helpers";
 
 describe("transaction settlement", () => {
-  it("does not resolve whenSettled mid-transaction even when an unsubscribe would otherwise settle it", async () => {
+  it("reports ordinary runtime settlement independently while a transaction is open", async () => {
     const context = defineContextNode({ key: "context", initialValue: 1 });
-    const data = defineDataNode({
-      key: "data",
-      dependencies: [context] as const,
-      initialValue: 0,
-      load: async ({ get }) => get(context),
-    });
-    const runtime = createGraphRuntime(createGraph({ nodes: [data, context] }));
-    const subscription = runtime.subscribeNodes([data]);
-    await runtime.whenSettled();
+    const releaseTransaction = deferred<void>();
+    const runtime = createGraphRuntime(createGraph({ nodes: [context] }));
 
-    let settledDuringTransaction = false;
-    await runtime.transaction(async () => {
-      subscription.unsubscribe(); // would call resolveSettlementIfIdle synchronously today
-      const otherSubscription = runtime.subscribeNodes([data]);
-      void runtime.whenSettled().then(() => {
-        settledDuringTransaction = true;
-      });
-      await Promise.resolve();
-      expect(settledDuringTransaction).toBe(false);
-      otherSubscription.unsubscribe();
+    const pendingTransaction = runtime.transaction(async transaction => {
+      transaction.setContext(context, 2);
+      await releaseTransaction.promise;
+    });
+    await Promise.resolve();
+
+    let settled = false;
+    await runtime.whenSettled().then(() => {
+      settled = true;
     });
 
-    await waitForCondition(
-      () => settledDuringTransaction,
-      "settlement to resolve after transaction commit"
-    );
+    expect(settled).toBe(true);
+    expect(runtime.getState(context).data).toBe(1);
+
+    releaseTransaction.resolve();
+    await pendingTransaction;
+    expect(runtime.getState(context).data).toBe(2);
   });
 
-  it("keeps transaction-time whenSettled pending through commit scheduling", async () => {
+  it("waits for transaction commit scheduling when called after the transaction", async () => {
     const context = defineContextNode({ key: "settled-commit-context", initialValue: 1 });
     const reload = deferred<number>();
     let loadCount = 0;
@@ -56,31 +50,29 @@ describe("transaction settlement", () => {
     runtime.subscribeNodes([data]);
     await runtime.whenSettled();
 
-    let settled = false;
-    let transactionSettlement!: Promise<void>;
-    await runtime.transaction(async () => {
-      runtime.setContext(context, 2);
-      transactionSettlement = runtime.whenSettled().then(() => {
-        settled = true;
-      });
-      await Promise.resolve();
-      expect(settled).toBe(false);
+    await runtime.transaction(transaction => {
+      transaction.setContext(context, 2);
     });
 
     await waitForCondition(
       () => loadCount === 2,
-      "commit scheduler execution to start"
+      "commit scheduler execution to start",
     );
+    let settled = false;
+    const settlement = runtime.whenSettled().then(() => {
+      settled = true;
+    });
+    await Promise.resolve();
     expect(settled).toBe(false);
 
     reload.resolve(2);
-    await transactionSettlement;
+    await settlement;
 
     expect(settled).toBe(true);
     expect(runtime.getState(data).data).toBe(2);
   });
 
-  it("settles transaction-time whenSettled after rollback without phantom scheduler work", async () => {
+  it("settles after rollback without phantom scheduler work", async () => {
     const context = defineContextNode({ key: "settled-rollback-context", initialValue: 1 });
     const load = vi.fn(async ({ get }) => get(context));
     const data = defineDataNode({
@@ -94,23 +86,15 @@ describe("transaction settlement", () => {
     await runtime.whenSettled();
     load.mockClear();
 
-    let settled = false;
-    let transactionSettlement!: Promise<void>;
     await expect(
-      runtime.transaction(async () => {
-        runtime.setContext(context, 2);
-        transactionSettlement = runtime.whenSettled().then(() => {
-          settled = true;
-        });
-        await Promise.resolve();
-        expect(settled).toBe(false);
+      runtime.transaction(transaction => {
+        transaction.setContext(context, 2);
         throw new Error("rollback settlement");
-      })
+      }),
     ).rejects.toThrow("rollback settlement");
 
-    await transactionSettlement;
+    await runtime.whenSettled();
 
-    expect(settled).toBe(true);
     expect(load).not.toHaveBeenCalled();
     expect(runtime.getState(context).data).toBe(1);
     expect(runtime.getState(data).generation).toBe(0);

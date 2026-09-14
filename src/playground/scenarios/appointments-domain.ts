@@ -9,11 +9,11 @@ export const appointmentBooked = defineEvent<{
 }>("appointment.booked");
 
 export const publishAppointmentBooked = (
-  runtime: GraphRuntime,
+  publisher: Pick<GraphRuntime, "publish">,
   payload: {
     readonly jobSeekerId: number;
     readonly appointmentId: number;
   }
 ): void => {
-  runtime.publish(appointmentBooked, payload);
+  publisher.publish(appointmentBooked, payload);
 };

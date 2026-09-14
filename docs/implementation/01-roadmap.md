@@ -257,6 +257,27 @@ Exit criteria prepared for final validation: appointment events invalidate capab
 
 Post-M6 structural cleanup prepared: feature contracts now use local `types.ts` files, node and event factories use singular filenames, and runtime matching uses `event-matcher.ts`. See `docs/implementation/54-feature-local-types-structure-note.md`.
 
+## Transaction ownership isolation
+
+Status: TOI-7 prepared; TOI-2 through TOI-7 offline validation pending.
+
+- [x] TOI-1 ownership isolation plan
+- [x] TOI-2 public `GraphTransaction` handle and lifecycle prepared
+- [ ] TOI-2 offline validation
+- [x] TOI-3 explicit context ownership prepared
+- [ ] TOI-3 offline validation
+- [x] TOI-4 explicit event ownership prepared
+- [ ] TOI-4 offline validation
+- [x] TOI-5 independent notification and scheduling prepared
+- [ ] TOI-5 offline validation
+- [x] TOI-6 caller operations during transactions prepared
+- [ ] TOI-6 offline validation
+- [x] TOI-7 conflict and overlapping transaction completion prepared
+- [ ] TOI-7 offline validation
+- [ ] TOI-8 playground, documentation, and final validation
+
+Exit criterion: only operations performed through a `GraphTransaction` participate in its commit or rollback. Plain runtime operations remain independent while another transaction is open.
+
 ## Milestone 7: Query groups
 
 - [ ] `defineQuery`

@@ -197,13 +197,13 @@ Create the runtime inside the store factory so each Pinia instance owns an indep
 ## Transaction seam
 
 ```ts
-await runtime.transaction(async () => {
-  runtime.setContext(JobSeekerId, 123);
+await runtime.transaction(async transaction => {
+  transaction.setContext(JobSeekerId, 123);
   await someLocalWork();
 });
 ```
 
-Atomic local context transactions are implemented and validated. Context writes are held until the successful outer transaction completes, and public reads remain committed reads while work is open. Final values commit together, shared descendants invalidate once, and affected attempts abort after generation advancement. Synchronous or asynchronous failure discards staged context changes. Transaction-time `whenSettled()` waits through successful commit scheduling, while rollback settles without phantom work. Explicit `execute`, `prefetch`, and `refresh` calls are rejected inside a transaction. Overlapping transaction calls on one runtime join a single group: the first call is the root, all joined calls settle before the group closes, and the root outcome controls commit or rollback. Transactions do not provide backend rollback.
+Atomic local context transactions use the explicit `GraphTransaction` handle. Calls to `transaction.setContext(...)` are held until the successful outer transaction completes, and public reads remain committed reads while work is open. Final values commit together, shared descendants invalidate once, and affected attempts abort after generation advancement. Synchronous or asynchronous failure discards staged context changes. `runtime.whenSettled()` observes the ordinary scheduler directly. Call it after awaiting a transaction when settlement must include work triggered by that transaction commit. Plain `runtime.execute(...)`, `runtime.prefetch(...)`, and `runtime.refresh(...)` calls remain available while another transaction is open. They read committed graph state and publish their results independently. These operations are intentionally absent from `GraphTransaction`. Overlapping transaction calls on one runtime join a single group: the first call is the root, all joined calls settle before the group closes, and the root outcome controls commit or rollback. Plain `runtime.setContext(...)` calls are always committed immediately, even while another transaction is open, and are not discarded by that transaction's rollback. If a transaction staged the same context before an independent write changed its committed generation, transaction commit rejects atomically with `GraphTransactionConflictError`. The independent value is preserved, and no staged context or event effect commits. Observer notification and automatic scheduling for these plain runtime operations are also immediate and are not held behind the unrelated transaction. Transactions do not provide backend rollback.
 
 ## Typed event definitions
 
@@ -221,11 +221,11 @@ runtime.publish(AppointmentBooked, {
 });
 ```
 
-Data and derived nodes may declare unconditional or conditional `invalidatedBy` entries. Conditional predicates receive the typed `payload` and a `get(...)` function restricted to the node's declared dependencies. Events published inside a transaction are staged in call order. Successful commit evaluates predicates against final staged context values and applies one combined context/event invalidation commit. Rollback discards staged publications.
+Data and derived nodes may declare unconditional or conditional `invalidatedBy` entries. Conditional predicates receive the typed `payload` and a `get(...)` function restricted to the node's declared dependencies. Events published through `transaction.publish(...)` are staged in call order. Successful commit evaluates predicates against final staged context values and applies one combined context/event invalidation commit. Rollback discards staged publications.
 
 `defineEvent(...)`, `invalidatedBy`, graph validation, indexing, predicate matching, and immediate `runtime.publish(...)` invalidation are implemented. Transaction-aware publication is implemented with final combined validation pending. See `docs/implementation/52-milestone-6-implementation-summary.md`.
 
-Publication invalidates matched nodes synchronously and schedules subscribed stale work through the existing scheduler. It is silent when no declaration matches. Predicate evaluation completes before mutation, so a predicate failure applies no partial event invalidation. Inside transactions, publication is staged and follows the root transaction outcome.
+Publication invalidates matched nodes synchronously and schedules subscribed stale work through the existing scheduler. It is silent when no declaration matches. Predicate evaluation completes before mutation, so a predicate failure applies no partial event invalidation. Plain `runtime.publish(...)` is always immediate, even while another transaction is open. Only `transaction.publish(...)` is staged and follows the root transaction outcome. Observer notification and automatic scheduling for these plain runtime operations are also immediate and are not held behind the unrelated transaction.
 
 ## Other planned APIs
 

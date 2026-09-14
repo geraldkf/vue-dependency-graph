@@ -71,3 +71,26 @@ Milestone 5H.1 clarifies that overlapping calls on one runtime join one transact
 ## Internal contract cleanup
 
 Milestone 5H.3 confirms that notification-buffer depth is private to dispatch deferral, while transaction-state decisions belong to the transaction coordinator. The accidental pre-release `RuntimeNotificationBuffer` type re-export was removed from the core public barrel because it represents composition wiring rather than a consumer capability. Staging and invalidation now share one internal `ContextChange` boundary type without exposing transaction storage publicly.
+
+
+## Amendment: explicit context ownership
+
+TOI-2 introduces the public `GraphTransaction` capability and TOI-3 removes ambient context staging. Transaction-owned context changes must use `transaction.setContext(...)`. Plain `runtime.setContext(...)` always commits to runtime state immediately, even when another transaction group is open. A transaction rollback discards only context changes staged through its handle.
+
+This amendment corrects the ownership gap in the original runtime-wide depth model. TOI-5 completes dispatch isolation: observer notification and automatic scheduling for an unrelated immediate context write bypass the transaction-owned buffer. Same-context conflict detection remains deferred to TOI-7.
+
+
+## Amendment: caller-owned operations during transactions
+
+TOI-6 removes the runtime-wide transaction guards from `execute(...)`, `prefetch(...)`, and `refresh(...)`. These plain runtime operations are caller-owned and continue while another transaction is open. They read committed graph state, do not see staged context values, and publish execution state independently of the transaction notification buffer.
+
+`GraphTransaction` does not expose execution operations. Code that requires execution against newly staged context values must await successful transaction completion before starting that work. Existing generation and attempt-token rules continue to protect transaction commit races.
+
+
+## Amendment: context conflict detection
+
+TOI-7 adds optimistic conflict detection for contexts staged through `GraphTransaction`. The coordinator records the committed generation when a context is first staged. Before event predicate evaluation or graph mutation, commit verifies that every staged context still has that generation.
+
+If any generation changed independently, the root transaction rejects with `GraphTransactionConflictError`. The error exposes immutable, deterministically sorted `contextKeys`. No staged context or event effect commits, and independently committed runtime changes are preserved. This also applies when the final staged value reverted to its original value, because an independent write still changed the transaction's baseline.
+
+Overlapping explicit transaction calls continue to join one group for this work. They share staged state and conflict baselines, all participants settle before closure, and the root outcome retains control of commit or rollback. Serialising or rejecting independently overlapping transaction calls remains deferred until a concrete use case requires different semantics.

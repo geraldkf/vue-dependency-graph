@@ -1,39 +1,47 @@
-import type {
-  AnyEventDefinition,
-  EventPayload,
-} from "../events/types";
+import type { AnyEventDefinition, EventPayload } from "../events/types";
 import type { ContextNodeDefinition } from "../graph/types";
+import { GraphTransactionConflictError } from "./errors";
 import type {
   ContextChange,
   EventPublication,
+  GraphTransaction,
 } from "./types";
 
 export interface RuntimeTransactionCoordinator {
   readonly runTransaction: <T>(
-    work: () => T | Promise<T>
+    work: (transaction: GraphTransaction) => T | Promise<T>,
   ) => Promise<T>;
-  readonly isInsideTransaction: () => boolean;
-  readonly assertOperationAllowed: (operation: string) => void;
   readonly setContext: <TValue>(
     node: ContextNodeDefinition<TValue>,
-    value: TValue
+    value: TValue,
   ) => void;
   readonly publish: <TEvent extends AnyEventDefinition>(
     event: TEvent,
-    payload: EventPayload<TEvent>
+    payload: EventPayload<TEvent>,
   ) => void;
+}
+
+interface StagedContextChange extends ContextChange {
+  readonly expectedGeneration: number;
 }
 
 export interface RuntimeTransactionCoordinatorDependencies {
   readonly runWithBufferedNotifications: <T>(
-    work: () => T | Promise<T>
+    work: () => T | Promise<T>,
   ) => Promise<T>;
   readonly resolveContextNode: <TValue>(
-    node: ContextNodeDefinition<TValue>
+    node: ContextNodeDefinition<TValue>,
   ) => ContextNodeDefinition<TValue>;
-  readonly commit: (
+  readonly getContextGeneration: (
+    node: ContextNodeDefinition<unknown>,
+  ) => number;
+  readonly commitImmediate: (
     contextChanges: readonly ContextChange[],
-    eventPublications: readonly EventPublication[]
+    eventPublications: readonly EventPublication[],
+  ) => void;
+  readonly commitTransaction: (
+    contextChanges: readonly ContextChange[],
+    eventPublications: readonly EventPublication[],
   ) => void;
 }
 
@@ -44,31 +52,46 @@ export interface RuntimeTransactionCoordinatorDependencies {
 export const createRuntimeTransactionCoordinator = ({
   runWithBufferedNotifications,
   resolveContextNode,
-  commit,
+  getContextGeneration,
+  commitImmediate,
+  commitTransaction,
 }: RuntimeTransactionCoordinatorDependencies): RuntimeTransactionCoordinator => {
   let depth = 0;
   let rootSucceeded = false;
   let resolveJoinedTransactions: (() => void) | undefined;
   let joinedTransactionsSettled: Promise<void> | undefined;
-  let stagedContexts = new Map<string, ContextChange>();
+  let stagedContexts = new Map<string, StagedContextChange>();
   let stagedEvents: EventPublication[] = [];
+  let activeGroup: symbol | undefined;
 
   const commitStagedWork = (): void => {
     const contexts = stagedContexts;
     const events = stagedEvents;
-    stagedContexts = new Map();
+    stagedContexts = new Map<string, StagedContextChange>();
     stagedEvents = [];
 
-    commit([...contexts.values()], events);
+    const conflicts = [...contexts.values()]
+      .filter(({ node, expectedGeneration }) =>
+        getContextGeneration(node) !== expectedGeneration,
+      )
+      .map(({ node }) => node.key);
+    if (conflicts.length > 0) {
+      throw new GraphTransactionConflictError(conflicts);
+    }
+
+    commitTransaction(
+      [...contexts.values()].map(({ node, value }) => ({ node, value })),
+      events,
+    );
   };
 
   const discardStagedWork = (): void => {
-    stagedContexts = new Map();
+    stagedContexts = new Map<string, StagedContextChange>();
     stagedEvents = [];
   };
 
   const waitForJoinedTransactions = (): Promise<void> => {
-    joinedTransactionsSettled ??= new Promise<void>(resolve => {
+    joinedTransactionsSettled ??= new Promise<void>((resolve) => {
       resolveJoinedTransactions = resolve;
     });
     return joinedTransactionsSettled;
@@ -79,18 +102,70 @@ export const createRuntimeTransactionCoordinator = ({
     joinedTransactionsSettled = undefined;
   };
 
+  const stageContext = <TValue>(
+    node: ContextNodeDefinition<TValue>,
+    value: TValue,
+  ): void => {
+    const registered = resolveContextNode(node);
+    const existing = stagedContexts.get(registered.key);
+    stagedContexts.set(registered.key, {
+      node: registered as ContextNodeDefinition<unknown>,
+      value,
+      expectedGeneration:
+        existing?.expectedGeneration ??
+        getContextGeneration(registered as ContextNodeDefinition<unknown>),
+    });
+  };
+
+  const stagePublication = <TEvent extends AnyEventDefinition>(
+    event: TEvent,
+    payload: EventPayload<TEvent>,
+  ): void => {
+    stagedEvents.push({ event, payload });
+  };
+
+  const createGraphTransaction = (group: symbol): GraphTransaction => {
+    const assertActive = (): void => {
+      if (activeGroup === group) return;
+      throw new Error("Graph transaction is no longer active.");
+    };
+
+    return Object.freeze({
+      setContext: <TValue>(
+        node: ContextNodeDefinition<TValue>,
+        value: TValue,
+      ): void => {
+        assertActive();
+        stageContext(node, value);
+      },
+      publish: <TEvent extends AnyEventDefinition>(
+        event: TEvent,
+        payload: EventPayload<TEvent>,
+      ): void => {
+        assertActive();
+        stagePublication(event, payload);
+      },
+    });
+  };
+
   const runTransaction = <T>(
-    work: () => T | Promise<T>
+    work: (transaction: GraphTransaction) => T | Promise<T>,
   ): Promise<T> =>
     runWithBufferedNotifications(async () => {
       const isRoot = depth === 0;
       let completed = false;
 
-      if (isRoot) rootSucceeded = false;
+      if (isRoot) {
+        rootSucceeded = false;
+        activeGroup = Symbol("graph-transaction");
+      }
+      const group = activeGroup;
+      if (!group) throw new Error("Graph transaction group is not active.");
+      const transaction = createGraphTransaction(group);
       depth += 1;
 
       try {
-        const result = await work();
+        const result = await work(transaction);
         completed = true;
         return result;
       } finally {
@@ -104,26 +179,20 @@ export const createRuntimeTransactionCoordinator = ({
         if (isRoot) {
           if (depth > 0) await waitForJoinedTransactions();
 
-          if (rootSucceeded) commitStagedWork();
-          else discardStagedWork();
-          resetJoinedTransactionSettlement();
+          try {
+            if (rootSucceeded) commitStagedWork();
+            else discardStagedWork();
+          } finally {
+            activeGroup = undefined;
+            resetJoinedTransactionSettlement();
+          }
         }
       }
     });
 
-  const isInsideTransaction = (): boolean => depth > 0;
-
-  const assertOperationAllowed = (operation: string): void => {
-    if (!isInsideTransaction()) return;
-
-    throw new Error(
-      `runtime.${operation}(...) cannot be called inside runtime.transaction(...).`
-    );
-  };
-
   const setContext = <TValue>(
     node: ContextNodeDefinition<TValue>,
-    value: TValue
+    value: TValue,
   ): void => {
     const registered = resolveContextNode(node);
     const change: ContextChange = {
@@ -131,31 +200,19 @@ export const createRuntimeTransactionCoordinator = ({
       value,
     };
 
-    if (!isInsideTransaction()) {
-      commit([change], []);
-      return;
-    }
-
-    stagedContexts.set(registered.key, change);
+    commitImmediate([change], []);
   };
 
   const publish = <TEvent extends AnyEventDefinition>(
     event: TEvent,
-    payload: EventPayload<TEvent>
+    payload: EventPayload<TEvent>,
   ): void => {
     const publication: EventPublication = { event, payload };
-    if (!isInsideTransaction()) {
-      commit([], [publication]);
-      return;
-    }
-
-    stagedEvents.push(publication);
+    commitImmediate([], [publication]);
   };
 
   return Object.freeze({
     runTransaction,
-    isInsideTransaction,
-    assertOperationAllowed,
     setContext,
     publish,
   });

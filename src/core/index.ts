@@ -1,3 +1,5 @@
+export { GraphTransactionConflictError } from "./transactions/errors";
+export type { GraphTransaction } from "./transactions/types";
 export type { RefreshableNodeDefinition } from "./operations/types";
 export type { SchedulerState } from "./scheduling/types";
 export type {
@@ -6,11 +8,7 @@ export type {
 } from "./subscriptions/types";
 export { GraphValidationError } from "./graph/errors";
 export type { GraphValidationErrorCode } from "./graph/errors";
-export {
-  GraphExecutionError,
-  isAbortError,
-  toError,
-} from "./execution/types";
+export { GraphExecutionError, isAbortError, toError } from "./execution/types";
 export type {
   NodeExecutionFailure,
   NodeExecutionFailureKind,

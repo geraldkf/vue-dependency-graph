@@ -24,8 +24,8 @@ describe("transaction execution races", () => {
       "pre-commit execution to start"
     );
 
-    await runtime.transaction(async () => {
-      runtime.setContext(context, 2);
+    await runtime.transaction(async transaction => {
+      transaction.setContext(context, 2);
       attempt.resolve("completed-before-commit");
       await waitForCondition(
         () => runtime.getState(data).data === "completed-before-commit",
@@ -61,8 +61,8 @@ describe("transaction execution races", () => {
     const execution = runtime.execute([data]);
     await waitForCondition(() => signals.length === 1, "ignored-abort attempt to start");
 
-    await runtime.transaction(() => {
-      runtime.setContext(context, 2);
+    await runtime.transaction(transaction => {
+      transaction.setContext(context, 2);
     });
 
     expect(signals[0]?.aborted).toBe(true);

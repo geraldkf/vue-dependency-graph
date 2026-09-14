@@ -4,8 +4,6 @@ import {
   createGraphRuntime,
   defineContextNode,
   defineDataNode,
-  type DataNodeDefinition,
-  type GraphRuntime,
 } from "../../src/core";
 import { waitForCondition } from "./test-helpers";
 
@@ -47,11 +45,11 @@ describe("transaction staging and operation boundaries", () => {
     await runtime.whenSettled();
     load.mockClear();
 
-    await runtime.transaction(async () => {
-      runtime.setContext(context, 2);
+    await runtime.transaction(async transaction => {
+      transaction.setContext(context, 2);
       await Promise.resolve();
       await Promise.resolve();
-      runtime.setContext(context, 3);
+      transaction.setContext(context, 3);
     });
     await runtime.whenSettled();
 
@@ -67,44 +65,16 @@ describe("transaction staging and operation boundaries", () => {
       observed.push(runtime.getState(context).data);
     });
 
-    await runtime.transaction(async () => {
-      runtime.setContext(context, 2);
+    await runtime.transaction(async transaction => {
+      transaction.setContext(context, 2);
       await runtime.transaction(() => {
-        runtime.setContext(context, 3);
+        transaction.setContext(context, 3);
       });
-      runtime.setContext(context, 4);
+      transaction.setContext(context, 4);
     });
 
     expect(observed).toEqual([4]);
   });
-
-  it.each([
-    ["execute", (runtime: GraphRuntime, data: DataNodeDefinition<number, readonly []>) => runtime.execute([data])],
-    ["prefetch", (runtime: GraphRuntime, data: DataNodeDefinition<number, readonly []>) => runtime.prefetch([data])],
-    ["refresh", (runtime: GraphRuntime, data: DataNodeDefinition<number, readonly []>) => runtime.refresh([data])],
-  ] as const)(
-    "rejects %s inside a transaction without starting or invalidating work",
-    async (operation, invoke) => {
-      const load = vi.fn(async () => 1);
-      const data = defineDataNode({
-        key: `data-${operation}`,
-        dependencies: [] as const,
-        initialValue: 0,
-        load,
-      });
-      const runtime = createGraphRuntime(createGraph({ nodes: [data] }));
-      const stateBefore = runtime.getState(data);
-
-      await expect(
-        runtime.transaction(() => invoke(runtime, data))
-      ).rejects.toThrow(
-        `runtime.${operation}(...) cannot be called inside runtime.transaction(...).`
-      );
-
-      expect(load).not.toHaveBeenCalled();
-      expect(runtime.getState(data)).toEqual(stateBefore);
-    }
-  );
 
   it("keeps staged context values hidden until the outer transaction commits", async () => {
     const context = defineContextNode({ key: "staged-context", initialValue: 1 });
@@ -112,15 +82,15 @@ describe("transaction staging and operation boundaries", () => {
     const runtime = createGraphRuntime(createGraph({ nodes: [context] }));
     runtime.onChange(() => observed.push(runtime.getState(context).data));
 
-    await runtime.transaction(async () => {
-      runtime.setContext(context, 2);
+    await runtime.transaction(async transaction => {
+      transaction.setContext(context, 2);
       expect(runtime.getState(context).data).toBe(1);
       expect(runtime.getState(context).generation).toBe(0);
       expect(observed).toEqual([]);
 
       await Promise.resolve();
 
-      runtime.setContext(context, 3);
+      transaction.setContext(context, 3);
       expect(runtime.getState(context).data).toBe(1);
       expect(observed).toEqual([]);
     });
@@ -134,14 +104,14 @@ describe("transaction staging and operation boundaries", () => {
     const context = defineContextNode({ key: "nested-context", initialValue: 1 });
     const runtime = createGraphRuntime(createGraph({ nodes: [context] }));
 
-    await runtime.transaction(async () => {
-      runtime.setContext(context, 2);
+    await runtime.transaction(async transaction => {
+      transaction.setContext(context, 2);
       await runtime.transaction(() => {
-        runtime.setContext(context, 3);
+        transaction.setContext(context, 3);
         expect(runtime.getState(context).data).toBe(1);
       });
       expect(runtime.getState(context).data).toBe(1);
-      runtime.setContext(context, 4);
+      transaction.setContext(context, 4);
     });
 
     expect(runtime.getState(context).data).toBe(4);
@@ -154,9 +124,9 @@ describe("transaction staging and operation boundaries", () => {
     const runtime = createGraphRuntime(createGraph({ nodes: [context] }));
     runtime.onChange(observed);
 
-    await runtime.transaction(() => {
-      runtime.setContext(context, 2);
-      runtime.setContext(context, 1);
+    await runtime.transaction(transaction => {
+      transaction.setContext(context, 2);
+      transaction.setContext(context, 1);
     });
 
     expect(runtime.getState(context).data).toBe(1);
@@ -174,7 +144,7 @@ describe("transaction staging and operation boundaries", () => {
     });
     const runtime = createGraphRuntime(createGraph({ nodes: [data] }));
 
-    await runtime.transaction(async () => {
+    await runtime.transaction(async transaction => {
       await Promise.resolve();
     });
     await runtime.execute([data]);

@@ -15,15 +15,15 @@ describe("overlapping transactions", () => {
     const runtime = createGraphRuntime(createGraph({ nodes: [first, second] }));
     let rootSettled = false;
 
-    const rootTransaction = runtime.transaction(async () => {
-      runtime.setContext(first, 2);
+    const rootTransaction = runtime.transaction(async transaction => {
+      transaction.setContext(first, 2);
       await releaseRoot.promise;
     }).then(() => {
       rootSettled = true;
     });
 
-    const joinedTransaction = runtime.transaction(async () => {
-      runtime.setContext(second, 20);
+    const joinedTransaction = runtime.transaction(async transaction => {
+      transaction.setContext(second, 20);
       await releaseJoined.promise;
     });
 
@@ -47,11 +47,11 @@ describe("overlapping transactions", () => {
     const releaseRoot = deferred<void>();
     const runtime = createGraphRuntime(createGraph({ nodes: [context] }));
 
-    const rootTransaction = runtime.transaction(async () => {
+    const rootTransaction = runtime.transaction(async transaction => {
       await releaseRoot.promise;
     });
-    const joinedTransaction = runtime.transaction(() => {
-      runtime.setContext(context, 2);
+    const joinedTransaction = runtime.transaction(transaction => {
+      transaction.setContext(context, 2);
       throw new Error("joined failure");
     });
 
@@ -69,12 +69,12 @@ describe("overlapping transactions", () => {
     const releaseJoined = deferred<void>();
     const runtime = createGraphRuntime(createGraph({ nodes: [context] }));
 
-    const rootTransaction = runtime.transaction(async () => {
+    const rootTransaction = runtime.transaction(async transaction => {
       await releaseRoot.promise;
       throw new Error("root failure");
     });
-    const joinedTransaction = runtime.transaction(async () => {
-      runtime.setContext(context, 2);
+    const joinedTransaction = runtime.transaction(async transaction => {
+      transaction.setContext(context, 2);
       await releaseJoined.promise;
     });
 
