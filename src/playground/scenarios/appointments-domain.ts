@@ -8,6 +8,10 @@ export const appointmentBooked = defineEvent<{
   appointmentId: number;
 }>("appointment.booked");
 
+export const unrelatedAppointmentChanged = defineEvent<void>(
+  "appointment.unrelated-changed"
+);
+
 export const publishAppointmentBooked = (
   publisher: Pick<GraphRuntime, "publish">,
   payload: {

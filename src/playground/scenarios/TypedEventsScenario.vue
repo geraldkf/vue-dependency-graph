@@ -21,6 +21,23 @@
     </p>
     <p data-testid="typed-events-outcome">Outcome: {{ outcome }}</p>
 
+    <section aria-labelledby="typed-events-independent-heading">
+      <h3 id="typed-events-independent-heading">Unrelated runtime event</h3>
+      <p>
+        A plain runtime publication remains immediate while the appointment
+        event transaction is staged and survives its rollback.
+      </p>
+      <p data-testid="typed-events-independent-status">
+        Independent status: {{ unrelatedStatus.data.value }}
+      </p>
+      <p data-testid="typed-events-independent-requests">
+        Independent requests: {{ unrelatedEventLoader.requestCount.value }}
+      </p>
+      <p data-testid="typed-events-independent-outcome">
+        Independent outcome: {{ unrelatedOutcome }}
+      </p>
+    </section>
+
     <label>
       Event job seeker
       <input v-model.number="eventJobSeekerId" type="number" />
@@ -31,6 +48,12 @@
       <button @click="publishNonMatching">Publish non-matching event</button>
       <button :disabled="transactionPhase !== 'idle'" @click="startTransaction">
         Start event transaction
+      </button>
+      <button
+        :disabled="transactionPhase !== 'staged' || unrelatedPublished"
+        @click="publishUnrelatedDuringTransaction"
+      >
+        Publish unrelated event now
       </button>
       <button :disabled="transactionPhase !== 'staged'" @click="commitTransaction">
         Commit event transaction
@@ -58,8 +81,13 @@ import {
   capabilityInterviewStatus,
   capabilityJobSeekerId,
   capabilityStatusLoader,
+  unrelatedAppointmentStatus,
+  unrelatedEventLoader,
 } from "./typed-events-nodes";
-import { publishAppointmentBooked } from "./appointments-domain";
+import {
+  publishAppointmentBooked,
+  unrelatedAppointmentChanged,
+} from "./appointments-domain";
 
 interface HistoryEntry {
   readonly id: number;
@@ -72,8 +100,11 @@ type TransactionPhase = "idle" | "staged" | "committed" | "rolled-back";
 const { runtime } = useDependencyGraphStore();
 const jobSeekerId = useNode(capabilityJobSeekerId, { runtime });
 const capabilityStatus = useNode(capabilityInterviewStatus, { runtime });
+const unrelatedStatus = useNode(unrelatedAppointmentStatus, { runtime });
 const eventJobSeekerId = ref(runtime.getState(capabilityJobSeekerId).data);
 const outcome = ref("ready");
+const unrelatedOutcome = ref("not published");
+const unrelatedPublished = ref(false);
 const transactionPhase = ref<TransactionPhase>("idle");
 const history = ref<HistoryEntry[]>([]);
 let nextHistoryId = 1;
@@ -114,6 +145,8 @@ const publishNonMatching = async (): Promise<void> => {
 const startTransaction = (): void => {
   transactionPhase.value = "staged";
   outcome.value = "event staged; committed capability state is unchanged";
+  unrelatedPublished.value = false;
+  unrelatedOutcome.value = "not published";
 
   void runtime.transaction(async transaction => {
     publishAppointmentBooked(transaction, {
@@ -144,6 +177,15 @@ const startTransaction = (): void => {
   });
 };
 
+const publishUnrelatedDuringTransaction = async (): Promise<void> => {
+  runtime.publish(unrelatedAppointmentChanged, undefined);
+  unrelatedPublished.value = true;
+  unrelatedOutcome.value = "published while transaction open";
+  record("Published unrelated runtime event immediately");
+  await waitForRuntime();
+  if (isMounted) unrelatedOutcome.value = "reloaded before transaction closed";
+};
+
 const commitTransaction = (): void => {
   resolveDecision?.("commit");
   resolveDecision = undefined;
@@ -161,10 +203,15 @@ const resetScenario = async (): Promise<void> => {
     transaction.setContext(capabilityJobSeekerId, 101);
   }).catch(() => {});
   capabilityStatusLoader.reset();
-  await runtime.refresh([capabilityInterviewStatus]).catch(() => {});
+  unrelatedEventLoader.reset();
+  await runtime
+    .refresh([capabilityInterviewStatus, unrelatedAppointmentStatus])
+    .catch(() => {});
   await waitForRuntime();
   eventJobSeekerId.value = 101;
   outcome.value = "ready";
+  unrelatedOutcome.value = "not published";
+  unrelatedPublished.value = false;
   transactionPhase.value = "idle";
   history.value = [];
   nextHistoryId = 1;

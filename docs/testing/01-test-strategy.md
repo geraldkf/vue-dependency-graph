@@ -160,6 +160,11 @@ Verify:
 - Independent runtimes across separate Pinia instances
 - Components can use a Pinia-owned runtime without the graph runtime plugin
 - Scenario tab changes release the previous scope's subscriptions
+- Transaction playground controls are enabled only during valid phases
+- Unrelated context and event work becomes observable before transaction closure
+- Unrelated work survives staged transaction rollback
+- Same-context conflict preserves immediate state and exposes no partial staged snapshot
+- Scenario reset restores isolation, conflict, request-count, and outcome state deterministically
 - No consumer `loadData()` call
 
 Use a real `createPinia()` instance and the real dependency graph store for Pinia integration tests. Do not install the graph runtime plugin in those tests. Prefer direct deterministic instances over broad module mocking.

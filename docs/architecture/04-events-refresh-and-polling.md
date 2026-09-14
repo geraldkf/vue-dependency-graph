@@ -125,3 +125,20 @@ await runtime.refresh([Targets]);
 Manual refresh forces registered data and derived nodes to execute again. It is not a refresh policy and does not introduce timers, stale-time rules, focus handling, reconnect handling, polling, retries, or backoff. Context nodes are not refreshable because their values are changed through `setContext(...)`.
 
 A changed refresh result invalidates transitive descendants while preserving their data. Subscribed descendants are then handled by the automatic scheduler. An `Object.is` equal result does not invalidate descendants.
+
+
+## Transaction-owned and immediate event publication
+
+Event ownership is explicit:
+
+```ts
+await runtime.transaction(transaction => {
+  transaction.publish(AppointmentBooked, payload);
+});
+
+runtime.publish(UnrelatedEvent, payload);
+```
+
+`transaction.publish(...)` appends an ordered staged publication to the active transaction group. Successful commit evaluates its predicates against the final staged context overlay and combines context-driven and event-driven invalidation into one atomic graph change. Rollback or context conflict discards the staged publication without evaluating or applying it.
+
+Plain `runtime.publish(...)` always evaluates against committed state and applies matching invalidation immediately, even while an unrelated transaction is open. Its observer notification, scheduler work, execution result, and settlement are independent of that transaction. Repeated publications remain distinct for predicate order; only their resulting graph effects are deduplicated per commit.

@@ -4,7 +4,10 @@ import {
   defineDataNode,
   type EventInvalidationContext,
 } from "../../core";
-import { appointmentBooked } from "./appointments-domain";
+import {
+  appointmentBooked,
+  unrelatedAppointmentChanged,
+} from "./appointments-domain";
 
 export const capabilityJobSeekerId = defineContextNode({
   key: "typed-events.job-seeker-id",
@@ -34,5 +37,25 @@ export const capabilityInterviewStatus = defineDataNode({
   load: async ({ get }) => {
     capabilityStatusLoader.requestCount.value += 1;
     return `Current for job seeker ${get(capabilityJobSeekerId)} (request ${capabilityStatusLoader.requestCount.value})`;
+  },
+});
+
+const unrelatedRequestCount = ref(0);
+
+export const unrelatedEventLoader = {
+  requestCount: unrelatedRequestCount,
+  reset: (): void => {
+    unrelatedRequestCount.value = 0;
+  },
+};
+
+export const unrelatedAppointmentStatus = defineDataNode({
+  key: "typed-events.unrelated-status",
+  dependencies: [] as const,
+  invalidatedBy: [unrelatedAppointmentChanged] as const,
+  initialValue: "Not loaded",
+  load: async () => {
+    unrelatedEventLoader.requestCount.value += 1;
+    return `Unrelated event applied (request ${unrelatedEventLoader.requestCount.value})`;
   },
 });

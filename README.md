@@ -8,7 +8,7 @@ This repository begins as an isolated research and development project. The exis
 
 Design and prototyping. Milestones 1 through 6 are implemented, including the framework-agnostic runtime, subscription scheduler, Vue composables, Pinia-owned runtime integration, atomic local context transactions, and typed event-driven invalidation.
 
-Milestone 6 implementation and maintained documentation are complete, with final combined automated and manual validation pending. Milestone 7, query groups, is the next implementation milestone after Milestone 6 validation. APIs remain subject to change until the existing-application migration trial is complete.
+Milestone 6 and the Transaction Ownership Isolation corrective work are implemented and prepared for final combined validation. Core boundary and standalone strict core TypeScript checks pass; repository typecheck, tests, build, and manual playground validation remain pending. Transactions now use an explicit `GraphTransaction` handle, plain runtime operations remain independent while a transaction is open, and same-context conflicts reject atomically. Milestone 7, query groups, is the next implementation milestone after final validation. APIs remain subject to change until the existing-application migration trial is complete.
 
 ## Repository model
 
@@ -60,6 +60,28 @@ core + vue + devtools <--- playground
 - Make execution observable through diagnostics, metrics, snapshots, and devtools.
 - Provide strongly typed node definitions and consumer results.
 - Keep the core independent of Vue and Pinia.
+
+## Transaction ownership
+
+Transaction-owned context changes and event publications use the explicit callback handle:
+
+```ts
+await runtime.transaction(async transaction => {
+  transaction.setContext(JobSeekerId, 123);
+  transaction.publish(AppointmentBooked, payload);
+  await localWork();
+});
+```
+
+Plain runtime calls do not join another caller's transaction:
+
+```ts
+runtime.setContext(UnrelatedContext, 999);
+runtime.publish(UnrelatedEvent, payload);
+await runtime.refresh([UnrelatedNode]);
+```
+
+They use committed graph state and proceed independently. If a transaction staged a context before an independent write changed that same context, commit rejects atomically with `GraphTransactionConflictError` and preserves the independent value. Transactions remain local graph transactions and do not roll back remote work.
 
 ## Non-goals
 

@@ -205,6 +205,25 @@ await runtime.transaction(async transaction => {
 
 Atomic local context transactions use the explicit `GraphTransaction` handle. Calls to `transaction.setContext(...)` are held until the successful outer transaction completes, and public reads remain committed reads while work is open. Final values commit together, shared descendants invalidate once, and affected attempts abort after generation advancement. Synchronous or asynchronous failure discards staged context changes. `runtime.whenSettled()` observes the ordinary scheduler directly. Call it after awaiting a transaction when settlement must include work triggered by that transaction commit. Plain `runtime.execute(...)`, `runtime.prefetch(...)`, and `runtime.refresh(...)` calls remain available while another transaction is open. They read committed graph state and publish their results independently. These operations are intentionally absent from `GraphTransaction`. Overlapping transaction calls on one runtime join a single group: the first call is the root, all joined calls settle before the group closes, and the root outcome controls commit or rollback. Plain `runtime.setContext(...)` calls are always committed immediately, even while another transaction is open, and are not discarded by that transaction's rollback. If a transaction staged the same context before an independent write changed its committed generation, transaction commit rejects atomically with `GraphTransactionConflictError`. The independent value is preserved, and no staged context or event effect commits. Observer notification and automatic scheduling for these plain runtime operations are also immediate and are not held behind the unrelated transaction. Transactions do not provide backend rollback.
 
+The transaction handle exposes only `setContext(...)` and `publish(...)`. It becomes invalid when the shared transaction group closes. Later use throws `Graph transaction is no longer active.`
+
+Conflicting immediate writes are observable:
+
+```ts
+try {
+  await runtime.transaction(async transaction => {
+    transaction.setContext(JobSeekerId, 123);
+    await localWork();
+  });
+} catch (error) {
+  if (error instanceof GraphTransactionConflictError) {
+    console.log(error.contextKeys);
+  }
+}
+```
+
+`GraphTransactionConflictError.contextKeys` is immutable and sorted deterministically. Conflict checking occurs before staged event predicates and graph mutation, so no staged context or event effect is partially applied.
+
 ## Typed event definitions
 
 M6A implements typed event handles and node declarations. M6B adds graph validation and indexing. M6C implements immediate publication, and M6D implements transaction-aware publication.

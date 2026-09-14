@@ -10,6 +10,7 @@ import { toggleableResource } from "./scenarios/unmount-cleanup-nodes";
 import {
   capabilityInterviewStatus,
   capabilityJobSeekerId,
+  unrelatedAppointmentStatus,
 } from "./scenarios/typed-events-nodes";
 
 /**

@@ -44,6 +44,52 @@
       </p>
     </section>
 
+    <section aria-labelledby="unrelated-runtime-heading">
+      <h3 id="unrelated-runtime-heading">Unrelated runtime activity</h3>
+      <p>
+        A plain runtime context write remains immediate while this transaction
+        is paused and survives transaction rollback.
+      </p>
+      <p data-testid="unrelated-context-value">
+        Unrelated context: {{ unrelatedState.data.value }}
+      </p>
+      <p data-testid="unrelated-dependent-value">
+        Unrelated dependent result: {{ unrelatedDependentState.data.value }}
+      </p>
+      <p data-testid="unrelated-load-count">
+        Unrelated load count: {{ unrelatedLoadCount }}
+      </p>
+      <p data-testid="unrelated-update-state">
+        Unrelated update: {{ unrelatedUpdateState }}
+      </p>
+      <button
+        :disabled="!isTransactionActive || unrelatedUpdateApplied || conflictWriteApplied"
+        @click="applyUnrelatedRuntimeUpdate"
+      >
+        Apply unrelated runtime update
+      </button>
+    </section>
+
+    <section aria-labelledby="transaction-conflict-heading">
+      <h3 id="transaction-conflict-heading">Same-context conflict</h3>
+      <p>
+        Stage the first value, then update that same context directly. Commit
+        detects the changed generation and preserves the immediate value.
+      </p>
+      <p data-testid="conflict-state">
+        Conflict: {{ conflictState }}
+      </p>
+      <p data-testid="conflict-keys">
+        Conflicting contexts: {{ conflictKeysText }}
+      </p>
+      <button
+        :disabled="transactionPhase !== 'first-staged' || conflictWriteApplied"
+        @click="applyConflictingRuntimeUpdate"
+      >
+        Apply conflicting runtime update
+      </button>
+    </section>
+
     <p>
       <button :disabled="isTransactionActive" @click="startTransaction">
         Start transaction
@@ -86,7 +132,9 @@ import {
   createGraph,
   createGraphRuntime,
   defineContextNode,
+  defineDataNode,
   defineDerivedNode,
+  GraphTransactionConflictError,
 } from "../../core";
 import { useNode } from "../../vue";
 
@@ -102,10 +150,15 @@ type TransactionPhase =
   | "committing"
   | "rolling-back"
   | "committed"
-  | "rolled-back";
+  | "rolled-back"
+  | "conflicted";
 
 type TransactionDecision = "commit" | "rollback";
-type TransactionOutcome = "none" | "committed" | "rolled back";
+type TransactionOutcome =
+  | "none"
+  | "committed"
+  | "rolled back"
+  | "conflict rejected";
 
 const firstValue = defineContextNode({
   key: "atomic-transaction-first",
@@ -114,6 +167,20 @@ const firstValue = defineContextNode({
 const secondValue = defineContextNode({
   key: "atomic-transaction-second",
   initialValue: 10,
+});
+const unrelatedValue = defineContextNode({
+  key: "atomic-transaction-unrelated",
+  initialValue: 100,
+});
+const unrelatedLoadCount = ref(0);
+const unrelatedDependent = defineDataNode({
+  key: "atomic-transaction-unrelated-dependent",
+  dependencies: [unrelatedValue] as const,
+  initialValue: 100,
+  load: async ({ get }) => {
+    unrelatedLoadCount.value += 1;
+    return get(unrelatedValue);
+  },
 });
 
 const deriveCount = ref(0);
@@ -127,16 +194,34 @@ const combinedValue = defineDerivedNode({
 });
 
 const runtime = createGraphRuntime(
-  createGraph({ nodes: [combinedValue, firstValue, secondValue] })
+  createGraph({
+    nodes: [
+      combinedValue,
+      unrelatedDependent,
+      firstValue,
+      secondValue,
+      unrelatedValue,
+    ],
+  })
 );
 const firstState = useNode(firstValue, { runtime });
 const secondState = useNode(secondValue, { runtime });
 const combinedState = useNode(combinedValue, { runtime });
+const unrelatedState = useNode(unrelatedValue, { runtime });
+const unrelatedDependentState = useNode(unrelatedDependent, { runtime });
 const transactionPhase = ref<TransactionPhase>("idle");
 const transactionOutcome = ref<TransactionOutcome>("none");
 const transactionError = ref<string | null>(null);
 const draft = ref<TransactionDraft | null>(null);
 const snapshots = ref<string[]>([]);
+const unrelatedUpdateApplied = ref(false);
+const unrelatedUpdateState = ref("not applied");
+const conflictWriteApplied = ref(false);
+const conflictState = ref("not demonstrated");
+const conflictKeys = ref<readonly string[]>([]);
+const conflictKeysText = computed(() =>
+  conflictKeys.value.length > 0 ? conflictKeys.value.join(", ") : "none"
+);
 const previewResult = computed(() =>
   draft.value ? draft.value.first + draft.value.second : null
 );
@@ -165,6 +250,11 @@ const unsubscribe = runtime.onChange(() => {
 const startTransaction = (): void => {
   transactionOutcome.value = "none";
   transactionError.value = null;
+  unrelatedUpdateApplied.value = false;
+  unrelatedUpdateState.value = "not applied";
+  conflictWriteApplied.value = false;
+  conflictState.value = "not demonstrated";
+  conflictKeys.value = [];
 
   void runtime.transaction(async transaction => {
     transaction.setContext(firstValue, 2);
@@ -195,6 +285,15 @@ const startTransaction = (): void => {
     transactionOutcome.value = "committed";
   }).catch((error: unknown) => {
     if (!isMounted) return;
+    if (error instanceof GraphTransactionConflictError) {
+      transactionPhase.value = "conflicted";
+      transactionOutcome.value = "conflict rejected";
+      conflictState.value = "detected; immediate value preserved";
+      conflictKeys.value = error.contextKeys;
+      transactionError.value = null;
+      return;
+    }
+
     transactionPhase.value = "rolled-back";
     transactionOutcome.value = "rolled back";
     transactionError.value =
@@ -204,6 +303,19 @@ const startTransaction = (): void => {
     resolveDecision = undefined;
     if (isMounted) draft.value = null;
   });
+};
+
+const applyConflictingRuntimeUpdate = (): void => {
+  runtime.setContext(firstValue, 999);
+  conflictWriteApplied.value = true;
+  conflictState.value = "immediate value committed; finish transaction to detect conflict";
+};
+
+const applyUnrelatedRuntimeUpdate = async (): Promise<void> => {
+  runtime.setContext(unrelatedValue, 999);
+  unrelatedUpdateApplied.value = true;
+  unrelatedUpdateState.value = "committed while transaction open";
+  await runtime.whenSettled();
 };
 
 const stageSecondValue = (): void => {
@@ -227,6 +339,7 @@ const resetScenario = async (): Promise<void> => {
   await runtime.transaction(transaction => {
     transaction.setContext(firstValue, 1);
     transaction.setContext(secondValue, 10);
+    transaction.setContext(unrelatedValue, 100);
   });
   await runtime.whenSettled();
 
@@ -234,6 +347,12 @@ const resetScenario = async (): Promise<void> => {
   lastObservedContextPair =
     `${runtime.getState(firstValue).data} + ${runtime.getState(secondValue).data}`;
   deriveCount.value = 0;
+  unrelatedLoadCount.value = 0;
+  unrelatedUpdateApplied.value = false;
+  unrelatedUpdateState.value = "not applied";
+  conflictWriteApplied.value = false;
+  conflictState.value = "not demonstrated";
+  conflictKeys.value = [];
   draft.value = null;
   transactionError.value = null;
   transactionOutcome.value = "none";

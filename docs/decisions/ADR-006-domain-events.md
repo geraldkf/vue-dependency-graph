@@ -87,3 +87,6 @@ Rejected because repeated publications may carry different payloads and match di
 TOI-2 introduces `GraphTransaction`, and TOI-4 removes ambient event staging. Transaction-owned event publications must use `transaction.publish(...)`. Plain `runtime.publish(...)` always evaluates and applies its event effects immediately, even while another transaction group is open. A transaction rollback discards only publications staged through its handle.
 
 This amendment corrects the ownership gap in the original runtime-wide depth model. TOI-5 completes dispatch isolation: observer notification and automatic scheduling for an unrelated immediate publication bypass the transaction-owned buffer.
+
+
+The maintained public contract and event migration examples are in `docs/api/01-public-api.md` and `docs/implementation/67-toi-8e-migration-guidance.md`.

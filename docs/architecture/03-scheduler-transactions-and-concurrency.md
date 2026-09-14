@@ -186,3 +186,14 @@ Explicit overlapping `runtime.transaction(...)` calls retain the existing joined
 Plain caller-owned `execute(...)`, `prefetch(...)`, and `refresh(...)` operations remain available while a transaction is open. They read committed context values because staged values are not part of public runtime state. Their execution notifications are dispatched directly rather than being held by the unrelated transaction buffer. The `GraphTransaction` handle does not expose these operations.
 
 The planned limit does not gate derived nodes and is orthogonal to transaction semantics.
+
+
+## Transaction ownership boundary
+
+`GraphTransaction` is an explicit capability owned by the transaction coordinator. A callback receives a narrow facade over the active joined group. The facade stages context values and event publications, and every facade closes when the group commits, rolls back, or fails commit preparation. Public runtime methods do not infer participation from transaction depth.
+
+Immediate graph changes use direct observer and scheduler dispatch. Transaction commit uses the transaction-owned notification buffer to emit one coherent notification and request at most one scheduler pass. `runtime.whenSettled()` observes the scheduler directly; callers await the transaction first when settlement must include commit-triggered work.
+
+Generation-based conflict detection protects staged contexts from silently overwriting later immediate writes. Conflict validation runs before event predicate evaluation and before mutation. Explicit overlapping `runtime.transaction(...)` calls continue to join one group and share staged state, expected generations, publications, and the root outcome.
+
+See `docs/api/01-public-api.md` for the public contract and `docs/implementation/67-toi-8e-migration-guidance.md` for migration examples.

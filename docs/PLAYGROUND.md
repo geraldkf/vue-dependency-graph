@@ -120,3 +120,44 @@ Manual validation:
 6. Reset and confirm request count `1`, phase `idle`, outcome `ready`, and empty history.
 7. Start another transaction, roll it back, and confirm no reload.
 8. Start a transaction, switch tabs, return, and confirm no suspended transaction or warning.
+
+
+## Transaction ownership isolation
+
+The Atomic Transaction scenario now demonstrates an unrelated runtime context update while a transaction is paused. The plain `runtime.setContext(...)` update becomes visible immediately, reloads its subscribed dependent before the transaction closes, and remains committed when the staged transaction rolls back. This is intentionally separate from the same-context conflict demonstration planned for TOI-8B.
+
+
+The Atomic Transaction scenario also demonstrates same-context optimistic conflict detection. A transaction stages the first context, a plain runtime write commits `999` to that same context, and transaction commit rejects with `GraphTransactionConflictError`. The UI displays the conflicting context key and confirms the immediate value remains committed while the other staged value is not applied.
+
+
+## Typed event ownership isolation
+
+The Typed Events scenario now includes an unrelated event target and a **Publish unrelated event now** action while the appointment event transaction is staged. The plain `runtime.publish(...)` publication reloads its target before the transaction closes and remains committed when the staged appointment event rolls back. The appointment event remains invisible and its capability request count does not advance.
+
+
+## Transaction ownership demonstration flow
+
+### Unrelated context update
+
+1. Open **Atomic Transaction** and start the transaction.
+2. While phase is `first-staged`, select **Apply unrelated runtime update**.
+3. Confirm the unrelated context and subscribed dependent become `999` before transaction closure.
+4. Stage the second transaction value and roll back.
+5. Confirm transaction-owned values remain `1 + 10` and unrelated values remain `999`.
+
+### Same-context conflict
+
+1. Start the transaction.
+2. Select **Apply conflicting runtime update** while the first context is staged.
+3. Confirm committed values become `999 + 10`.
+4. Stage the second value and commit.
+5. Confirm phase `conflicted`, outcome `conflict rejected`, and conflict key `atomic-transaction-first`.
+6. Confirm no `2 + 20` or `999 + 20` partial staged state appears.
+
+### Unrelated event publication
+
+1. Open **Typed Events** and start the event transaction.
+2. Select **Publish unrelated event now** while the appointment event is staged.
+3. Confirm the unrelated target reloads before transaction closure.
+4. Roll back the appointment event transaction.
+5. Confirm the capability request count is unchanged and the unrelated event result remains committed.

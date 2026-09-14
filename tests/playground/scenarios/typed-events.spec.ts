@@ -2,7 +2,10 @@ import { createPinia } from "pinia";
 import { fireEvent, render, screen, waitFor } from "@testing-library/vue";
 import { beforeEach, describe, expect, it } from "vitest";
 import TypedEventsScenario from "../../../src/playground/scenarios/TypedEventsScenario.vue";
-import { capabilityStatusLoader } from "../../../src/playground/scenarios/typed-events-nodes";
+import {
+  capabilityStatusLoader,
+  unrelatedEventLoader,
+} from "../../../src/playground/scenarios/typed-events-nodes";
 
 const renderScenario = () =>
   render(TypedEventsScenario, {
@@ -26,6 +29,7 @@ const waitForInitialLoad = async (): Promise<void> => {
 describe("TypedEventsScenario", () => {
   beforeEach(() => {
     capabilityStatusLoader.reset();
+    unrelatedEventLoader.reset();
   });
 
   it("reloads capability status for a matching appointment event", async () => {
@@ -145,4 +149,116 @@ describe("TypedEventsScenario", () => {
     rendered.unmount();
     await Promise.resolve();
   });
+  it("applies an unrelated runtime event before transaction closure and preserves it after rollback", async () => {
+    renderScenario();
+    await waitForInitialLoad();
+    await waitFor(() => {
+      expect(
+        screen.getByTestId("typed-events-independent-requests").textContent
+      ).toContain("1");
+    });
+
+    await fireEvent.click(
+      screen.getByRole("button", { name: "Start event transaction" })
+    );
+    await fireEvent.click(
+      screen.getByRole("button", { name: "Publish unrelated event now" })
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId("typed-events-independent-requests").textContent
+      ).toContain("2");
+      expect(
+        screen.getByTestId("typed-events-independent-status").textContent
+      ).toContain("request 2");
+      expect(
+        screen.getByTestId("typed-events-independent-outcome").textContent
+      ).toContain("reloaded before transaction closed");
+    });
+    expect(
+      screen.getByTestId("typed-events-transaction-phase").textContent
+    ).toContain("staged");
+    expect(requestCount()).toContain("1");
+
+    await fireEvent.click(
+      screen.getByRole("button", { name: "Rollback event transaction" })
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId("typed-events-transaction-phase").textContent
+      ).toContain("rolled-back");
+    });
+    expect(requestCount()).toContain("1");
+    expect(
+      screen.getByTestId("typed-events-independent-requests").textContent
+    ).toContain("2");
+    expect(
+      screen.getByTestId("typed-events-independent-status").textContent
+    ).toContain("request 2");
+  });
+
+  it("enables the unrelated publication only while an event transaction is staged", async () => {
+    renderScenario();
+    await waitForInitialLoad();
+
+    const unrelatedButton = screen.getByRole("button", {
+      name: "Publish unrelated event now",
+    });
+    expect(unrelatedButton).toHaveProperty("disabled", true);
+
+    await fireEvent.click(
+      screen.getByRole("button", { name: "Start event transaction" }),
+    );
+    expect(unrelatedButton).toHaveProperty("disabled", false);
+
+    await fireEvent.click(unrelatedButton);
+    expect(unrelatedButton).toHaveProperty("disabled", true);
+  });
+
+  it("reset restores unrelated event state after an isolated publication", async () => {
+    renderScenario();
+    await waitForInitialLoad();
+    await waitFor(() => {
+      expect(
+        screen.getByTestId("typed-events-independent-requests").textContent,
+      ).toContain("1");
+    });
+
+    await fireEvent.click(
+      screen.getByRole("button", { name: "Start event transaction" }),
+    );
+    await fireEvent.click(
+      screen.getByRole("button", { name: "Publish unrelated event now" }),
+    );
+    await waitFor(() => {
+      expect(
+        screen.getByTestId("typed-events-independent-requests").textContent,
+      ).toContain("2");
+    });
+    await fireEvent.click(
+      screen.getByRole("button", { name: "Rollback event transaction" }),
+    );
+    await waitFor(() => {
+      expect(
+        screen.getByTestId("typed-events-transaction-phase").textContent,
+      ).toContain("rolled-back");
+    });
+
+    await fireEvent.click(screen.getByRole("button", { name: "Reset" }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId("typed-events-independent-requests").textContent,
+      ).toContain("1");
+      expect(
+        screen.getByTestId("typed-events-independent-outcome").textContent,
+      ).toContain("not published");
+      expect(
+        screen.getByTestId("typed-events-independent-status").textContent,
+      ).toContain("request 1");
+    });
+  });
+
 });

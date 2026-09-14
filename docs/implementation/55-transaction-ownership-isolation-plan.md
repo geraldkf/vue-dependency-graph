@@ -2,7 +2,7 @@
 
 ## Status
 
-Planning complete. TOI-2 through TOI-7 are prepared. Offline validation remains pending.
+Implementation and documentation through TOI-8E are prepared. TOI-8F validation handoff is prepared. Core boundary and standalone strict core TypeScript checks pass; repository and manual validation remain pending.
 
 ## Work item
 

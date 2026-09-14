@@ -259,7 +259,7 @@ Post-M6 structural cleanup prepared: feature contracts now use local `types.ts` 
 
 ## Transaction ownership isolation
 
-Status: TOI-7 prepared; TOI-2 through TOI-7 offline validation pending.
+Status: TOI-8F validation handoff prepared. Core boundary and standalone core TypeScript checks pass; repository and manual validation remain pending.
 
 - [x] TOI-1 ownership isolation plan
 - [x] TOI-2 public `GraphTransaction` handle and lifecycle prepared
@@ -274,7 +274,23 @@ Status: TOI-7 prepared; TOI-2 through TOI-7 offline validation pending.
 - [ ] TOI-6 offline validation
 - [x] TOI-7 conflict and overlapping transaction completion prepared
 - [ ] TOI-7 offline validation
-- [ ] TOI-8 playground, documentation, and final validation
+- [x] TOI-8A Atomic Transaction context isolation playground prepared
+- [ ] TOI-8A automated and manual validation
+- [x] TOI-8B conflict playground demonstration prepared
+- [ ] TOI-8B automated and manual validation
+- [x] TOI-8C typed event isolation playground demonstration prepared
+- [ ] TOI-8C automated and manual validation
+- [x] TOI-8D playground coverage reconciliation prepared
+- [ ] TOI-8D offline validation
+- [x] TOI-8E maintained documentation and migration guidance prepared
+- [x] TOI-8E documentation review prepared
+- [x] TOI-8F final validation handoff prepared
+- [x] Core boundary check
+- [x] Standalone strict core TypeScript check
+- [ ] Repository typecheck
+- [ ] Full Vitest suite
+- [ ] Production build
+- [ ] Manual playground validation
 
 Exit criterion: only operations performed through a `GraphTransaction` participate in its commit or rollback. Plain runtime operations remain independent while another transaction is open.
 

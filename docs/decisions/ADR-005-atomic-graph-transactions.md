@@ -94,3 +94,6 @@ TOI-7 adds optimistic conflict detection for contexts staged through `GraphTrans
 If any generation changed independently, the root transaction rejects with `GraphTransactionConflictError`. The error exposes immutable, deterministically sorted `contextKeys`. No staged context or event effect commits, and independently committed runtime changes are preserved. This also applies when the final staged value reverted to its original value, because an independent write still changed the transaction's baseline.
 
 Overlapping explicit transaction calls continue to join one group for this work. They share staged state and conflict baselines, all participants settle before closure, and the root outcome retains control of commit or rollback. Serialising or rejecting independently overlapping transaction calls remains deferred until a concrete use case requires different semantics.
+
+
+The maintained public contract and migration examples are in `docs/api/01-public-api.md` and `docs/implementation/67-toi-8e-migration-guidance.md`.
