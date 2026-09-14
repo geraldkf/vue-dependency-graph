@@ -29,5 +29,6 @@ export const playgroundGraph = createGraph({
     metricC,
     capabilityJobSeekerId,
     capabilityInterviewStatus,
+    unrelatedAppointmentStatus,
   ],
 });

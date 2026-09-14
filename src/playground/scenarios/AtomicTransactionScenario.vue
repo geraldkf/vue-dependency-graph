@@ -83,7 +83,11 @@
         Conflicting contexts: {{ conflictKeysText }}
       </p>
       <button
-        :disabled="transactionPhase !== 'first-staged' || conflictWriteApplied"
+        :disabled="
+          transactionPhase !== 'first-staged' ||
+          conflictWriteApplied ||
+          unrelatedUpdateApplied
+        "
         @click="applyConflictingRuntimeUpdate"
       >
         Apply conflicting runtime update
