@@ -3,12 +3,12 @@ import {
   registerEventInvalidationIndex,
   type EventInvalidationCandidate,
 } from "../events/event-index";
-import type { AnyEventDefinition } from "../events/event";
+import type { AnyEventDefinition } from "../events/types";
 import type {
   AnyNodeDefinition,
   Graph,
   NodeOrKey,
-} from "./node";
+} from "./types";
 
 const isRecord = (value: unknown): value is Readonly<Record<string, unknown>> =>
   typeof value === "object" && value !== null;

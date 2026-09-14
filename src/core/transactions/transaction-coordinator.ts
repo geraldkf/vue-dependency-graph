@@ -1,8 +1,8 @@
 import type {
   AnyEventDefinition,
   EventPayload,
-} from "../events/event";
-import type { ContextNodeDefinition } from "../graph/node";
+} from "../events/types";
+import type { ContextNodeDefinition } from "../graph/types";
 import type {
   ContextChange,
   EventPublication,

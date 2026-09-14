@@ -21,6 +21,7 @@ Use these maintained documents as the current sources of truth:
 - [Milestone 6E typed events playground](./implementation/51-milestone-6e-typed-events-playground-note.md)
 - [Milestone 6 implementation summary](./implementation/52-milestone-6-implementation-summary.md)
 - [Milestone 6 final validation handoff](./implementation/53-milestone-6-validation-handoff.md)
+- [Feature-local types structure cleanup](./implementation/54-feature-local-types-structure-note.md)
 - [Milestone 5 review and follow-up plan](./implementation/36-milestone-5-review-and-follow-up-plan.md)
 - [Milestone 5H.1 overlapping transactions implementation note](./implementation/37-milestone-5h1-overlapping-transactions-implementation-note.md)
 - [Milestone 5H.2 transaction test organisation note](./implementation/38-milestone-5h2-transaction-test-organisation-note.md)

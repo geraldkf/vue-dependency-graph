@@ -1,4 +1,4 @@
-import type { AnyNodeDefinition, NodeValue } from "../graph/node";
+import type { AnyNodeDefinition, NodeValue } from "../graph/types";
 
 export type NodeStatus =
   | "idle"

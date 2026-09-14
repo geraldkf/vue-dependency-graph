@@ -9,7 +9,7 @@ import type {
   ContextNodeDefinition,
   DataNodeDefinition,
   Graph,
-} from "../graph/node";
+} from "../graph/types";
 
 export interface MutableNodeRuntimeState {
   data: unknown;

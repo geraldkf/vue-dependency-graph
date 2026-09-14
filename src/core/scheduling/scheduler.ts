@@ -1,6 +1,6 @@
 import { toError } from "../execution/types";
 import type { SchedulerState } from "./types";
-import type { AnyNodeDefinition } from "../graph/node";
+import type { AnyNodeDefinition } from "../graph/types";
 
 export interface RuntimeSchedulerController {
   readonly schedule: () => void;

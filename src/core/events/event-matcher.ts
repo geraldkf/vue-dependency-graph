@@ -1,28 +1,28 @@
-import type { AnyEventDefinition } from "./event";
+import type { AnyEventDefinition } from "./types";
 import { getEventInvalidationCandidates } from "./event-index";
-import type { AnyNodeDefinition, Graph } from "../graph/node";
+import type { AnyNodeDefinition, Graph } from "../graph/types";
 import type { MutableNodeRuntimeState } from "../state/state";
 import type {
   ContextChange,
   EventPublication,
 } from "../transactions/types";
 
-export interface RuntimeEventController {
+export interface RuntimeEventMatcher {
   readonly matchPublications: (
     publications: readonly EventPublication[],
     contextChanges: readonly ContextChange[]
   ) => readonly AnyNodeDefinition[];
 }
 
-export interface RuntimeEventControllerDependencies {
+export interface RuntimeEventMatcherDependencies {
   readonly graph: Graph;
   readonly getMutableState: (key: string) => MutableNodeRuntimeState;
 }
 
-export const createRuntimeEventController = ({
+export const createRuntimeEventMatcher = ({
   graph,
   getMutableState,
-}: RuntimeEventControllerDependencies): RuntimeEventController => {
+}: RuntimeEventMatcherDependencies): RuntimeEventMatcher => {
   const matchPublications = (
     publications: readonly EventPublication[],
     contextChanges: readonly ContextChange[]

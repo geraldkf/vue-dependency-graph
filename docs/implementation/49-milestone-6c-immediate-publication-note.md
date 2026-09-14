@@ -25,7 +25,7 @@ Payload typing follows the selected event handle. Publication commits invalidati
 
 ## Runtime event controller
 
-Added `src/core/events/events.ts`.
+Added `src/core/events/event-matcher.ts`.
 
 The controller:
 
@@ -83,7 +83,7 @@ M6D subsequently replaced this temporary guard with staging, combined commit, an
 
 ## Files changed
 
-- `src/core/events/events.ts`
+- `src/core/events/event-matcher.ts`
 - `src/core/invalidation/invalidation.ts`
 - `src/core/runtime.ts`
 - `tests/core/event-publication.spec.ts`

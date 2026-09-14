@@ -255,6 +255,8 @@ Design decision: `docs/decisions/ADR-006-domain-events.md`
 
 Exit criteria prepared for final validation: appointment events invalidate capability status without either store importing the other.
 
+Post-M6 structural cleanup prepared: feature contracts now use local `types.ts` files, node and event factories use singular filenames, and runtime matching uses `event-matcher.ts`. See `docs/implementation/54-feature-local-types-structure-note.md`.
+
 ## Milestone 7: Query groups
 
 - [ ] `defineQuery`

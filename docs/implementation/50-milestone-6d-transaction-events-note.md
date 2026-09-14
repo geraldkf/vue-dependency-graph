@@ -73,7 +73,7 @@ A transaction-time `whenSettled()` call remains held by the notification buffer.
 
 ## Files changed
 
-- `src/core/events/events.ts`
+- `src/core/events/event-matcher.ts`
 - `src/core/invalidation/invalidation.ts`
 - `src/core/runtime.ts`
 - `src/core/transactions/transaction-coordinator.ts`

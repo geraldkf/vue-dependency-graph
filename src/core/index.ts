@@ -20,14 +20,14 @@ export type {
   AnyEventDefinition,
   EventDefinition,
   EventPayload,
-} from "./events/event";
+} from "./events/types";
 export { createGraph } from "./graph/graph";
 export type { CreateGraphOptions } from "./graph/graph";
 export {
   defineContextNode,
   defineDataNode,
   defineDerivedNode,
-} from "./graph/nodes";
+} from "./graph/node";
 export { createGraphRuntime } from "./runtime";
 export type { GraphRuntime, GraphRuntimeOptions } from "./runtime";
 export type {
@@ -58,7 +58,7 @@ export type {
   NodeKind,
   NodeOrKey,
   NodeValue,
-} from "./graph/node";
+} from "./graph/types";
 
 /** Identifies the framework-agnostic core layer during repository bootstrap. */
 export const coreLayerName = "core" as const;

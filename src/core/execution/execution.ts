@@ -16,7 +16,7 @@ import type {
   DerivedNodeDefinition,
   Graph,
   NodeValue,
-} from "../graph/node";
+} from "../graph/types";
 
 export interface RuntimeExecutionController {
   readonly execute: (

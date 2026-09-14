@@ -5,7 +5,7 @@ import type {
 import type {
   AnyNodeDefinition,
   Graph,
-} from "../graph/node";
+} from "../graph/types";
 
 interface MutableNodeSubscriptionState {
   direct: number;

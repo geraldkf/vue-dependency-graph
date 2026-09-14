@@ -6,7 +6,7 @@ import type {
   AnyNodeDefinition,
   ContextNodeDefinition,
   Graph,
-} from "../graph/node";
+} from "../graph/types";
 import type { ContextChange } from "../transactions/types";
 
 export interface RuntimeInvalidationController {

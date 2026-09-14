@@ -40,12 +40,12 @@ import type {
   AnyNodeDefinition,
   ContextNodeDefinition,
   Graph,
-} from "./graph/node";
+} from "./graph/types";
 import type {
   AnyEventDefinition,
   EventPayload,
-} from "./events/event";
-import { createRuntimeEventController } from "./events/events";
+} from "./events/types";
+import { createRuntimeEventMatcher } from "./events/event-matcher";
 
 export interface GraphRuntimeOptions {
   /**
@@ -216,7 +216,7 @@ export const createGraphRuntime = (
     schedule: buffer.schedule,
   });
 
-  const events = createRuntimeEventController({
+  const events = createRuntimeEventMatcher({
     graph,
     getMutableState,
   });

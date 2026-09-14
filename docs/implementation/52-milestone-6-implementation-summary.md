@@ -131,7 +131,7 @@ Predicate failure during commit leaves both context and event effects uncommitte
 
 ### Event definitions
 
-`src/core/events/event.ts` owns typed immutable event handles.
+`src/core/events/types.ts` owns event contracts, while `src/core/events/event.ts` owns typed immutable event-handle construction.
 
 ### Event index
 
@@ -139,7 +139,7 @@ Predicate failure during commit leaves both context and event effects uncommitte
 
 ### Runtime event matching
 
-`src/core/events/events.ts` owns publication matching and predicate dependency reads. It does not own node state, execution, scheduling, transaction outcome, or observation.
+`src/core/events/event-matcher.ts` owns publication matching and predicate dependency reads. It does not own node state, execution, scheduling, transaction outcome, or observation.
 
 ### Graph
 

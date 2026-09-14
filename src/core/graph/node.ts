@@ -1,128 +1,93 @@
-import type { AnyEventDefinition, EventPayload } from "../events/event";
+import { GraphValidationError } from "./errors";
+import type {
+  ContextNodeDefinition,
+  ContextNodeOptions,
+  DataNodeDefinition,
+  DataNodeOptions,
+  DependencyList,
+  DependencySource,
+  DerivedNodeDefinition,
+  DerivedNodeOptions,
+  EventInvalidationList,
+} from "./types";
 
-export type NodeKind = "context" | "data" | "derived";
+const validateKey = (key: string): void => {
+  if (key.trim().length === 0) {
+    throw new GraphValidationError(
+      "INVALID_NODE_KEY",
+      "Node key must contain at least one non-whitespace character."
+    );
+  }
+};
 
-export interface NodeDefinition<
+const resolveDependencies = <TDependencies extends DependencyList>(
+  source: DependencySource<TDependencies> | undefined
+): TDependencies => {
+  const dependencies = typeof source === "function" ? source() : source;
+  return (dependencies ?? []) as unknown as TDependencies;
+};
+
+const freezeInvalidatedBy = <TInvalidatedBy extends readonly unknown[]>(
+  invalidatedBy: TInvalidatedBy | undefined
+): TInvalidatedBy =>
+  Object.freeze([...(invalidatedBy ?? [])]) as unknown as TInvalidatedBy;
+
+export const defineContextNode = <TValue>(
+  options: ContextNodeOptions<TValue>
+): ContextNodeDefinition<TValue> => {
+  validateKey(options.key);
+
+  return Object.freeze({
+    key: options.key,
+    kind: "context" as const,
+    dependencies: Object.freeze([]) as readonly [],
+    initialValue: options.initialValue,
+  });
+};
+
+export const defineDataNode = <
   TValue,
-  TKind extends NodeKind = NodeKind,
-  TDependencies extends readonly AnyNodeDefinition[] = readonly AnyNodeDefinition[],
-> {
-  readonly key: string;
-  readonly kind: TKind;
-  readonly dependencies: TDependencies;
-  /** Carries TValue for type inference without storing runtime state. */
-  readonly __valueType?: TValue;
-}
+  const TDependencies extends DependencyList = readonly [],
+  const TInvalidatedBy extends EventInvalidationList<TDependencies> = readonly [],
+>(
+  options: DataNodeOptions<TValue, TDependencies, TInvalidatedBy>
+): DataNodeDefinition<TValue, TDependencies, TInvalidatedBy> => {
+  validateKey(options.key);
 
-export type AnyNodeDefinition = NodeDefinition<unknown, NodeKind, readonly AnyNodeDefinition[]>;
+  const invalidatedBy = freezeInvalidatedBy(options.invalidatedBy);
+  const definition = {
+    key: options.key,
+    kind: "data" as const,
+    get dependencies(): TDependencies {
+      return Object.freeze([...resolveDependencies(options.dependencies)]) as unknown as TDependencies;
+    },
+    invalidatedBy,
+    initialValue: options.initialValue,
+    load: options.load,
+  };
 
-export type NodeValue<TNode extends AnyNodeDefinition> =
-  TNode extends NodeDefinition<infer TValue, NodeKind, readonly AnyNodeDefinition[]>
-    ? TValue
-    : never;
+  return Object.freeze(definition);
+};
 
-export type DependencyList = readonly AnyNodeDefinition[];
-export type DependencySource<TDependencies extends DependencyList> =
-  | TDependencies
-  | (() => TDependencies);
-
-export type GetDependencyValue<TDependencies extends DependencyList> = <
-  TNode extends TDependencies[number],
->(node: TNode) => NodeValue<TNode>;
-
-export interface LoadContext<TDependencies extends DependencyList> {
-  readonly get: GetDependencyValue<TDependencies>;
-  readonly signal: AbortSignal;
-}
-
-export interface DeriveContext<TDependencies extends DependencyList> {
-  readonly get: GetDependencyValue<TDependencies>;
-}
-
-export interface ContextNodeDefinition<TValue>
-  extends NodeDefinition<TValue, "context", readonly []> {
-  readonly initialValue: TValue;
-}
-
-export interface EventInvalidationContext<
-  TEvent extends AnyEventDefinition,
-  TDependencies extends DependencyList,
-> {
-  readonly payload: EventPayload<TEvent>;
-  readonly get: GetDependencyValue<TDependencies>;
-}
-
-export interface ConditionalEventInvalidation<
-  TEvent extends AnyEventDefinition,
-  TDependencies extends DependencyList,
-> {
-  readonly event: TEvent;
-  readonly when: (
-    context: EventInvalidationContext<TEvent, TDependencies>
-  ) => boolean;
-}
-
-export type EventInvalidationDeclaration<
-  TEvent extends AnyEventDefinition,
-  TDependencies extends DependencyList,
-> = TEvent | ConditionalEventInvalidation<TEvent, TDependencies>;
-
-export type EventInvalidationList<TDependencies extends DependencyList> =
-  readonly EventInvalidationDeclaration<AnyEventDefinition, TDependencies>[];
-
-export interface DataNodeDefinition<
+export const defineDerivedNode = <
   TValue,
-  TDependencies extends DependencyList,
-  TInvalidatedBy extends EventInvalidationList<TDependencies> = readonly [],
-> extends NodeDefinition<TValue, "data", TDependencies> {
-  readonly initialValue: TValue;
-  readonly invalidatedBy: TInvalidatedBy;
-  readonly load: (context: LoadContext<TDependencies>) => Promise<TValue>;
-}
+  const TDependencies extends DependencyList,
+  const TInvalidatedBy extends EventInvalidationList<TDependencies> = readonly [],
+>(
+  options: DerivedNodeOptions<TValue, TDependencies, TInvalidatedBy>
+): DerivedNodeDefinition<TValue, TDependencies, TInvalidatedBy> => {
+  validateKey(options.key);
 
-export interface DerivedNodeDefinition<
-  TValue,
-  TDependencies extends DependencyList,
-  TInvalidatedBy extends EventInvalidationList<TDependencies> = readonly [],
-> extends NodeDefinition<TValue, "derived", TDependencies> {
-  readonly invalidatedBy: TInvalidatedBy;
-  readonly derive: (context: DeriveContext<TDependencies>) => TValue;
-}
+  const invalidatedBy = freezeInvalidatedBy(options.invalidatedBy);
+  const definition = {
+    key: options.key,
+    kind: "derived" as const,
+    get dependencies(): TDependencies {
+      return Object.freeze([...resolveDependencies(options.dependencies)]) as unknown as TDependencies;
+    },
+    invalidatedBy,
+    derive: options.derive,
+  };
 
-export interface ContextNodeOptions<TValue> {
-  readonly key: string;
-  readonly initialValue: TValue;
-}
-
-export interface DataNodeOptions<
-  TValue,
-  TDependencies extends DependencyList = readonly [],
-  TInvalidatedBy extends EventInvalidationList<TDependencies> = readonly [],
-> {
-  readonly key: string;
-  readonly dependencies?: DependencySource<TDependencies>;
-  readonly invalidatedBy?: TInvalidatedBy;
-  readonly initialValue: TValue;
-  readonly load: (context: LoadContext<TDependencies>) => Promise<TValue>;
-}
-
-export interface DerivedNodeOptions<
-  TValue,
-  TDependencies extends DependencyList,
-  TInvalidatedBy extends EventInvalidationList<TDependencies> = readonly [],
-> {
-  readonly key: string;
-  readonly dependencies: DependencySource<TDependencies>;
-  readonly invalidatedBy?: TInvalidatedBy;
-  readonly derive: (context: DeriveContext<TDependencies>) => TValue;
-}
-
-export type NodeOrKey = AnyNodeDefinition | string;
-
-export interface Graph {
-  readonly getNode: (key: string) => AnyNodeDefinition | undefined;
-  readonly hasNode: (key: string) => boolean;
-  readonly getParents: (nodeOrKey: NodeOrKey) => readonly AnyNodeDefinition[];
-  readonly getChildren: (nodeOrKey: NodeOrKey) => readonly AnyNodeDefinition[];
-  readonly getNodes: () => readonly AnyNodeDefinition[];
-}
+  return Object.freeze(definition);
+};

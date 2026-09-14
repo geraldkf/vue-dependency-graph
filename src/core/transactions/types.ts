@@ -1,5 +1,5 @@
-import type { AnyEventDefinition } from "../events/event";
-import type { ContextNodeDefinition } from "../graph/node";
+import type { AnyEventDefinition } from "../events/types";
+import type { ContextNodeDefinition } from "../graph/types";
 
 export interface ContextChange {
   readonly node: ContextNodeDefinition<unknown>;

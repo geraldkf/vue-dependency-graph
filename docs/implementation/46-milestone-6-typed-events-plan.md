@@ -375,7 +375,7 @@ The graph capability should build and privately own the event-to-node index alon
 Suggested location:
 
 ```text
-src/core/events/events.ts
+src/core/events/event-matcher.ts
 ```
 
 A closure-based runtime capability should own:

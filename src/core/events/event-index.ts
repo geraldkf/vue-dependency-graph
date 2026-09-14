@@ -1,5 +1,5 @@
-import type { AnyEventDefinition } from "./event";
-import type { AnyNodeDefinition, Graph } from "../graph/node";
+import type { AnyEventDefinition } from "./types";
+import type { AnyNodeDefinition, Graph } from "../graph/types";
 
 export interface EventInvalidationCandidate {
   readonly event: AnyEventDefinition;

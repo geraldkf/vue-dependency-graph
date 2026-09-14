@@ -3,7 +3,7 @@ import type {
   ActiveAttempt,
   MutableNodeRuntimeState,
 } from "../state/state";
-import type { AnyNodeDefinition } from "../graph/node";
+import type { AnyNodeDefinition } from "../graph/types";
 
 export interface RuntimeOperationsController {
   readonly prefetch: (

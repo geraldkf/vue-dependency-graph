@@ -21,7 +21,7 @@ Delivered:
 
 ## Public event handles
 
-Added `src/core/events/event.ts` with `EventDefinition<TPayload>`, `AnyEventDefinition`, `EventPayload<TEvent>`, and `defineEvent<TPayload>(key)`.
+Event contracts now live in `src/core/events/types.ts`, while `src/core/events/event.ts` owns `defineEvent<TPayload>(key)`. This feature-local split was applied by the later structure cleanup.
 
 `defineEvent(...)` rejects blank keys and returns a frozen descriptor containing only the event key. The phantom payload field exists only for type inference and is not emitted at runtime.
 
@@ -41,9 +41,10 @@ Existing graph creation and runtime execution ignore the new immutable declarati
 
 ## Files changed
 
+- `src/core/events/types.ts`
 - `src/core/events/event.ts`
+- `src/core/graph/types.ts`
 - `src/core/graph/node.ts`
-- `src/core/graph/nodes.ts`
 - `src/core/index.ts`
 - `tests/core/event-definitions.spec.ts`
 - `tests/core/node-types.test.ts`

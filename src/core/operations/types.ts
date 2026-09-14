@@ -1,4 +1,4 @@
-import type { AnyNodeDefinition } from "../graph/node";
+import type { AnyNodeDefinition } from "../graph/types";
 
 /**
  * Any registered non-context node may be refreshed, regardless of its
