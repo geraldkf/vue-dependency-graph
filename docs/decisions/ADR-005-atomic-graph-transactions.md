@@ -96,4 +96,84 @@ If any generation changed independently, the root transaction rejects with `Grap
 Overlapping explicit transaction calls continue to join one group for this work. They share staged state and conflict baselines, all participants settle before closure, and the root outcome retains control of commit or rollback. Serialising or rejecting independently overlapping transaction calls remains deferred until a concrete use case requires different semantics.
 
 
+## Amendment: isolated transaction sessions
+
+A source-code review of `src/core/transactions/*` found that the "one group"
+model the previous amendment describes has a real cost: two calls to
+`runtime.transaction(...)` that overlap in wall-clock time but are
+otherwise unrelated (different features, different callers, no intent to
+compose) silently share one outcome. A joined call whose own callback
+throws can still have its writes committed, if the root happens to
+succeed; a joined call that succeeds can have its writes silently
+discarded, if the root happens to fail. Per
+`docs/architecture/07-vue-and-pinia-integration.md`, this runtime is a
+single instance shared by the whole app ("one stable runtime per Pinia
+instance," holding every feature's nodes), so two unrelated features
+calling `runtime.transaction(...)` around the same moment is the expected
+shape of real usage, not an edge case — e.g. a booking flow and an
+unrelated settings save, both in flight at once.
+
+This amendment supersedes "Overlapping explicit transaction calls continue
+to join one group" above. Going forward:
+
+- Every root `runtime.transaction(...)` call owns its own staged context/
+  event state, independent of any other call. There is no shared
+  `activeGroup` for a second call to observe or join — isolation is
+  structural, not policy.
+- Composition is explicit only: `GraphTransaction` gains a `transaction(
+  work)` method that nests further work into the *same* session the
+  caller already holds a handle for. There is no ambient/ID-based
+  rejoining of an already-open transaction from a second top-level
+  `runtime.transaction(...)` call.
+- No opt-in flag, deprecation warning, or default-flip rollout is needed
+  for this change: at the time of this amendment the transaction API has
+  no external consumers to migrate, only this repo's own call sites (see
+  the implementation plan below).
+
+**Related finding, same review:** `notification-buffer.ts`'s `depth`
+counter gates `notify`/`schedule`/`whenSettled`/`resolveSettlementIfIdle`
+for the *entire runtime* for as long as *any* transaction is open
+anywhere, not just for the transaction that's committing. Combined with
+the shared-runtime architecture above, this means an unrelated feature's
+`notify()` — e.g. a background poll finishing, on a node the open
+transaction never touches — can be silently delayed for however long that
+other transaction's own async work takes. `invalidation.ts`'s
+`commitContexts` already dispatches `notify()`/`schedule()` exactly once
+per commit call regardless of batch size, so the buffer was never actually
+coalescing a transaction's *own* dispatch — its only remaining effect,
+once transactions stop sharing a group, is this unrelated-caller delay.
+This is addressed as part of the same body of work.
+
+**Judgment call recorded here, per this amendment:** `whenSettled()` /
+`resolveSettlementIfIdle()` are the one place a narrow cross-transaction
+guard is arguably still legitimate — a transaction that hasn't committed
+yet hasn't made its eventual `schedule()` call, so the real scheduler can
+look idle a moment before it isn't. Two options were weighed:
+
+1. **Keep a narrow guard, scoped to currently-open sessions** — a global
+   `whenSettled()` call waits on any open transaction session's eventual
+   commit (and whatever `schedule()` it triggers), in addition to the
+   scheduler's own idle state. No `notify`/`schedule` gating is
+   reintroduced; only settlement checks are affected, and "is everything
+   on this runtime settled" is inherently a whole-runtime question, so
+   this is a narrower and more defensible scope than the `notify` gating
+   being removed.
+2. **Remove the guard entirely** — `whenSettled()` reads the scheduler's
+   idle state directly. Zero residual cross-transaction coupling, at the
+   cost of a narrow race: a caller checking `whenSettled()` at the exact
+   moment an unrelated transaction is mid-commit could see "settled" one
+   tick early.
+
+**Decision: Option 1.** The common case this protects — a caller awaiting
+its own transaction, then immediately checking `whenSettled()` for the
+same work to finish propagating — is more likely to matter in practice
+than the narrow unrelated-transaction case Option 2 leaves unprotected,
+and the scope (settlement checks only, not live `notify` dispatch) keeps
+it well short of reintroducing the coupling this amendment removes
+elsewhere.
+
+Implementation plan: `docs/implementation/114-transaction-overlap-
+isolation-plan.md`.
+
+
 The maintained public contract and migration examples are in `docs/api/01-public-api.md` and `docs/implementation/67-toi-8e-migration-guidance.md`.

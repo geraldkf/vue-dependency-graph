@@ -78,4 +78,79 @@ describe("graph transaction handle lifecycle", () => {
       "Graph transaction is no longer active."
     );
   });
+
+  describe("explicit nesting via transaction.transaction(...)", () => {
+    it("commits nested work as part of the same session", async () => {
+      const context = defineContextNode({ key: "context", initialValue: 1 });
+      const other = defineContextNode({ key: "other", initialValue: 10 });
+      const runtime = createGraphRuntime(createGraph({ nodes: [context, other] }));
+
+      const result = await runtime.transaction(async transaction => {
+        transaction.setContext(context, 2);
+        const innerResult = await transaction.transaction(inner => {
+          inner.setContext(other, 20);
+          return "inner-done" as const;
+        });
+        return innerResult;
+      });
+
+      expect(result).toBe("inner-done");
+      expect(runtime.getState(context).data).toBe(2);
+      expect(runtime.getState(other).data).toBe(20);
+    });
+
+    it("rolls back the whole session, including the outer's own writes, when nested work throws", async () => {
+      const context = defineContextNode({ key: "context", initialValue: 1 });
+      const other = defineContextNode({ key: "other", initialValue: 10 });
+      const runtime = createGraphRuntime(createGraph({ nodes: [context, other] }));
+
+      await expect(
+        runtime.transaction(async transaction => {
+          transaction.setContext(context, 2);
+          await transaction.transaction(inner => {
+            inner.setContext(other, 20);
+            throw new Error("nested failure");
+          });
+        })
+      ).rejects.toThrow("nested failure");
+
+      // The nested call never had its own commit boundary -- both writes
+      // belong to the same session, so the outer's own write is discarded
+      // too, unlike ambient re-entrant nesting (see C1's findings).
+      expect(runtime.getState(context)).toMatchObject({ data: 1, generation: 0 });
+      expect(runtime.getState(other)).toMatchObject({ data: 10, generation: 0 });
+    });
+
+    it("propagates a conflict detected on nested work to the outer caller", async () => {
+      const context = defineContextNode({ key: "context", initialValue: 1 });
+      const runtime = createGraphRuntime(createGraph({ nodes: [context] }));
+
+      const outerTransaction = runtime.transaction(async transaction => {
+        await transaction.transaction(inner => {
+          inner.setContext(context, 2);
+        });
+        // An unrelated immediate write changes the generation the nested
+        // call already staged against, before this (outer) session commits.
+        runtime.setContext(context, 99);
+      });
+
+      await expect(outerTransaction).rejects.toThrow(
+        "Graph transaction conflicted with context changes: context."
+      );
+      expect(runtime.getState(context).data).toBe(99);
+    });
+
+    it("throws when called after the parent transaction has already settled", async () => {
+      const runtime = createGraphRuntime(createGraph({ nodes: [] }));
+      let captured!: GraphTransaction;
+
+      await runtime.transaction(transaction => {
+        captured = transaction;
+      });
+
+      expect(() => captured.transaction(() => undefined)).toThrow(
+        "Graph transaction is no longer active."
+      );
+    });
+  });
 });
