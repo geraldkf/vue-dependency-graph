@@ -48,7 +48,7 @@ Predicates must be synchronous and side-effect free.
 
 ## Immediate publication
 
-`runtime.publish(event, payload)` evaluates every indexed predicate against committed successful dependency values before applying mutation. A matching publication invalidates the directly declared nodes and their transitive descendants, preserves successful stale data, advances generations once, aborts affected attempts after generation advancement, emits one notification, and requests at most one scheduler pass. No-match and unused events are silent. Inside a transaction, publications are staged in call order and participate in the root transaction commit or rollback outcome.
+`runtime.publish(event, payload)` evaluates every indexed predicate against committed successful dependency values before applying mutation. A matching publication invalidates the directly declared nodes and their transitive descendants, preserves successful stale data, advances generations once, aborts affected attempts after generation advancement, emits one notification, and requests at most one scheduler pass. No-match and unused events are silent. Publications made through a `GraphTransaction` handle are staged in call order and participate in that session’s commit or rollback outcome.
 
 ## Delivery semantics
 
@@ -141,6 +141,6 @@ await runtime.transaction(transaction => {
 runtime.publish(UnrelatedEvent, payload);
 ```
 
-`transaction.publish(...)` appends an ordered staged publication to the active transaction group. Successful commit evaluates its predicates against the final staged context overlay and combines context-driven and event-driven invalidation into one atomic graph change. Rollback or context conflict discards the staged publication without evaluating or applying it.
+`transaction.publish(...)` appends an ordered publication to the owning transaction session. Successful commit evaluates its predicates against the final staged context overlay and combines context-driven and event-driven invalidation into one atomic graph change. Rollback or context conflict discards the staged publication without evaluating or applying it.
 
 Plain `runtime.publish(...)` always evaluates against committed state and applies matching invalidation immediately, even while an unrelated transaction is open. Its observer notification, scheduler work, execution result, and settlement are independent of that transaction. Repeated publications remain distinct for predicate order; only their resulting graph effects are deduplicated per commit.

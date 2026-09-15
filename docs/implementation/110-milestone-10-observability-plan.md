@@ -66,7 +66,7 @@ Identifiers are deterministic within one runtime and suitable for tests. They ar
 
 Emission occurs synchronously after the relevant committed transition, or immediately before an externally meaningful attempt begins when a start event is required. The sink is called through one failure-isolating diagnostic emitter. Sink exceptions are ignored by core runtime behaviour.
 
-The emitter must not use the graph observer, transaction notification buffer, scheduler, or `whenSettled()` path.
+The emitter must not use the graph observer, scheduler, or `whenSettled()` path.
 
 #### Immutable public records
 
@@ -221,7 +221,7 @@ One logical invalidation commit emits one summary event rather than one event pe
 
 Fields include transaction operation ID, staged context keys, publication count, affected node keys, duration, and serialised error or conflict keys where applicable.
 
-Joined transaction calls share the root transaction operation ID. No diagnostic event exposes staged values.
+Each top-level transaction session has its own operation ID. Explicitly nested work uses the owning session’s operation ID. No diagnostic event exposes staged values.
 
 #### Refresh-policy events
 

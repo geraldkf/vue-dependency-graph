@@ -74,7 +74,7 @@ Manual browser validation:
 7. Reset and confirm clean events, metrics, state, and IDs.
 8. Switch tabs and confirm the dedicated subscription is released.
 
-M10G remains validation pending until automated and manual checks pass against the combined checkout.
+M10G was validated successfully through the combined automated and manual Milestone 10 closure checks.
 
 ## Next step
 

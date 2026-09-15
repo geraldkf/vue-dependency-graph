@@ -1,5 +1,7 @@
 # Milestone 5: Code Review and Follow-up Plan
 
+> **Historical implementation record:** This document describes the design at the time of its milestone. The current transaction contract uses independent top-level sessions, explicit `transaction.transaction(...)` composition, direct notification and scheduler dispatch, and scheduler-specific `runtime.whenSettled()`. See `docs/decisions/ADR-005-atomic-graph-transactions.md` and `docs/implementation/114-transaction-overlap-isolation-plan.md`.
+
 ## Status
 
 Review and follow-up work completed. Final automated repository and manual playground validation were reported successful on 14 September 2026. No runtime correctness defect remains open for Milestone 5.

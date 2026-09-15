@@ -1,5 +1,7 @@
 # Milestone 6: Typed Events Plan
 
+> **Historical implementation record:** This document describes the design at the time of its milestone. The current transaction contract uses independent top-level sessions, explicit `transaction.transaction(...)` composition, direct notification and scheduler dispatch, and scheduler-specific `runtime.whenSettled()`. See `docs/decisions/ADR-005-atomic-graph-transactions.md` and `docs/implementation/114-transaction-overlap-isolation-plan.md`.
+
 ## Status
 
 Plan implemented through M6F documentation reconciliation. Final combined automated and manual validation remains pending.

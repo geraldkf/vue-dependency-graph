@@ -96,7 +96,7 @@ pnpm test:run --reporter verbose --no-color
 pnpm build
 ```
 
-M10B remains validation pending until all four commands succeed against the combined checkout.
+M10B was validated successfully against the combined checkout during Milestone 10 closure.
 
 ## Next step
 

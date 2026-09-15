@@ -1,5 +1,7 @@
 # Milestone 9H-G: Full Mutation Controller Decomposition Plan
 
+> **Historical implementation record:** This document describes the design at the time of its milestone. The current transaction contract uses independent top-level sessions, explicit `transaction.transaction(...)` composition, direct notification and scheduler dispatch, and scheduler-specific `runtime.whenSettled()`. See `docs/decisions/ADR-005-atomic-graph-transactions.md` and `docs/implementation/114-transaction-overlap-isolation-plan.md`.
+
 ## Status
 
 M9H-G0 through M9H-G6 are implemented and validated. The project owner reported successful dependency-backed type checking, full test execution, boundary validation, and production build on 15 September 2026.

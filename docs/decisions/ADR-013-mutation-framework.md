@@ -117,3 +117,7 @@ Rejected as a prerequisite. Similar assignments or large files do not by themsel
 ## Detailed plan
 
 See `docs/implementation/87-milestone-9-mutation-framework-plan.md`.
+
+## Transaction isolation reconciliation
+
+The current transaction contract is defined by ADR-005. Top-level transactions are independent sessions, explicit nested work uses `transaction.transaction(...)`, committed work dispatches notification and scheduling directly, and `runtime.whenSettled()` remains scheduler-specific. Any earlier wording in this ADR about ambient groups or notification buffering is historical.

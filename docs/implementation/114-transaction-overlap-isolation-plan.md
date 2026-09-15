@@ -779,5 +779,6 @@ settlement, reset, unmount, and causal diagnostic output.
 
 ### Exit criterion
 
-All commands pass, manual paths pass, maintained docs contain no shared-group
-language, and the completed implementation matches the isolated-session ADR.
+All commands pass, manual paths pass, maintained current-contract sections use
+isolated-session terminology, historical step records are clearly identified as
+historical, and the completed implementation matches the isolated-session ADR.

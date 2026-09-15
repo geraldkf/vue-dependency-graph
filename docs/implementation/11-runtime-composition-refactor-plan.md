@@ -1,5 +1,7 @@
 # Runtime Composition Refactor Plan
 
+> **Historical implementation record:** This document describes the design at the time of its milestone. The current transaction contract uses independent top-level sessions, explicit `transaction.transaction(...)` composition, direct notification and scheduler dispatch, and scheduler-specific `runtime.whenSettled()`. See `docs/decisions/ADR-005-atomic-graph-transactions.md` and `docs/implementation/114-transaction-overlap-isolation-plan.md`.
+
 ## Status
 
 Planned. Milestone 3 is validated offline. R1A through R9 are implemented; R8 and R9 offline validation is pending. This behavior-preserving refactor is scheduled before Milestone 5.

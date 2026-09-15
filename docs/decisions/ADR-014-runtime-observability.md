@@ -70,3 +70,7 @@ Rejected. Milestone 10 must first prove the event, metrics, and snapshot contrac
 ### Implementation plan
 
 See `docs/implementation/110-milestone-10-observability-plan.md`.
+
+## Transaction isolation reconciliation
+
+The current transaction contract is defined by ADR-005. Top-level transactions are independent sessions, explicit nested work uses `transaction.transaction(...)`, committed work dispatches notification and scheduling directly, and `runtime.whenSettled()` remains scheduler-specific. Any earlier wording in this ADR about ambient groups or notification buffering is historical.
