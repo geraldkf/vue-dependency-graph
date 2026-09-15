@@ -376,11 +376,32 @@ const runtime = createGraphRuntime(graph, {
 
 It pauses policy timers while the document is hidden or the browser is offline. Resume restores one remaining delay without replaying missed ticks. Poll timeout excludes paused duration.
 
-## Additional APIs
+## Planned mutation API
+
+Milestone 9 has a detailed design plan but no implemented mutation API yet. The provisional direction is:
 
 ```ts
-pollUntil(...);
-runtime.mutate(...);
+const SaveAppointment = defineMutation({
+  key: "appointment.save",
+  execute: ({ input, signal }) => api.saveAppointment(input, signal),
+});
+
+const saved = await runtime.mutate(SaveAppointment, input, {
+  optimistic: effects => {
+    effects.update(Appointments, current => addPending(current, input));
+  },
+  onSuccess: (effects, result) => {
+    effects.update(Appointments, current => confirmPending(current, result));
+    effects.publish(AppointmentBooked, toAppointmentBooked(result));
+  },
+  classifyFailure: error =>
+    isKnownRejectedResponse(error) ? "rejected" : "unknown",
+});
 ```
 
-Polling policies, optimistic mutations, diagnostics, snapshots, and devtools are not yet stable public APIs. Query-group implementation is complete with final combined validation pending.
+This API is not available yet and its generic parameter ordering may change during M9A compile-time testing. The planned behaviour is stable: direct writes target successful data nodes only, known rejection may roll back guarded snapshots, unknown outcomes are retained for reconciliation, and confirmed success may combine direct updates, invalidation, and typed event publication atomically.
+
+See `docs/implementation/87-milestone-9-mutation-framework-plan.md` and `docs/decisions/ADR-013-mutation-framework.md`.
+
+Diagnostics, snapshots, devtools, and cache garbage collection remain future APIs.
+

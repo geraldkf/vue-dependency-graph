@@ -347,14 +347,28 @@ Exit criteria: a long-running operation progresses to completion without overlap
 
 ## Milestone 9: Mutation framework
 
-- [ ] Success invalidation
-- [ ] Direct cache reconciliation
-- [ ] Optimistic updates
-- [ ] Rollback snapshots
-- [ ] Mutation event publishing
-- [ ] Ambiguous remote outcome guidance
+Status: Detailed implementation plan prepared; runtime implementation has not started.
 
-Exit criteria: failed optimistic appointment booking restores local graph state.
+Implementation plan: docs/implementation/87-milestone-9-mutation-framework-plan.md  
+Design decision: docs/decisions/ADR-013-mutation-framework.md
+
+- [ ] M9A immutable mutation definitions, typed input/result contracts, and basic execution
+- [ ] M9B atomic direct cache reconciliation for successful data nodes
+- [ ] M9C combined success invalidation and typed event publication
+- [ ] M9D optimistic application, rollback snapshots, and known-rejection restoration
+- [ ] M9E overlap protection, race handling, and unknown remote outcomes
+- [ ] M9F deterministic Optimistic Appointment Booking playground and Vue behavioural coverage
+- [ ] M9G maintained documentation reconciliation and final validation
+- [ ] Preserve framework-agnostic core boundaries and the existing state, invalidation, event, scheduler, and transaction ownership models
+- [ ] Reject unsafe same-node optimistic overlap rather than adding speculative optimistic layers
+- [ ] Never overwrite newer graph work with an obsolete rollback snapshot
+- [ ] Distinguish a known server rejection from an unknown remote outcome
+- [ ] Keep mutation requests outside the data-load concurrency budget
+- [ ] Extract internal invalidation or active-attempt seams only when a concrete M9 slice requires them
+- [ ] Limit opportunistic cleanup to code paths already changed by the active slice
+- [ ] Defer refresh-policy strategy, transaction lifecycle, execution, and Vue adapter refactors that do not deliver mutation behaviour
+
+Exit criteria: a failed optimistic appointment booking restores the previous local graph state when the failure is known to be rejected by the server. An unknown outcome is retained and reconciled rather than falsely reported as rolled back.
 
 ## Milestone 10: Observability
 

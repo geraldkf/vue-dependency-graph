@@ -57,25 +57,30 @@ The current runtime cache is in-memory and belongs to one `GraphRuntime`. Defini
 
 A Pinia store may own a runtime instance, but Pinia does not mirror or persist graph cache state.
 
-## Planned mutations
+## Planned mutation framework
 
-A later mutation milestone will cover:
+Milestone 9 is planned in detail in [the mutation framework plan](../implementation/87-milestone-9-mutation-framework-plan.md), with the proposed design recorded in [ADR-013](../decisions/ADR-013-mutation-framework.md).
 
-- invalidation after remote success
-- direct cache reconciliation
-- optimistic local updates
-- rollback snapshots
-- mutation event publication
+The planned runtime capability uses immutable typed mutation definitions and caller-owned `runtime.mutate(...)` operations. Mutation definitions own remote execution only. Per-call effect callbacks may update successful data-node values, invalidate data or derived nodes, and publish typed events after confirmed success.
 
-Atomic graph transactions and optimistic mutation rollback have different semantics. Transaction staging defers local state visibility until commit. Optimistic mutation applies local state immediately and restores a snapshot on failure.
+Optimistic updates use a different visibility model from graph transactions:
+
+- transactions keep local changes private until successful local commit;
+- optimistic mutations expose a projected data-node value before remote completion;
+- known remote rejection restores guarded runtime snapshots;
+- unknown remote outcome retains the optimistic value, marks it stale, and requests authoritative reconciliation;
+- rollback never overwrites a node changed by newer graph work.
+
+The first release deliberately rejects overlapping optimistic ownership of one data node. It does not add layered optimistic patches, mutation retry, offline queues, idempotency generation, or a separate mutation concurrency budget.
+
+Mutation execution must not keep the graph transaction notification buffer open while awaiting remote work. Confirmed success effects are planned and applied through one synchronous local commit so observers do not see partial multi-node reconciliation.
+
+Milestone 9 will not perform a general pre-implementation refactor. A narrow invalidation planner, safer active-attempt iteration, or index-based traversal may be extracted only when a concrete mutation slice requires that seam. Stale-state policy remains outside the state store, refresh-policy strategies remain intact, and optimistic rollback does not use graph transaction cancellation.
 
 ## Deferred cache policies
 
-The following remain planned:
+The following remain planned after Milestone 9:
 
-- stale-after duration
-- refresh on focus or reconnect
-- polling
-- retry and backoff
 - garbage collection of unused values
 - persistent cache restoration
+

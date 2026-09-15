@@ -215,6 +215,30 @@ Add a type-test mechanism to verify:
 - Query alias result type
 - Invalid node usage fails compilation
 
+## Planned mutation testing
+
+Milestone 9 tests must treat remote execution and local graph effects as separate phases.
+
+Core behavioural coverage will use deferred promises and deterministic outcomes for:
+
+- typed mutation execution and runtime isolation;
+- atomic direct reconciliation across multiple data nodes;
+- success invalidation and typed event publication;
+- optimistic visibility before request settlement;
+- exact snapshot restoration after known rejection;
+- unknown outcome retention and authoritative reconciliation;
+- same-node optimistic overlap rejection;
+- disjoint mutation concurrency;
+- generation-protected rollback conflicts;
+- active-load abort and ignored-abort races;
+- transaction ownership boundaries;
+- one notification and at most one scheduler pass per local mutation commit.
+
+Compile-time tests will verify mutation input/result inference, data-node-only direct updates, refreshable invalidation targets, and typed event payloads. Vue Testing Library coverage will exercise the deterministic Optimistic Appointment Booking playground through success, known rejection, unknown outcome, reset, and unmount paths.
+
+Tests must not use real network requests, real delays, or framework-inferred HTTP semantics. Known rejection versus unknown outcome is supplied explicitly by the test classifier.
+
+
 ## Offline validation responsibility
 
 Milestone 8 validation is complete. The combined checkout passed boundary checks, strict typechecking, the complete Vitest suite, and the production build. The Polling Progress manual browser paths also passed. Future milestones must continue to report validation against the exact combined checkout.

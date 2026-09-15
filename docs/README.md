@@ -48,6 +48,8 @@ Use these maintained documents as the current sources of truth:
 - [Milestone 8E retry and pause/resume implementation note](./implementation/84-milestone-8e-retry-pause-resume-implementation-note.md)
 - [Milestone 8F Polling Progress playground note](./implementation/85-milestone-8f-polling-progress-playground-note.md)
 - [Milestone 8 implementation summary](./implementation/86-milestone-8-implementation-summary.md)
+- [Milestone 9 mutation framework plan](./implementation/87-milestone-9-mutation-framework-plan.md)
+- [ADR-013 mutation framework](./decisions/ADR-013-mutation-framework.md)
 - [ADR-012 refresh policies and polling](./decisions/ADR-012-refresh-policies-and-polling.md)
 - [Transaction ownership isolation plan](./implementation/55-transaction-ownership-isolation-plan.md)
 - [GraphTransaction handle and lifecycle plan](./implementation/56-toi-2-graph-transaction-handle-lifecycle-plan.md)

@@ -92,6 +92,7 @@ Do not start with random failures because deterministic scenarios are easier to 
 - Aggregate Query
 - Typed Events
 - Query Groups
+- Optimistic Appointment Booking (planned for Milestone 9)
 
 The Concurrency Limit scenario uses four manually controlled loaders and runtime limits of `1`, `2`, or unlimited. It exposes active and maximum-observed counts, FIFO start order, per-loader state, manual completion controls, and clean reset behaviour.
 
@@ -119,3 +120,5 @@ The Concurrency Limit scenario uses four manually controlled loaders and runtime
 A contributor should be able to reproduce a graph behaviour by selecting a named scenario, run it repeatedly, and inspect identical diagnostic output without modifying application code.
 
 The Query Groups scenario uses one aliased `defineQuery(...)` declaration for prefetch, `useQuery(...)` subscription, aggregate state, and refresh. It demonstrates fresh prefetch reuse and subscription cleanup with deterministic request counts.
+
+The planned Optimistic Appointment Booking scenario will distinguish confirmed success, known rejection, and unknown remote outcome. It will demonstrate immediate optimistic data, guarded snapshot rollback, authoritative reconciliation, success-only typed event publication, same-node overlap rejection, and clean unmount behaviour. The detailed manual paths are in `docs/implementation/87-milestone-9-mutation-framework-plan.md`.
