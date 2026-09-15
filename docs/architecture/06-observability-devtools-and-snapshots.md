@@ -1,5 +1,11 @@
 # Observability, Devtools, and Snapshots
 
+## Status
+
+Milestone 10 has an approved detailed implementation plan. M10A through M10C diagnostic foundations, core execution causality, and advanced lifecycle diagnostics are implemented with offline validation pending. M10D collector and metrics work has not started. See [the Milestone 10 observability plan](../implementation/110-milestone-10-observability-plan.md) and [ADR-014](../decisions/ADR-014-runtime-observability.md).
+
+The accepted direction is one optional structured diagnostic event stream with deterministic runtime-local causation, a bounded in-memory collector, metrics reduced from the same stream, and safe versioned snapshots. Devtools UI and inspector transport remain Milestone 11 work.
+
 ## Why observability is part of the architecture
 
 Automatic orchestration reduces consumer code but makes hidden execution possible. The framework must make it easy to answer:
@@ -42,7 +48,7 @@ Initial metrics:
 - Active subscription count
 - Transaction count and duration
 
-Metrics should use a pluggable sink. The core may provide an in-memory development collector, but production applications should be able to connect their telemetry provider.
+Metrics are projected from the structured diagnostic event stream so counters and timelines share one lifecycle vocabulary. The core provides an optional bounded in-memory collector. Vendor-specific telemetry adapters remain application or later-milestone work.
 
 ## Devtools views
 
@@ -102,15 +108,7 @@ Include:
 
 ## Redaction and privacy
 
-Node definitions should support diagnostic redaction:
-
-```ts
-diagnostics: {
-  includeValue: false,
-}
-```
-
-or a custom redactor. Devtools and snapshots must default to safe handling of potentially sensitive values.
+Node values are omitted from diagnostic snapshots by default. A node may explicitly opt in to value inclusion or provide a synchronous custom redactor through immutable definition metadata. The exact public metadata shape is finalised with compile-time coverage in M10E. Redactor failure must omit the value rather than fail snapshot creation.
 
 ## Snapshot testing
 

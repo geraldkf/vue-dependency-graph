@@ -2,7 +2,7 @@
 
 ## Status
 
-M9H-G0 through M9H-G6 implemented. Static validation is complete; dependency-backed type checking, tests, and production build remain pending in an environment with installed project dependencies.
+M9H-G0 through M9H-G6 are implemented and validated. The project owner reported successful dependency-backed type checking, full test execution, boundary validation, and production build on 15 September 2026.
 
 M9H-A through M9H-F behaviour is the baseline. M9H-G is a mechanical internal refactor before Milestone 10 observability.
 

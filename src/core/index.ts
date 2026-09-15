@@ -79,6 +79,28 @@ export {
 export { createGraphRuntime } from "./runtime";
 export type { GraphRuntime, GraphRuntimeOptions } from "./runtime";
 export type {
+  GraphDiagnosticEvent,
+  GraphDiagnosticEventBase,
+  GraphDiagnosticError,
+  GraphDiagnosticEventType,
+  GraphDiagnosticOperationKind,
+  GraphEventDiagnosticEvent,
+  GraphExecutionReason,
+  GraphMutationDiagnosticEvent,
+  GraphRefreshPolicyDiagnosticEvent,
+  GraphDiagnosticSink,
+  GraphDiagnosticsEnvironment,
+  GraphDiagnosticsOptions,
+  GraphContextChangedDiagnosticEvent,
+  GraphNodeExecutionDiagnosticEvent,
+  GraphNodeInvalidatedDiagnosticEvent,
+  GraphOperationRequestedDiagnosticEvent,
+  GraphRuntimeCreatedDiagnosticEvent,
+  GraphSchedulerDiagnosticEvent,
+  GraphSubscriptionDiagnosticEvent,
+  GraphTransactionDiagnosticEvent,
+} from "./diagnostics/types";
+export type {
   NodeFreshness,
   NodeRuntimeState,
   NodeStatus,

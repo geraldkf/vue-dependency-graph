@@ -1,3 +1,5 @@
+import type { RuntimeDiagnosticEmitter } from "../diagnostics/diagnostic-emitter";
+import type { GraphExecutionReason } from "../diagnostics/types";
 import type { ExecutionConcurrencyLimiter } from "./concurrency-limiter";
 import {
   GraphExecutionError,
@@ -18,10 +20,17 @@ import type {
   NodeValue,
 } from "../graph/types";
 
+export interface ExecutionDiagnosticContext {
+  readonly operationId: string;
+  readonly reason: GraphExecutionReason;
+  readonly causeId?: string;
+}
+
 export interface RuntimeExecutionController {
   readonly execute: (
     targets: readonly AnyNodeDefinition[],
-    origin: ExecutionOrigin
+    origin: ExecutionOrigin,
+    diagnostics?: ExecutionDiagnosticContext,
   ) => Promise<void>;
   readonly needsExecution: (node: AnyNodeDefinition) => boolean;
 }
@@ -38,8 +47,10 @@ export interface RuntimeExecutionDependencies {
   ) => AnyNodeDefinition;
   readonly notify: () => void;
   readonly onChangedRefreshResult: (
-    node: AnyNodeDefinition
+    node: AnyNodeDefinition,
+    diagnostics?: ExecutionDiagnosticContext,
   ) => void;
+  readonly diagnostics: RuntimeDiagnosticEmitter;
 }
 
 class NodeAttemptFailure extends Error {
@@ -96,6 +107,7 @@ export const createRuntimeExecutionController = ({
   resolveRegisteredNode,
   notify,
   onChangedRefreshResult,
+  diagnostics,
 }: RuntimeExecutionDependencies): RuntimeExecutionController => {
   const getDependencyValue = <TNode extends AnyNodeDefinition>(
     dependency: TNode
@@ -109,16 +121,58 @@ export const createRuntimeExecutionController = ({
     return state.data as NodeValue<TNode>;
   };
 
+  const emitExecution = (
+    type:
+      | "node.execution.skipped"
+      | "node.execution.reused"
+      | "node.load.queued"
+      | "node.load.started"
+      | "node.load.succeeded"
+      | "node.load.failed"
+      | "node.load.aborted"
+      | "node.load.discarded"
+      | "node.derive.started"
+      | "node.derive.succeeded"
+      | "node.derive.failed",
+    node: AnyNodeDefinition,
+    generation: number,
+    origin: ExecutionOrigin,
+    context: ExecutionDiagnosticContext | undefined,
+    extras: {
+      readonly durationMs?: number;
+      readonly error?: Error;
+    } = {},
+  ): void => {
+    if (!context) return;
+    diagnostics.emit({
+      type,
+      operationId: context.operationId,
+      ...(context.causeId === undefined ? {} : { causeId: context.causeId }),
+      nodeKey: node.key,
+      nodeKind: node.kind,
+      generation,
+      origin,
+      reason: context.reason,
+      ...(extras.durationMs === undefined ? {} : { durationMs: extras.durationMs }),
+      ...(extras.error === undefined ? {} : { error: diagnostics.toError(extras.error) }),
+    });
+  };
+
   const executeNode = (
     node: AnyNodeDefinition,
-    origin: ExecutionOrigin
+    origin: ExecutionOrigin,
+    context: ExecutionDiagnosticContext | undefined,
   ): Promise<void> => {
     const state = getMutableState(node.key);
-    if (hasFreshSuccessfulValue(state)) return Promise.resolve();
+    if (hasFreshSuccessfulValue(state)) {
+      emitExecution("node.execution.skipped", node, state.generation, origin, context);
+      return Promise.resolve();
+    }
 
     const active = getActiveAttempt(node.key);
     if (active?.generation === state.generation) {
       active.origins.add(origin);
+      emitExecution("node.execution.reused", node, state.generation, origin, context);
       return active.promise;
     }
 
@@ -129,6 +183,8 @@ export const createRuntimeExecutionController = ({
     const hadSuccessfulValue = state.hasSuccessfulValue;
     const token = Symbol(node.key);
     const controller = new AbortController();
+    const startedAt = diagnostics.now();
+    const startedType = isDataNode(node) ? "node.load.started" : "node.derive.started";
 
     state.status = state.hasSuccessfulValue ? "refreshing" : "loading";
     state.freshness = "stale";
@@ -139,7 +195,10 @@ export const createRuntimeExecutionController = ({
       try {
         let value: unknown;
         if (isDataNode(node)) {
-          await concurrencyLimiter.acquire(controller.signal);
+          await concurrencyLimiter.acquire(controller.signal, () =>
+            emitExecution("node.load.queued", node, generation, origin, context)
+          );
+          emitExecution(startedType, node, generation, origin, context);
           try {
             value = await node.load({
               get: getDependencyValue,
@@ -149,6 +208,7 @@ export const createRuntimeExecutionController = ({
             concurrencyLimiter.release();
           }
         } else if (isDerivedNode(node)) {
+          emitExecution(startedType, node, generation, origin, context);
           value = node.derive({ get: getDependencyValue });
         } else {
           return;
@@ -170,6 +230,14 @@ export const createRuntimeExecutionController = ({
         current.error = null;
         current.hasSuccessfulValue = true;
         notify();
+        emitExecution(
+          isDataNode(node) ? "node.load.succeeded" : "node.derive.succeeded",
+          node,
+          generation,
+          origin,
+          context,
+          { durationMs: diagnostics.now() - startedAt },
+        );
 
         if (
           (currentAttempt.origins.has("refresh") ||
@@ -177,25 +245,44 @@ export const createRuntimeExecutionController = ({
           hadSuccessfulValue &&
           !Object.is(previousData, value)
         ) {
-          onChangedRefreshResult(node);
+          onChangedRefreshResult(node, context);
         }
       } catch (thrown) {
         const current = getMutableState(node.key);
         const currentAttempt = getActiveAttempt(node.key);
-        const obsolete =
-          current.generation !== generation ||
-          currentAttempt?.token !== token ||
-          controller.signal.aborted ||
+        const discarded =
           thrown instanceof ObsoleteAttempt ||
-          isAbortError(thrown);
+          current.generation !== generation ||
+          currentAttempt?.token !== token;
+        const aborted =
+          !discarded &&
+          (controller.signal.aborted || isAbortError(thrown));
 
-        if (obsolete) throw new ObsoleteAttempt();
+        if (aborted || discarded) {
+          emitExecution(
+            aborted ? "node.load.aborted" : "node.load.discarded",
+            node,
+            generation,
+            origin,
+            context,
+            { durationMs: diagnostics.now() - startedAt },
+          );
+          throw new ObsoleteAttempt();
+        }
 
         const error = toError(thrown);
         current.status = "error";
         current.freshness = "stale";
         current.error = error;
         notify();
+        emitExecution(
+          isDataNode(node) ? "node.load.failed" : "node.derive.failed",
+          node,
+          generation,
+          origin,
+          context,
+          { durationMs: diagnostics.now() - startedAt, error },
+        );
         throw new NodeAttemptFailure(node.key, error);
       } finally {
         deleteActiveAttempt(node.key, token);
@@ -215,12 +302,14 @@ export const createRuntimeExecutionController = ({
 
   const execute = async (
     targets: readonly AnyNodeDefinition[],
-    origin: ExecutionOrigin
+    origin: ExecutionOrigin,
+    context?: ExecutionDiagnosticContext,
   ): Promise<void> => {
     if (targets.length === 0) return;
 
     const failures = new Map<string, NodeExecutionFailure>();
     const requested = new Map<string, Promise<void>>();
+    const targetKeys = new Set(targets.map((target) => target.key));
 
     const recordFailure = (failure: NodeExecutionFailure): void => {
       if (!failures.has(failure.nodeKey)) failures.set(failure.nodeKey, failure);
@@ -229,6 +318,14 @@ export const createRuntimeExecutionController = ({
     const ensureNode = (node: AnyNodeDefinition): Promise<void> => {
       const existing = requested.get(node.key);
       if (existing) return existing;
+
+      const nodeContext = context
+        ? {
+            operationId: context.operationId,
+            ...(context.causeId === undefined ? {} : { causeId: context.causeId }),
+            reason: targetKeys.has(node.key) ? context.reason : "dependency" as const,
+          }
+        : undefined;
 
       const promise = (async (): Promise<void> => {
         const parentResults = await Promise.allSettled(
@@ -260,11 +357,26 @@ export const createRuntimeExecutionController = ({
             blockedBy,
           };
           recordFailure(failure);
+          if (nodeContext) {
+            diagnostics.emit({
+              type: "node.execution.blocked",
+              operationId: nodeContext.operationId,
+              ...(nodeContext.causeId === undefined
+                ? {}
+                : { causeId: nodeContext.causeId }),
+              nodeKey: node.key,
+              nodeKind: node.kind,
+              generation: getMutableState(node.key).generation,
+              origin,
+              reason: nodeContext.reason,
+              blockedBy,
+            });
+          }
           throw new NodeBlockedFailure(node.key, blockedBy);
         }
 
         try {
-          await executeNode(node, origin);
+          await executeNode(node, origin, nodeContext);
         } catch (error) {
           if (error instanceof ObsoleteAttempt) throw error;
           if (error instanceof NodeAttemptFailure) {

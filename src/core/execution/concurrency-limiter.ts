@@ -1,5 +1,5 @@
 export interface ExecutionConcurrencyLimiter {
-  readonly acquire: (signal: AbortSignal) => Promise<void>;
+  readonly acquire: (signal: AbortSignal, onQueued?: () => void) => Promise<void>;
   readonly release: () => void;
 }
 
@@ -23,7 +23,7 @@ export const createExecutionConcurrencyLimiter = (
   let active = 0;
   const queue: QueuedAcquisition[] = [];
 
-  const acquire = (signal: AbortSignal): Promise<void> => {
+  const acquire = (signal: AbortSignal, onQueued?: () => void): Promise<void> => {
     if (signal.aborted) {
       return Promise.reject(
         createAbortError("Aborted before acquiring a concurrency slot.")
@@ -35,6 +35,7 @@ export const createExecutionConcurrencyLimiter = (
       return Promise.resolve();
     }
 
+    onQueued?.();
     return new Promise<void>((resolve, reject) => {
       let queued = true;
 

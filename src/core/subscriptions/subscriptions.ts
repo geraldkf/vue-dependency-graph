@@ -36,6 +36,14 @@ export interface RuntimeSubscriptionDependencies {
   readonly notify: () => void;
   readonly afterSubscribe: () => void;
   readonly afterUnsubscribe: () => void;
+  readonly onAdded?: (
+    directNodeKeys: readonly string[],
+    requiredNodeKeys: readonly string[],
+  ) => void;
+  readonly onRemoved?: (
+    directNodeKeys: readonly string[],
+    requiredNodeKeys: readonly string[],
+  ) => void;
 }
 
 export const createRuntimeSubscriptionController = ({
@@ -44,6 +52,8 @@ export const createRuntimeSubscriptionController = ({
   notify,
   afterSubscribe,
   afterUnsubscribe,
+  onAdded,
+  onRemoved,
 }: RuntimeSubscriptionDependencies): RuntimeSubscriptionController => {
   const subscriptionStates =
     new Map<string, MutableNodeSubscriptionState>();
@@ -134,6 +144,7 @@ export const createRuntimeSubscriptionController = ({
     }
 
     notify();
+    onAdded?.([...directKeys], [...requiredKeys]);
     afterSubscribe();
 
     let active = true;
@@ -166,6 +177,7 @@ export const createRuntimeSubscriptionController = ({
         active = false;
 
         notify();
+        onRemoved?.([...directKeys], [...requiredKeys]);
         afterUnsubscribe();
       },
     });

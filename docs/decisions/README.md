@@ -17,6 +17,7 @@ Decision records capture choices that materially affect correctness, compatibili
 - ADR-011: Execution concurrency limit
 - ADR-012: Subscription-aware refresh policies and polling
 - ADR-013: Typed mutations with guarded optimistic rollback
+- ADR-014: Runtime observability through a structured event stream
 
 ## Template
 

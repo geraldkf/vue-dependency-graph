@@ -1,4 +1,5 @@
 import type { RefreshableNodeDefinition } from "./types";
+import type { ExecutionDiagnosticContext } from "../execution/execution";
 import type {
   ActiveAttempt,
   MutableNodeRuntimeState,
@@ -11,13 +12,16 @@ import type { ExecutionOrigin } from "../state/state";
 
 export interface RuntimeOperationsController {
   readonly prefetch: (
-    targets: readonly AnyNodeDefinition[]
+    targets: readonly AnyNodeDefinition[],
+    diagnostics?: ExecutionDiagnosticContext,
   ) => Promise<void>;
   readonly refresh: (
-    targets: readonly RefreshableNodeDefinition[]
+    targets: readonly RefreshableNodeDefinition[],
+    diagnostics?: ExecutionDiagnosticContext,
   ) => Promise<void>;
   readonly refreshPolicyNode: (
-    node: DataNodeDefinition<unknown, readonly AnyNodeDefinition[]>
+    node: DataNodeDefinition<unknown, readonly AnyNodeDefinition[]>,
+    diagnostics?: ExecutionDiagnosticContext,
   ) => Promise<void>;
 }
 
@@ -34,7 +38,8 @@ export interface RuntimeOperationsDependencies {
   ) => AnyNodeDefinition;
   readonly execute: (
     targets: readonly AnyNodeDefinition[],
-    origin: "prefetch" | "refresh" | "refresh-policy"
+    origin: "prefetch" | "refresh" | "refresh-policy",
+    diagnostics?: ExecutionDiagnosticContext,
   ) => Promise<void>;
   readonly notify: () => void;
 }
@@ -59,13 +64,15 @@ export const createRuntimeOperationsController = ({
   const refreshOperations = new Map<string, Promise<void>>();
 
   const prefetch = (
-    targets: readonly AnyNodeDefinition[]
-  ): Promise<void> => execute(targets, "prefetch");
+    targets: readonly AnyNodeDefinition[],
+    diagnostics?: ExecutionDiagnosticContext,
+  ): Promise<void> => execute(targets, "prefetch", diagnostics);
 
   const refreshWithOrigin = (
     requestedTargets: readonly RefreshableNodeDefinition[],
     origin: Extract<ExecutionOrigin, "refresh" | "refresh-policy">,
-    purpose: string
+    purpose: string,
+    diagnostics?: ExecutionDiagnosticContext,
   ): Promise<void> => {
     if (requestedTargets.length === 0) return Promise.resolve();
 
@@ -111,7 +118,7 @@ export const createRuntimeOperationsController = ({
     }
     notify();
 
-    const operation = execute(targets, origin).finally(() => {
+    const operation = execute(targets, origin, diagnostics).finally(() => {
       if (refreshOperations.get(operationKey) === operation) {
         refreshOperations.delete(operationKey);
       }
@@ -121,13 +128,25 @@ export const createRuntimeOperationsController = ({
   };
 
   const refresh = (
-    targets: readonly RefreshableNodeDefinition[]
-  ): Promise<void> => refreshWithOrigin(targets, "refresh", "manual refresh");
+    targets: readonly RefreshableNodeDefinition[],
+    diagnostics?: ExecutionDiagnosticContext,
+  ): Promise<void> => refreshWithOrigin(
+    targets,
+    "refresh",
+    "manual refresh",
+    diagnostics,
+  );
 
   const refreshPolicyNode = (
-    node: DataNodeDefinition<unknown, readonly AnyNodeDefinition[]>
+    node: DataNodeDefinition<unknown, readonly AnyNodeDefinition[]>,
+    diagnostics?: ExecutionDiagnosticContext,
   ): Promise<void> =>
-    refreshWithOrigin([node], "refresh-policy", "refresh policy");
+    refreshWithOrigin(
+      [node],
+      "refresh-policy",
+      "refresh policy",
+      diagnostics,
+    );
 
   return Object.freeze({ prefetch, refresh, refreshPolicyNode });
 };

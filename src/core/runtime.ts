@@ -51,7 +51,15 @@ import { createDefaultRefreshPolicyEnvironment } from "./refresh-policies/enviro
 import { createRuntimeRefreshPolicyController } from "./refresh-policies/policy-controller";
 import type { RefreshPolicyEnvironment } from "./refresh-policies/types";
 import { createRuntimeMutationController } from "./mutations/mutation-controller";
+import {
+  GraphMutationOutcomeUnknownError,
+  GraphMutationReconciliationError,
+  GraphMutationRollbackConflictError,
+} from "./mutations/errors";
+import { GraphTransactionConflictError } from "./transactions/errors";
 import type { MutationDefinition, MutationOptions } from "./mutations/types";
+import { createRuntimeDiagnosticEmitter } from "./diagnostics/diagnostic-emitter";
+import type { GraphDiagnosticsOptions } from "./diagnostics/types";
 
 export interface GraphRuntimeOptions {
   /**
@@ -64,6 +72,11 @@ export interface GraphRuntimeOptions {
    * inject a deterministic environment. Defaults to platform timers.
    */
   readonly refreshPolicyEnvironment?: RefreshPolicyEnvironment;
+  /**
+   * Optional structured runtime diagnostics. Diagnostics are observational,
+   * synchronous, failure-isolated, and disabled when omitted.
+   */
+  readonly diagnostics?: GraphDiagnosticsOptions;
 }
 
 export interface GraphRuntime {
@@ -119,6 +132,7 @@ export const createGraphRuntime = (
   graph: Graph,
   options?: GraphRuntimeOptions,
 ): GraphRuntime => {
+  const diagnostics = createRuntimeDiagnosticEmitter(options?.diagnostics);
   const {
     getMutableState,
     getSnapshot,
@@ -156,6 +170,14 @@ export const createGraphRuntime = (
   let subscriptions!: RuntimeSubscriptionController;
   let invalidation!: RuntimeInvalidationController;
   let buffer!: RuntimeNotificationBuffer;
+  let pendingSchedulerReason: import("./diagnostics/types").GraphExecutionReason =
+    "subscription";
+  let pendingSchedulerCauseId: string | undefined;
+  let schedulerOperationId = "";
+  let graphChangeOperationId = "";
+  let graphChangeReason: "context-invalidation" | "changed-result" =
+    "context-invalidation";
+  let observeGraphChange = false;
 
   const execution = createRuntimeExecutionController({
     graph,
@@ -168,12 +190,32 @@ export const createGraphRuntime = (
     deleteActiveAttempt,
     resolveRegisteredNode: (node) => requireRegisteredNode(node, "execution"),
     notify: emitNotify,
-    onChangedRefreshResult: (node) =>
-      invalidation.invalidateChangedResultDescendants(node),
+    onChangedRefreshResult: (node, diagnosticContext) => {
+      graphChangeOperationId = diagnosticContext?.operationId ?? "";
+      graphChangeReason = "changed-result";
+      pendingSchedulerReason = "changed-result";
+      pendingSchedulerCauseId = diagnosticContext?.operationId;
+      observeGraphChange = true;
+      try {
+        invalidation.invalidateChangedResultDescendants(node);
+      } finally {
+        observeGraphChange = false;
+      }
+    },
+    diagnostics,
   });
 
-  const execute = (targets: readonly AnyNodeDefinition[]): Promise<void> =>
-    execution.execute(targets, "explicit");
+  const execute = (targets: readonly AnyNodeDefinition[]): Promise<void> => {
+    const operationId = diagnostics.emitOperationRequested({
+      type: "operation.execute.requested",
+      operation: "execute",
+      nodeKeys: targets.map((node) => node.key),
+    });
+    return execution.execute(targets, "explicit", {
+      operationId,
+      reason: "explicit",
+    });
+  };
 
   const getSubscribedTargetsNeedingWork = (): readonly AnyNodeDefinition[] =>
     graph.getNodes().filter((node) => {
@@ -184,8 +226,51 @@ export const createGraphRuntime = (
 
   const scheduler = createRuntimeSchedulerController({
     getTargetsNeedingWork: getSubscribedTargetsNeedingWork,
-    execute: (targets) => execution.execute(targets, "scheduler"),
+    execute: (targets) => execution.execute(targets, "scheduler", {
+      operationId: schedulerOperationId,
+      ...(pendingSchedulerCauseId === undefined
+        ? {}
+        : { causeId: pendingSchedulerCauseId }),
+      reason: pendingSchedulerReason,
+    }),
     notify: emitNotify,
+    onRequested: () => {
+      schedulerOperationId = diagnostics.createOperationId();
+      diagnostics.emit({
+        type: "scheduler.requested",
+        operationId: schedulerOperationId,
+        ...(pendingSchedulerCauseId === undefined
+          ? {}
+          : { causeId: pendingSchedulerCauseId }),
+        reason: pendingSchedulerReason,
+        nodeKeys: [],
+      });
+    },
+    onStarted: (targets) => {
+      diagnostics.emit({
+        type: "scheduler.started",
+        operationId: schedulerOperationId,
+        ...(pendingSchedulerCauseId === undefined
+          ? {}
+          : { causeId: pendingSchedulerCauseId }),
+        reason: pendingSchedulerReason,
+        nodeKeys: targets.map((node) => node.key),
+      });
+    },
+    onCompleted: (error) => {
+      diagnostics.emit({
+        type: error ? "scheduler.failed" : "scheduler.completed",
+        operationId: schedulerOperationId,
+        ...(pendingSchedulerCauseId === undefined
+          ? {}
+          : { causeId: pendingSchedulerCauseId }),
+        reason: pendingSchedulerReason,
+        nodeKeys: [],
+        ...(error ? { error: diagnostics.toError(error) } : {}),
+      });
+      pendingSchedulerReason = "subscription";
+      pendingSchedulerCauseId = undefined;
+    },
   });
 
   // The buffer's real sinks are the observer's raw notify and the
@@ -205,6 +290,25 @@ export const createGraphRuntime = (
     graph,
     resolveRegisteredNode: requireRegisteredNode,
     notify: buffer.notify,
+    onAdded: (nodeKeys, requiredNodeKeys) => {
+      const operationId = diagnostics.createOperationId();
+      diagnostics.emit({
+        type: "subscription.added",
+        operationId,
+        nodeKeys,
+        requiredNodeKeys,
+      });
+      pendingSchedulerReason = "subscription";
+      pendingSchedulerCauseId = operationId;
+    },
+    onRemoved: (nodeKeys, requiredNodeKeys) => {
+      diagnostics.emit({
+        type: "subscription.removed",
+        operationId: diagnostics.createOperationId(),
+        nodeKeys,
+        requiredNodeKeys,
+      });
+    },
     afterSubscribe: buffer.schedule,
     afterUnsubscribe: () => {
       for (const [key, attempt] of getActiveAttempts()) {
@@ -229,6 +333,34 @@ export const createGraphRuntime = (
     resolveRegisteredNode: requireRegisteredNode,
     notify: buffer.notify,
     schedule: buffer.schedule,
+    onContextsCommitted: (contextKeys, affectedNodeKeys, scheduled) => {
+      if (!observeGraphChange || !graphChangeOperationId || contextKeys.length === 0) return;
+      diagnostics.emit({
+        type: "context.changed",
+        operationId: graphChangeOperationId,
+        contextKeys,
+        affectedNodeKeys,
+      });
+      diagnostics.emit({
+        type: "node.invalidated",
+        operationId: graphChangeOperationId,
+        reason: "context-invalidation",
+        rootNodeKeys: contextKeys,
+        affectedNodeKeys,
+        scheduled,
+      });
+    },
+    onChangedResultInvalidated: (rootNodeKeys, affectedNodeKeys, scheduled) => {
+      if (!observeGraphChange || !graphChangeOperationId) return;
+      diagnostics.emit({
+        type: "node.invalidated",
+        operationId: graphChangeOperationId,
+        reason: graphChangeReason,
+        rootNodeKeys,
+        affectedNodeKeys,
+        scheduled,
+      });
+    },
   });
 
   const events = createRuntimeEventMatcher({
@@ -244,6 +376,24 @@ export const createGraphRuntime = (
     const eventTargets = events.matchPublications(eventPublications, {
       valueOverlay: contextChanges,
     });
+    const operationId = graphChangeOperationId || diagnostics.createOperationId();
+    for (const publication of eventPublications) {
+      diagnostics.emit({
+        type: "event.published",
+        operationId,
+        eventKey: publication.event.key,
+        transactionOwned: !immediate,
+      });
+    }
+    if (eventPublications.length > 0) {
+      diagnostics.emit({
+        type: "event.matched",
+        operationId,
+        eventKey: eventPublications.map(({ event }) => event.key).join(","),
+        transactionOwned: !immediate,
+        matchedNodeKeys: eventTargets.map((node) => node.key),
+      });
+    }
     invalidation.commitContexts(
       contextChanges,
       eventTargets,
@@ -267,7 +417,8 @@ export const createGraphRuntime = (
     getMutableState,
     getActiveAttempt,
     resolveRegisteredNode: requireRegisteredNode,
-    execute: (targets, origin) => execution.execute(targets, origin),
+    execute: (targets, origin, diagnosticContext) =>
+      execution.execute(targets, origin, diagnosticContext),
     notify: emitNotify,
   });
 
@@ -290,7 +441,13 @@ export const createGraphRuntime = (
       createDefaultRefreshPolicyEnvironment(),
     getMutableState,
     hasSubscribers: subscriptions.hasSubscribers,
-    refreshPolicyNode: operations.refreshPolicyNode,
+    refreshPolicyNode: (node) => {
+      const operationId = diagnostics.createOperationId();
+      return operations.refreshPolicyNode(node, {
+        operationId,
+        reason: "refresh-policy",
+      });
+    },
     failPolicyNode: (node, generation, error) => {
       const state = getMutableState(node.key);
       if (state.generation !== generation) return;
@@ -299,28 +456,226 @@ export const createGraphRuntime = (
       state.error = error;
       emitNotify();
     },
+    onDiagnostic: (type, node, details) => {
+      const operationId = diagnostics.createOperationId();
+      const eventType = `refresh-policy.${type}` as
+        | "refresh-policy.scheduled"
+        | "refresh-policy.started"
+        | "refresh-policy.retry-scheduled"
+        | "refresh-policy.completed"
+        | "refresh-policy.failed"
+        | "refresh-policy.paused"
+        | "refresh-policy.resumed"
+        | "refresh-policy.stopped";
+      diagnostics.emit({
+        type: eventType,
+        operationId,
+        ...(node === undefined
+          ? {}
+          : {
+              nodeKey: node.key,
+              ...(node.refresh === undefined
+                ? {}
+                : { policyKind: node.refresh.kind }),
+            }),
+        ...(details?.delayMs === undefined
+          ? {}
+          : { delayMs: details.delayMs }),
+        ...(details?.error === undefined
+          ? {}
+          : { error: diagnostics.toError(details.error) }),
+      });
+    },
   });
   onChange(refreshPolicies.reconcile);
+  diagnostics.emitRuntimeCreated(graph.getNodes().map((node) => node.key));
 
   return Object.freeze({
     getState: <TNode extends AnyNodeDefinition>(node: TNode) =>
       getSnapshot(node),
-    setContext: transactions.setContext,
+    setContext: <TValue>(node: ContextNodeDefinition<TValue>, value: TValue) => {
+      const operationId = diagnostics.createOperationId();
+      graphChangeOperationId = operationId;
+      graphChangeReason = "context-invalidation";
+      pendingSchedulerReason = "context-invalidation";
+      pendingSchedulerCauseId = operationId;
+      observeGraphChange = true;
+      try {
+        transactions.setContext(node, value);
+      } finally {
+        observeGraphChange = false;
+      }
+    },
     execute,
-    prefetch: operations.prefetch,
-    prefetchQuery: (query: AnyQueryDefinition) =>
-      operations.prefetch(getQueryNodes(query)),
-    refresh: operations.refresh,
-    refreshQuery: (query: AnyQueryDefinition) =>
-      operations.refresh(getQueryRefreshableNodes(query)),
-    publish: transactions.publish,
-    mutate: mutations.mutate,
+    prefetch: (nodes: readonly AnyNodeDefinition[]) => {
+      const operationId = diagnostics.emitOperationRequested({
+        type: "operation.prefetch.requested",
+        operation: "prefetch",
+        nodeKeys: nodes.map((node) => node.key),
+      });
+      return operations.prefetch(nodes, { operationId, reason: "prefetch" });
+    },
+    prefetchQuery: (query: AnyQueryDefinition) => {
+      const nodes = getQueryNodes(query);
+      const operationId = diagnostics.emitOperationRequested({
+        type: "operation.query-prefetch.requested",
+        operation: "query-prefetch",
+        nodeKeys: nodes.map((node) => node.key),
+        queryKey: query.key,
+      });
+      return operations.prefetch(nodes, {
+        operationId,
+        reason: "query-prefetch",
+      });
+    },
+    refresh: (nodes: readonly RefreshableNodeDefinition[]) => {
+      const operationId = diagnostics.emitOperationRequested({
+        type: "operation.refresh.requested",
+        operation: "refresh",
+        nodeKeys: nodes.map((node) => node.key),
+      });
+      return operations.refresh(nodes, { operationId, reason: "refresh" });
+    },
+    refreshQuery: (query: AnyQueryDefinition) => {
+      const nodes = getQueryRefreshableNodes(query);
+      const operationId = diagnostics.emitOperationRequested({
+        type: "operation.query-refresh.requested",
+        operation: "query-refresh",
+        nodeKeys: nodes.map((node) => node.key),
+        queryKey: query.key,
+      });
+      return operations.refresh(nodes, {
+        operationId,
+        reason: "query-refresh",
+      });
+    },
+    publish: <TEvent extends AnyEventDefinition>(
+      event: TEvent,
+      payload: EventPayload<TEvent>,
+    ) => {
+      graphChangeOperationId = diagnostics.createOperationId();
+      transactions.publish(event, payload);
+    },
+    mutate: <TInput, TResult>(
+      mutation: MutationDefinition<TInput, TResult>,
+      input: TInput,
+      mutationOptions?: MutationOptions<TInput, TResult>,
+    ) => {
+      const operationId = diagnostics.createOperationId();
+      const startedAt = diagnostics.now();
+      diagnostics.emit({
+        type: "mutation.started",
+        operationId,
+        mutationKey: mutation.key,
+      });
+      return mutations.mutate(
+        mutation,
+        input,
+        mutationOptions,
+        (type, affectedNodeKeys) => {
+          diagnostics.emit({
+            type: `mutation.${type}` as
+              | "mutation.optimistic-committed"
+              | "mutation.remote-started"
+              | "mutation.remote-succeeded"
+              | "mutation.remote-failed"
+              | "mutation.success-committed",
+            operationId,
+            mutationKey: mutation.key,
+            ...(affectedNodeKeys === undefined ? {} : { affectedNodeKeys }),
+          });
+        },
+      ).then(
+        result => {
+          diagnostics.emit({
+            type: "mutation.completed",
+            operationId,
+            mutationKey: mutation.key,
+            outcome: "succeeded",
+            durationMs: diagnostics.now() - startedAt,
+          });
+          return result;
+        },
+        error => {
+          const normalised = error instanceof Error ? error : new Error(String(error));
+          const type = error instanceof GraphMutationRollbackConflictError
+            ? "mutation.rollback-conflicted"
+            : error instanceof GraphMutationOutcomeUnknownError
+              ? "mutation.outcome-unknown"
+              : error instanceof GraphMutationReconciliationError
+                ? "mutation.reconciliation-failed"
+                : "mutation.rolled-back";
+          const outcome = error instanceof GraphMutationRollbackConflictError
+            ? "rollback-conflict"
+            : error instanceof GraphMutationOutcomeUnknownError
+              ? "unknown"
+              : error instanceof GraphMutationReconciliationError
+                ? "reconciliation-failed"
+                : "rejected";
+          diagnostics.emit({
+            type,
+            operationId,
+            mutationKey: mutation.key,
+            outcome,
+            durationMs: diagnostics.now() - startedAt,
+            error: diagnostics.toError(normalised),
+          });
+          diagnostics.emit({
+            type: "mutation.completed",
+            operationId,
+            mutationKey: mutation.key,
+            outcome,
+            durationMs: diagnostics.now() - startedAt,
+            error: diagnostics.toError(normalised),
+          });
+          throw error;
+        },
+      );
+    },
     subscribeNodes: subscriptions.subscribeNodes,
     getSubscriptionState: subscriptions.getSubscriptionState,
     hasSubscribers: subscriptions.hasSubscribers,
     getSchedulerState: scheduler.getSchedulerState,
     whenSettled: scheduler.whenSettled,
     onChange,
-    transaction: transactions.runTransaction,
+    transaction: <T>(work: (transaction: GraphTransaction) => T | Promise<T>) => {
+      const operationId = diagnostics.createOperationId();
+      const startedAt = diagnostics.now();
+      diagnostics.emit({
+        type: "transaction.started",
+        operationId,
+      });
+      graphChangeOperationId = operationId;
+      return transactions.runTransaction(work).then(
+        result => {
+          diagnostics.emit({
+            type: "transaction.committed",
+            operationId,
+            durationMs: diagnostics.now() - startedAt,
+          });
+          return result;
+        },
+        error => {
+          const normalised = error instanceof Error ? error : new Error(String(error));
+          if (error instanceof GraphTransactionConflictError) {
+            diagnostics.emit({
+              type: "transaction.conflicted",
+              operationId,
+              conflictKeys: error.contextKeys,
+              durationMs: diagnostics.now() - startedAt,
+              error: diagnostics.toError(normalised),
+            });
+          } else {
+            diagnostics.emit({
+              type: "transaction.rolled-back",
+              operationId,
+              durationMs: diagnostics.now() - startedAt,
+              error: diagnostics.toError(normalised),
+            });
+          }
+          throw error;
+        },
+      );
+    },
   });
 };

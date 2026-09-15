@@ -373,9 +373,10 @@ Exit criteria: a failed optimistic appointment booking restores the previous loc
 
 ## Milestone 9H: Mutation correctness hardening
 
-Status: Approved implementation plan. Runtime implementation has not started.
+Status: Complete and validated. The project owner reported successful combined offline validation on 15 September 2026.
 
-Implementation plan: docs/implementation/95-milestone-9h-mutation-correctness-hardening-plan.md
+Implementation plan: docs/implementation/95-milestone-9h-mutation-correctness-hardening-plan.md  
+Decomposition summary: docs/implementation/109-milestone-9h-g6-final-regression-summary.md
 
 - [x] M9H-A monotonic rollback generations and ignored-abort protection
 - [x] M9H-B pure updater contract and development/test mutation guard
@@ -383,9 +384,9 @@ Implementation plan: docs/implementation/95-milestone-9h-mutation-correctness-ha
 - [x] M9H-D rollback scheduler recovery for restored stale subscribed state
 - [x] M9H-E explicit immediate optimistic data-descendant loading coverage
 - [x] M9H-F affected-derived mutation event predicate restriction
-- [ ] M9H-G internal mutation-controller decomposition before observability
-- [ ] Reconcile API, architecture, ADR, adoption, testing, and validation documentation
-- [ ] Complete automated and manual validation against the combined checkout
+- [x] M9H-G internal mutation-controller decomposition before observability
+- [x] Reconcile API, architecture, ADR, adoption, testing, and validation documentation
+- [x] Complete automated and manual validation against the combined checkout
 
 Confirmed decisions:
 
@@ -399,13 +400,23 @@ Exit criteria: rollback cannot revive obsolete work, failed preparation cannot l
 
 ## Milestone 10: Observability
 
-- [ ] Structured diagnostics stream
-- [ ] In-memory metrics collector
-- [ ] Load reasons
-- [ ] Snapshot schema and redaction
-- [ ] Stable snapshot test normaliser
+Status: M10A through M10C are implemented with offline validation pending. M10D has not started.  
+Implementation plan: docs/implementation/110-milestone-10-observability-plan.md  
+Design decision: docs/decisions/ADR-014-runtime-observability.md
 
-Exit criteria: every node execution can be traced to subscription and invalidation reasons.
+- [x] M10A diagnostic contracts, runtime options, sink isolation, and deterministic IDs. Implementation note: docs/implementation/111-milestone-10a-diagnostic-foundation-note.md
+- [x] M10B execution, scheduling, subscription, invalidation, and operation diagnostics. Implementation note: docs/implementation/112-milestone-10b-core-execution-causality-note.md
+- [x] M10C transaction, event, refresh-policy, and mutation lifecycle diagnostics. Implementation note: docs/implementation/113-milestone-10c-advanced-lifecycle-diagnostics-note.md
+- [ ] M10D bounded in-memory diagnostic collector and metrics projection
+- [ ] M10E diagnostic snapshot schema, safe value redaction, and error serialisation
+- [ ] M10F stable snapshot normaliser and behaviour-focused regression coverage
+- [ ] M10G deterministic observability playground scenario
+- [ ] M10H public documentation reconciliation and final validation
+- [ ] Preserve existing runtime behaviour when diagnostics are omitted
+- [ ] Keep diagnostics observational, synchronous, failure-isolated, and outside scheduler settlement
+- [ ] Keep devtools UI, snapshot import, persistence, and production telemetry adapters deferred
+
+Exit criteria: every node execution can be traced to its initiating subscription, invalidation, refresh, or caller-owned operation; metrics are derivable from the same event stream; and a safely redacted, deterministic diagnostic snapshot can be exported without changing runtime behaviour.
 
 ## Milestone 11: Devtools
 

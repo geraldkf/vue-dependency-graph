@@ -10,7 +10,7 @@ Design and prototyping. Milestones 1 through 7 are implemented, including the fr
 
 Milestone 8 refresh policies and polling are implemented and validated. The runtime supports stale-after, fixed interval, typed poll-until completion and failure, timeout, bounded retry with backoff and jitter, pause/resume, optional browser lifecycle integration, and a deterministic Polling Progress playground. See `docs/implementation/86-milestone-8-implementation-summary.md`. APIs remain subject to change until the existing-application migration trial is complete.
 
-Milestone 9 implementation, documentation, automated validation, and manual verification are complete. Milestone 9H correctness hardening is in progress before Milestone 10 observability; M9H-A through M9H-F are implemented with offline validation pending, including rollback hardening, updater protection, reconciliation recovery, immediate descendant loading, and safe mutation event predicate reads. See `docs/implementation/87-milestone-9-mutation-framework-plan.md`.
+Milestone 9 and Milestone 9H mutation correctness hardening are implemented and validated, including rollback hardening, updater protection, reconciliation recovery, immediate descendant loading, safe mutation event predicate reads, and the mutation-controller decomposition. Milestone 10 observability is proceeding sequentially; M10A through M10C diagnostic foundations, core execution causality, and advanced lifecycle diagnostics are implemented with offline validation pending. See `docs/implementation/110-milestone-10-observability-plan.md`.
 
 ## Repository model
 

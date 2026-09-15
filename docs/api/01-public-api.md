@@ -527,3 +527,97 @@ Context changes, event invalidation, refresh, polling, independent mutations, an
 
 Diagnostics, snapshots, devtools, and cache garbage collection remain future APIs.
 
+
+
+### Runtime diagnostics foundation
+
+Milestone 10A adds optional structured diagnostics at runtime construction:
+
+```ts
+const events: GraphDiagnosticEvent[] = [];
+const runtime = createGraphRuntime(graph, {
+  diagnostics: {
+    sink: {
+      emit: event => events.push(event),
+    },
+  },
+});
+```
+
+Diagnostics are disabled when no sink is supplied. A configured sink receives immutable events synchronously in runtime-local sequence order. Sink failures are isolated and do not change runtime state, operation results, observer notification, scheduling, or settlement.
+
+M10A emits the foundation events:
+
+- `runtime.created` after runtime-local diagnostic identity is created;
+- `operation.execute.requested`;
+- `operation.prefetch.requested`;
+- `operation.refresh.requested`;
+- `operation.query-prefetch.requested`;
+- `operation.query-refresh.requested`.
+
+Operation-request events contain immutable requested node keys and a deterministic runtime-local operation ID. Query operation events also contain the query key. These events record caller intent only. M10B adds execution, scheduling, subscription, invalidation, reuse, skip, queue, and outcome events that complete the causal trace.
+
+Tests may provide a deterministic diagnostics environment:
+
+```ts
+const runtime = createGraphRuntime(graph, {
+  diagnostics: {
+    sink,
+    environment: {
+      now: () => clock.now,
+      createRuntimeId: () => "test-runtime",
+    },
+  },
+});
+```
+
+Default runtime IDs are runtime-local diagnostic labels. They are not distributed tracing identifiers or guaranteed to be globally unique across processes, tabs, or application sessions.
+
+
+#### Core execution causality
+
+Milestone 10B extends the diagnostic stream across ordinary graph execution:
+
+- subscription add and remove;
+- scheduler request, start, completion, and failure;
+- context changes and changed-result invalidation;
+- fresh-value skips and active-attempt reuse;
+- concurrency queue admission;
+- data-node load start, success, failure, abort, and discarded result;
+- derived-node start, success, and failure;
+- dependency-blocked nodes.
+
+Every node execution event contains the node key, node kind, generation, execution origin, reason, and runtime-local operation ID. Scheduler-owned execution also carries a `causeId` linking it to the subscription or invalidation operation that requested scheduling.
+
+Execution origin and reason are intentionally separate. Origin identifies ownership such as `scheduler`, `prefetch`, or `refresh`. Reason explains why work was required, such as `subscription`, `context-invalidation`, `changed-result`, or `dependency`.
+
+```ts
+const event = events.find(
+  event => event.type === "node.load.started"
+);
+
+if (event?.type === "node.load.started") {
+  console.log(event.nodeKey, event.origin, event.reason);
+}
+```
+
+Errors are represented by immutable `{ name, message }` records. Diagnostic events do not expose loaded values, context values, event payloads, mutation inputs, or mutation results.
+
+
+#### Advanced lifecycle diagnostics
+
+Milestone 10C adds structured records for typed events, transactions, refresh policies, polling, and mutations.
+
+Typed event records contain the event key, whether publication was transaction-owned, and matched node keys. Event payloads are never included.
+
+Transaction records include start and one terminal outcome:
+
+- `transaction.committed`;
+- `transaction.rolled-back`;
+- `transaction.conflicted`.
+
+Transaction diagnostics do not expose staged context values or event payloads. Conflict records include immutable conflict keys and safe error details.
+
+Refresh-policy records cover scheduling, start, retry scheduling, pause, resume, completion, failure, and stop. They contain policy metadata such as node key, policy kind, and delay where applicable, but not loaded values.
+
+Mutation records cover request start, effective optimistic commit, remote start and settlement, successful local commit, rollback, rollback conflict, unknown outcome, reconciliation failure, and terminal completion. Mutation inputs and results are never included.

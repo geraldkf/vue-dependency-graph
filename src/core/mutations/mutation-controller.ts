@@ -13,11 +13,24 @@ import {
 import { createMutationCommitter } from "./mutation-commit";
 import { createMutationSettlementCoordinator } from "./mutation-settlement";
 
+type MutationLifecycleType =
+  | "optimistic-committed"
+  | "remote-started"
+  | "remote-succeeded"
+  | "remote-failed"
+  | "success-committed";
+
+type MutationLifecycleListener = (
+  type: MutationLifecycleType,
+  affectedNodeKeys?: readonly string[],
+) => void;
+
 export interface RuntimeMutationController {
   readonly mutate: <TInput, TResult>(
     mutation: MutationDefinition<TInput, TResult>,
     input: TInput,
     options?: MutationOptions<TInput, TResult>,
+    onLifecycle?: MutationLifecycleListener,
   ) => Promise<TResult>;
 }
 
@@ -87,8 +100,10 @@ export const createRuntimeMutationController = ({
 
   /** Lifecycle seam: prepares and commits an effective optimistic session. */
   const startOptimisticSession = <TInput>(
+    mutationKey: string,
     work: NonNullable<MutationOptions<TInput, unknown>["optimistic"]>,
     input: TInput,
+    onLifecycle?: MutationLifecycleListener,
   ): OptimisticSession | undefined => {
     const prepared = updatePlanner.prepare(
       updatePlanner.collect(effects => work(effects, input), "optimistic"),
@@ -110,6 +125,10 @@ export const createRuntimeMutationController = ({
     }
 
     mutationCommitter.commitOptimistic(changed, invalidation);
+    onLifecycle?.(
+      "optimistic-committed",
+      invalidation.affectedNodes.map((node) => node.key),
+    );
 
     return optimisticSessions.captureExpectedGenerations(start.session);
   };
@@ -151,6 +170,7 @@ export const createRuntimeMutationController = ({
     mutation: MutationDefinition<TInput, TResult>,
     input: TInput,
     options?: MutationOptions<TInput, TResult>,
+    onLifecycle?: MutationLifecycleListener,
   ): Promise<TResult> => {
     const controller = new AbortController();
     let optimistic: OptimisticSession | undefined;
@@ -159,23 +179,34 @@ export const createRuntimeMutationController = ({
       .then(() => {
         if (options?.optimistic) {
           optimistic = startOptimisticSession(
+            mutation.key,
             options.optimistic as NonNullable<
               MutationOptions<TInput, unknown>["optimistic"]
             >,
             input,
+            onLifecycle,
           );
         }
+        onLifecycle?.("remote-started");
         return executeRemoteMutation(mutation, input, controller.signal);
       })
       .then(
-        result => settleRemoteSuccess(
-          mutation,
-          options,
-          result,
-          input,
-          optimistic,
-        ),
-        error => settleRemoteFailure(options, error, optimistic),
+        result => {
+          onLifecycle?.("remote-succeeded");
+          const settled = settleRemoteSuccess(
+            mutation,
+            options,
+            result,
+            input,
+            optimistic,
+          );
+          onLifecycle?.("success-committed");
+          return settled;
+        },
+        error => {
+          onLifecycle?.("remote-failed");
+          return settleRemoteFailure(options, error, optimistic);
+        },
       );
   };
 

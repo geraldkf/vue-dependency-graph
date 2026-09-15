@@ -68,6 +68,16 @@ export interface RuntimeInvalidationDependencies {
   ) => AnyNodeDefinition;
   readonly notify: () => void;
   readonly schedule: () => void;
+  readonly onContextsCommitted?: (
+    contextKeys: readonly string[],
+    affectedNodeKeys: readonly string[],
+    scheduled: boolean,
+  ) => void;
+  readonly onChangedResultInvalidated?: (
+    rootNodeKeys: readonly string[],
+    affectedNodeKeys: readonly string[],
+    scheduled: boolean,
+  ) => void;
 }
 
 const isContextNode = (
@@ -83,6 +93,8 @@ export const createRuntimeInvalidationController = ({
   resolveRegisteredNode,
   notify,
   schedule,
+  onContextsCommitted,
+  onChangedResultInvalidated,
 }: RuntimeInvalidationDependencies): RuntimeInvalidationController => {
   const requireRegisteredContextNode = <TValue>(
     node: ContextNodeDefinition<TValue>
@@ -240,8 +252,14 @@ export const createRuntimeInvalidationController = ({
       affected.set(node.key, node);
     }
 
-    const subscribedNodeChanged = invalidateNodes([...affected.values()]);
+    const affectedNodes = [...affected.values()];
+    const subscribedNodeChanged = invalidateNodes(affectedNodes);
 
+    onContextsCommitted?.(
+      effectiveChanges.map(({ node }) => node.key),
+      affectedNodes.map((node) => node.key),
+      subscribedNodeChanged,
+    );
     dispatch.notify();
     if (subscribedNodeChanged) dispatch.schedule();
   };
@@ -260,9 +278,21 @@ export const createRuntimeInvalidationController = ({
   const invalidateChangedResultDescendants = (
     node: AnyNodeDefinition
   ): void => {
+    const affectedNodeKeys = onChangedResultInvalidated
+      ? collectDescendants([node]).map((descendant) => descendant.key)
+      : undefined;
     const subscribedDescendantChanged =
       invalidateChangedResultDescendantsWithoutDispatch([node]);
-    if (graph.getChildren(node).length > 0) notify();
+    if (graph.getChildren(node).length > 0) {
+      if (affectedNodeKeys) {
+        onChangedResultInvalidated?.(
+          [node.key],
+          affectedNodeKeys,
+          subscribedDescendantChanged,
+        );
+      }
+      notify();
+    }
     if (subscribedDescendantChanged) schedule();
   };
 

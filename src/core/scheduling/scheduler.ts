@@ -16,12 +16,18 @@ export interface RuntimeSchedulerDependencies {
     targets: readonly AnyNodeDefinition[]
   ) => Promise<void>;
   readonly notify: () => void;
+  readonly onRequested?: () => void;
+  readonly onStarted?: (targets: readonly AnyNodeDefinition[]) => void;
+  readonly onCompleted?: (error: Error | null) => void;
 }
 
 export const createRuntimeSchedulerController = ({
   getTargetsNeedingWork,
   execute,
   notify,
+  onRequested,
+  onStarted,
+  onCompleted,
 }: RuntimeSchedulerDependencies): RuntimeSchedulerController => {
   const settlementWaiters = new Set<() => void>();
   let scheduled = false;
@@ -56,6 +62,7 @@ export const createRuntimeSchedulerController = ({
 
     scheduled = true;
     notify();
+    onRequested?.();
     queueMicrotask(() => {
       void flush();
     });
@@ -72,6 +79,7 @@ export const createRuntimeSchedulerController = ({
 
     try {
       const targets = getTargetsNeedingWork();
+      onStarted?.(targets);
       if (targets.length > 0) {
         await execute(targets);
       }
@@ -80,6 +88,7 @@ export const createRuntimeSchedulerController = ({
     } finally {
       running = false;
       notify();
+      onCompleted?.(error);
 
       if (followUpRequired) {
         followUpRequired = false;

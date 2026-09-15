@@ -2,9 +2,7 @@
 
 ## Status
 
-Implementation and static validation complete. Dependency-backed validation remains pending because project dependencies were unavailable in the contained environment.
-
-Milestone 10 must not start until the repository-level commands listed below pass in the normal development environment.
+Complete and validated. Static validation was completed in the contained environment. The project owner reported successful dependency-backed repository validation on 15 September 2026, so the Milestone 10 gate is open.
 
 ## Final implementation structure
 

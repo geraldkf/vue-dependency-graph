@@ -54,6 +54,19 @@ export interface RuntimeRefreshPolicyDependencies {
     generation: number,
     error: Error
   ) => void;
+  readonly onDiagnostic?: (
+    type:
+      | "scheduled"
+      | "started"
+      | "retry-scheduled"
+      | "completed"
+      | "failed"
+      | "paused"
+      | "resumed"
+      | "stopped",
+    node: PolicyDataNode | undefined,
+    details?: { readonly delayMs?: number; readonly error?: Error },
+  ) => void;
 }
 
 const isPolicyDataNode = (
@@ -101,6 +114,7 @@ export const createRuntimeRefreshPolicyController = ({
   hasSubscribers,
   refreshPolicyNode,
   failPolicyNode,
+  onDiagnostic,
 }: RuntimeRefreshPolicyDependencies): RuntimeRefreshPolicyController => {
   const sessions = new Map<string, RefreshPolicySession>();
   let paused = environment.isPaused();
@@ -258,12 +272,16 @@ export const createRuntimeRefreshPolicyController = ({
   ): void => {
     if (paused || session.refreshing || session.terminal) return;
     session.refreshing = true;
+    onDiagnostic?.("started", node);
     let succeeded = false;
     void refreshPolicyNode(node)
       .then(() => {
         succeeded = true;
       })
       .catch(error => {
+        onDiagnostic?.("failed", node, {
+          error: getPolicyFailure(error, node.key),
+        });
         const retry =
           node.refresh?.kind === "stale-after"
             ? undefined
@@ -279,6 +297,7 @@ export const createRuntimeRefreshPolicyController = ({
           session.retryCount += 1;
           session.remainingDelayMs = delayMs;
           session.timerPurpose = "retry";
+          onDiagnostic?.("retry-scheduled", node, { delayMs });
           return;
         }
 
@@ -297,7 +316,10 @@ export const createRuntimeRefreshPolicyController = ({
       .finally(() => {
         session.refreshing = false;
         session.policyRefreshSucceeded = succeeded;
-        if (succeeded) session.retryCount = 0;
+        if (succeeded) {
+          session.retryCount = 0;
+          onDiagnostic?.("completed", node);
+        }
         reconcileNode(node);
       });
   };
@@ -310,6 +332,9 @@ export const createRuntimeRefreshPolicyController = ({
   ): void => {
     session.timerPurpose = purpose;
     session.remainingDelayMs = delayMs;
+    onDiagnostic?.(purpose === "retry" ? "retry-scheduled" : "scheduled", node, {
+      delayMs,
+    });
     if (paused || session.timer !== undefined) return;
 
     const token = session.token + 1;
@@ -419,6 +444,7 @@ export const createRuntimeRefreshPolicyController = ({
     if (nextPaused) {
       paused = true;
       pausedAt = environment.now();
+      onDiagnostic?.("paused", undefined);
       for (const session of sessions.values()) {
         clearTimer(session, true);
       }
@@ -430,6 +456,7 @@ export const createRuntimeRefreshPolicyController = ({
     }
     pausedAt = undefined;
     paused = false;
+    onDiagnostic?.("resumed", undefined);
     reconcile();
   });
 
