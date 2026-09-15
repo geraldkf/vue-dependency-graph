@@ -423,6 +423,8 @@ Exit criteria:
 
 #### M10D: In-memory collector and metrics
 
+Status: Implemented and statically reviewed. Dependency-backed repository validation pending. See `docs/implementation/114-milestone-10d-in-memory-diagnostics-metrics-note.md`.
+
 Deliver:
 
 - bounded `createInMemoryGraphDiagnostics(...)` collector;
@@ -448,6 +450,8 @@ Exit criteria:
 - one collector can explain recent events and provide cumulative metrics without unbounded memory growth.
 
 #### M10E: Snapshot schema and redaction
+
+Status: Implemented and statically reviewed. Dependency-backed repository validation pending. See `docs/implementation/115-milestone-10e-diagnostic-snapshots-redaction-note.md`.
 
 Deliver:
 

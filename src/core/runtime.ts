@@ -60,6 +60,11 @@ import { GraphTransactionConflictError } from "./transactions/errors";
 import type { MutationDefinition, MutationOptions } from "./mutations/types";
 import { createRuntimeDiagnosticEmitter } from "./diagnostics/diagnostic-emitter";
 import type { GraphDiagnosticsOptions } from "./diagnostics/types";
+import {
+  createDiagnosticSnapshot,
+  type DiagnosticCollectorInspection,
+  type GraphDiagnosticSnapshotV1,
+} from "./diagnostics/snapshot";
 
 export interface GraphRuntimeOptions {
   /**
@@ -113,6 +118,7 @@ export interface GraphRuntime {
   readonly getSchedulerState: () => SchedulerState;
   readonly whenSettled: () => Promise<void>;
   readonly onChange: (listener: RuntimeListener) => () => void;
+  readonly createDiagnosticSnapshot: () => GraphDiagnosticSnapshotV1;
   /**
    * Stages context writes until the successful root transaction commits.
    * Joined and nested calls share one transaction group. Failure discards
@@ -638,6 +644,20 @@ export const createGraphRuntime = (
     getSchedulerState: scheduler.getSchedulerState,
     whenSettled: scheduler.whenSettled,
     onChange,
+    createDiagnosticSnapshot: () => createDiagnosticSnapshot({
+      graph,
+      runtimeId: diagnostics.runtimeId,
+      now: diagnostics.now,
+      getMutableState,
+      getSchedulerState: scheduler.getSchedulerState,
+      getSubscriptionState: subscriptions.getSubscriptionState,
+      getRefreshPolicySnapshot: refreshPolicies.getDiagnosticSnapshot,
+      ...(options?.diagnostics?.sink === undefined
+        ? {}
+        : {
+            collector: options.diagnostics.sink as DiagnosticCollectorInspection,
+          }),
+    }),
     transaction: <T>(work: (transaction: GraphTransaction) => T | Promise<T>) => {
       const operationId = diagnostics.createOperationId();
       const startedAt = diagnostics.now();

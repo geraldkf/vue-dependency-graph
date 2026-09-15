@@ -3,6 +3,19 @@ import type { RefreshPolicy } from "../refresh-policies/types";
 
 export type NodeKind = "context" | "data" | "derived";
 
+type NodeDiagnosticRedactor<TValue> = {
+  bivarianceHack(value: TValue): unknown;
+}["bivarianceHack"];
+
+export type NodeDiagnosticValueOptions<TValue> =
+  | "omit"
+  | "include"
+  | NodeDiagnosticRedactor<TValue>;
+
+export interface NodeDiagnosticsOptions<TValue> {
+  readonly value?: NodeDiagnosticValueOptions<TValue>;
+}
+
 export interface NodeDefinition<
   TValue,
   TKind extends NodeKind = NodeKind,
@@ -11,6 +24,7 @@ export interface NodeDefinition<
   readonly key: string;
   readonly kind: TKind;
   readonly dependencies: TDependencies;
+  readonly diagnostics?: NodeDiagnosticsOptions<TValue>;
   /** Carries TValue for type inference without storing runtime state. */
   readonly __valueType?: TValue;
 }
@@ -94,6 +108,7 @@ export interface DerivedNodeDefinition<
 export interface ContextNodeOptions<TValue> {
   readonly key: string;
   readonly initialValue: TValue;
+  readonly diagnostics?: NodeDiagnosticsOptions<TValue>;
 }
 
 export interface DataNodeOptions<
@@ -106,6 +121,7 @@ export interface DataNodeOptions<
   readonly invalidatedBy?: TInvalidatedBy;
   readonly refresh?: RefreshPolicy<TValue>;
   readonly initialValue: TValue;
+  readonly diagnostics?: NodeDiagnosticsOptions<TValue>;
   readonly load: (context: LoadContext<TDependencies>) => Promise<TValue>;
 }
 
@@ -117,6 +133,7 @@ export interface DerivedNodeOptions<
   readonly key: string;
   readonly dependencies: DependencySource<TDependencies>;
   readonly invalidatedBy?: TInvalidatedBy;
+  readonly diagnostics?: NodeDiagnosticsOptions<TValue>;
   readonly derive: (context: DeriveContext<TDependencies>) => TValue;
 }
 

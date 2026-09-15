@@ -2,7 +2,7 @@
 
 ## Status
 
-Milestone 10 has an approved detailed implementation plan. M10A through M10C diagnostic foundations, core execution causality, and advanced lifecycle diagnostics are implemented with offline validation pending. M10D collector and metrics work has not started. See [the Milestone 10 observability plan](../implementation/110-milestone-10-observability-plan.md) and [ADR-014](../decisions/ADR-014-runtime-observability.md).
+Milestone 10 has an approved detailed implementation plan. M10A through M10D diagnostic foundations, lifecycle causality, advanced diagnostics, and the bounded in-memory collector with cumulative metrics are implemented with offline validation pending. M10E versioned diagnostic snapshots, safe value handling, and bounded error serialisation are implemented with offline validation pending. M10F stable normalisation has not started. See [the Milestone 10 observability plan](../implementation/110-milestone-10-observability-plan.md) and [ADR-014](../decisions/ADR-014-runtime-observability.md).
 
 The accepted direction is one optional structured diagnostic event stream with deterministic runtime-local causation, a bounded in-memory collector, metrics reduced from the same stream, and safe versioned snapshots. Devtools UI and inspector transport remain Milestone 11 work.
 

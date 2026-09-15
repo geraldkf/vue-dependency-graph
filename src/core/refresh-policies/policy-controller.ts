@@ -1,5 +1,6 @@
 import { GraphExecutionError, toError } from "../execution/types";
-import type {
+
+import type { GraphDiagnosticRefreshPolicySnapshot } from "../diagnostics/snapshot";import type {
   AnyNodeDefinition,
   DataNodeDefinition,
   Graph,
@@ -41,6 +42,7 @@ interface RefreshPolicySession {
 
 export interface RuntimeRefreshPolicyController {
   readonly reconcile: () => void;
+  readonly getDiagnosticSnapshot: () => readonly GraphDiagnosticRefreshPolicySnapshot[];
 }
 
 export interface RuntimeRefreshPolicyDependencies {
@@ -460,5 +462,26 @@ export const createRuntimeRefreshPolicyController = ({
     reconcile();
   });
 
-  return Object.freeze({ reconcile });
+  const getDiagnosticSnapshot = (): readonly GraphDiagnosticRefreshPolicySnapshot[] =>
+    Object.freeze(policyNodes.map(node => {
+      const session = getSession(node.key);
+      return Object.freeze({
+        key: node.key,
+        kind: node.refresh?.kind ?? "stale-after",
+        refreshing: session.refreshing,
+        terminal: session.terminal,
+        retryCount: session.retryCount,
+        ...(session.timerPurpose === undefined
+          ? {}
+          : { timerPurpose: session.timerPurpose }),
+        ...(session.timerDueAt === undefined
+          ? {}
+          : { timerDueAt: session.timerDueAt }),
+        ...(session.remainingDelayMs === undefined
+          ? {}
+          : { remainingDelayMs: session.remainingDelayMs }),
+      });
+    }));
+
+  return Object.freeze({ reconcile, getDiagnosticSnapshot });
 };

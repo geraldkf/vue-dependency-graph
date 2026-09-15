@@ -400,15 +400,15 @@ Exit criteria: rollback cannot revive obsolete work, failed preparation cannot l
 
 ## Milestone 10: Observability
 
-Status: M10A through M10C are implemented with offline validation pending. M10D has not started.  
+Status: M10A through M10E are implemented with offline validation pending. M10F has not started.  
 Implementation plan: docs/implementation/110-milestone-10-observability-plan.md  
 Design decision: docs/decisions/ADR-014-runtime-observability.md
 
 - [x] M10A diagnostic contracts, runtime options, sink isolation, and deterministic IDs. Implementation note: docs/implementation/111-milestone-10a-diagnostic-foundation-note.md
 - [x] M10B execution, scheduling, subscription, invalidation, and operation diagnostics. Implementation note: docs/implementation/112-milestone-10b-core-execution-causality-note.md
 - [x] M10C transaction, event, refresh-policy, and mutation lifecycle diagnostics. Implementation note: docs/implementation/113-milestone-10c-advanced-lifecycle-diagnostics-note.md
-- [ ] M10D bounded in-memory diagnostic collector and metrics projection
-- [ ] M10E diagnostic snapshot schema, safe value redaction, and error serialisation
+- [x] M10D bounded in-memory diagnostic collector and metrics projection. Implementation note: docs/implementation/114-milestone-10d-in-memory-diagnostics-metrics-note.md
+- [x] M10E diagnostic snapshot schema, safe value redaction, and error serialisation. Implementation note: docs/implementation/115-milestone-10e-diagnostic-snapshots-redaction-note.md
 - [ ] M10F stable snapshot normaliser and behaviour-focused regression coverage
 - [ ] M10G deterministic observability playground scenario
 - [ ] M10H public documentation reconciliation and final validation

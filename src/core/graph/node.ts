@@ -28,6 +28,12 @@ const resolveDependencies = <TDependencies extends DependencyList>(
   return (dependencies ?? []) as unknown as TDependencies;
 };
 
+
+const freezeDiagnostics = <TValue>(
+  diagnostics: import("./types").NodeDiagnosticsOptions<TValue> | undefined,
+): import("./types").NodeDiagnosticsOptions<TValue> =>
+  Object.freeze({ value: diagnostics?.value ?? "omit" });
+
 const freezeInvalidatedBy = <TInvalidatedBy extends readonly unknown[]>(
   invalidatedBy: TInvalidatedBy | undefined
 ): TInvalidatedBy =>
@@ -42,6 +48,7 @@ export const defineContextNode = <TValue>(
     key: options.key,
     kind: "context" as const,
     dependencies: Object.freeze([]) as readonly [],
+    diagnostics: freezeDiagnostics(options.diagnostics),
     initialValue: options.initialValue,
   });
 };
@@ -66,6 +73,7 @@ export const defineDataNode = <
       return Object.freeze([...resolveDependencies(options.dependencies)]) as unknown as TDependencies;
     },
     invalidatedBy,
+    diagnostics: freezeDiagnostics(options.diagnostics),
     refresh: options.refresh,
     initialValue: options.initialValue,
     load: options.load,
@@ -91,6 +99,7 @@ export const defineDerivedNode = <
       return Object.freeze([...resolveDependencies(options.dependencies)]) as unknown as TDependencies;
     },
     invalidatedBy,
+    diagnostics: freezeDiagnostics(options.diagnostics),
     derive: options.derive,
   };
 

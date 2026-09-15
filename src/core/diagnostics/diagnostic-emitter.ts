@@ -32,6 +32,7 @@ export interface RuntimeDiagnosticEmitter {
   readonly now: () => number;
   readonly toError: (error: Error) => GraphDiagnosticError;
   readonly isEnabled: boolean;
+  readonly runtimeId: string;
 }
 
 let nextRuntimeId = 1;
@@ -64,6 +65,7 @@ export const createRuntimeDiagnosticEmitter = (
       now: () => 0,
       toError: (error: Error) => Object.freeze({ name: error.name, message: error.message }),
       isEnabled: false,
+      runtimeId: "diagnostics-disabled",
     });
   }
 
@@ -132,5 +134,6 @@ export const createRuntimeDiagnosticEmitter = (
       message: error.message,
     }),
     isEnabled: true,
+    runtimeId,
   });
 };

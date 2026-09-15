@@ -621,3 +621,48 @@ Transaction diagnostics do not expose staged context values or event payloads. C
 Refresh-policy records cover scheduling, start, retry scheduling, pause, resume, completion, failure, and stop. They contain policy metadata such as node key, policy kind, and delay where applicable, but not loaded values.
 
 Mutation records cover request start, effective optimistic commit, remote start and settlement, successful local commit, rollback, rollback conflict, unknown outcome, reconciliation failure, and terminal completion. Mutation inputs and results are never included.
+
+#### In-memory diagnostics and metrics
+
+Milestone 10D provides an optional bounded collector that implements `GraphDiagnosticSink`:
+
+```ts
+const diagnostics = createInMemoryGraphDiagnostics({ capacity: 500 });
+const runtime = createGraphRuntime(graph, {
+  diagnostics: { sink: diagnostics },
+});
+
+const recentEvents = diagnostics.getEvents();
+const metrics = diagnostics.getMetrics();
+```
+
+`capacity` must be a positive integer. The collector retains the newest events in insertion order and reports how many older records were dropped. Metrics are updated cumulatively as events arrive, so eviction does not reduce historical counts or durations.
+
+The metrics snapshot includes operation counts, per-node attempt outcomes and durations, current and maximum active data loads, queue counts and wait duration, fresh-value skips, active-attempt reuse, invalidation sources, scheduler outcomes, refresh-policy outcomes, transaction outcomes and durations, mutation outcomes and durations, current subscription totals, and dropped-event count.
+
+`getEvents()` and `getMetrics()` return immutable snapshots. `reset()` clears only retained collector state and cumulative metrics. It does not alter a runtime, graph state, subscriptions, scheduler work, policies, or mutation work.
+
+A collector may be owned by one runtime or deliberately shared by multiple runtimes. Events preserve their runtime IDs while metrics aggregate the received stream.
+
+
+#### Diagnostic snapshots and value safety
+
+Milestone 10E adds `runtime.createDiagnosticSnapshot()`, which returns an immutable, versioned `GraphDiagnosticSnapshotV1`. The snapshot contains graph topology, node runtime state, scheduler state, subscription counts, refresh-policy state, optional collector metrics, and retained/dropped diagnostic counts.
+
+Node values are omitted by default. A node can explicitly include its value or provide a strongly typed synchronous redactor:
+
+```ts
+const profile = defineContextNode({
+  key: "profile",
+  initialValue: { name: "Gerald", identifier: "sensitive" },
+  diagnostics: {
+    value: value => ({ name: value.name }),
+  },
+});
+```
+
+Supported value policies are `"omit"`, `"include"`, or a redactor function. Included and redacted values must be safely serialisable primitives, arrays, or plain objects. Cyclic, non-finite, function, symbol, bigint, and non-plain object values are omitted safely. Redactor exceptions produce a `redaction-failed` marker and safe error details instead of failing snapshot creation.
+
+Runtime and scheduler errors use bounded `{ name, message, cause }` serialisation. Cyclic or over-depth causes are marked `truncated`. Stack traces are not included.
+
+Snapshot construction is observational. It does not notify observers, schedule work, emit diagnostic events, or mutate graph-owned values and errors.

@@ -75,6 +75,8 @@ Use these maintained documents as the current sources of truth:
 - [Milestone 10A diagnostic foundation](./implementation/111-milestone-10a-diagnostic-foundation-note.md)
 - [Milestone 10B core execution causality](./implementation/112-milestone-10b-core-execution-causality-note.md)
 - [Milestone 10C advanced lifecycle diagnostics](./implementation/113-milestone-10c-advanced-lifecycle-diagnostics-note.md)
+- [Milestone 10D in-memory diagnostics and metrics](./implementation/114-milestone-10d-in-memory-diagnostics-metrics-note.md)
+- [Milestone 10E diagnostic snapshots and redaction](./implementation/115-milestone-10e-diagnostic-snapshots-redaction-note.md)
 - [ADR-014 runtime observability](./decisions/ADR-014-runtime-observability.md)
 - [Mutation adoption guide](./guides/04-mutation-adoption.md)
 - [ADR-013 mutation framework](./decisions/ADR-013-mutation-framework.md)

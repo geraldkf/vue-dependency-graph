@@ -107,6 +107,25 @@ export type {
   RuntimeNodeData,
 } from "./state/types";
 export type { RuntimeListener } from "./observation/types";
+export { createInMemoryGraphDiagnostics } from "./diagnostics/in-memory-diagnostics";
+export type {
+  InMemoryGraphDiagnostics,
+  InMemoryGraphDiagnosticsOptions,
+} from "./diagnostics/in-memory-diagnostics";
+export type {
+  GraphDurationMetrics,
+  GraphMetricsSnapshot,
+  GraphNodeAttemptMetrics,
+} from "./diagnostics/metrics";
+export type {
+  GraphDiagnosticNodeDefinitionSnapshot,
+  GraphDiagnosticNodeStateSnapshot,
+  GraphDiagnosticRefreshPolicySnapshot,
+  GraphDiagnosticSnapshotV1,
+  GraphDiagnosticSubscriptionSnapshot,
+  GraphDiagnosticValue,
+  GraphSerializedError,
+} from "./diagnostics/snapshot";
 export type {
   AnyNodeDefinition,
   ContextNodeDefinition,
@@ -118,6 +137,8 @@ export type {
   DeriveContext,
   DerivedNodeDefinition,
   DerivedNodeOptions,
+  NodeDiagnosticsOptions,
+  NodeDiagnosticValueOptions,
   EventInvalidationContext,
   EventInvalidationDeclaration,
   EventInvalidationList,
