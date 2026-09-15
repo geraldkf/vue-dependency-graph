@@ -180,7 +180,7 @@ describe("transaction event publication", () => {
     expect(runtime.getState(data).generation).toBe(0);
   });
 
-  it("shares staged publications across joined transactions and follows root outcome", async () => {
+  it("shares staged publications across explicitly nested work and follows the outer outcome", async () => {
     const changed = defineEvent<void>("domain.changed");
     const data = defineDataNode({
       key: "data",
@@ -189,27 +189,27 @@ describe("transaction event publication", () => {
       load: async () => 1,
     });
     const runtime = createGraphRuntime(createGraph({ nodes: [data] }));
-    const joinedGate = deferred<void>();
+    const nestedGate = deferred<void>();
 
-    const root = runtime.transaction(async transaction => {
-      const joined = runtime.transaction(async () => {
-        transaction.publish(changed, undefined);
-        await joinedGate.promise;
+    const outer = runtime.transaction(async transaction => {
+      const nested = transaction.transaction(async inner => {
+        inner.publish(changed, undefined);
+        await nestedGate.promise;
       });
       await Promise.resolve();
-      joinedGate.resolve();
-      await joined;
+      nestedGate.resolve();
+      await nested;
     });
 
-    await root;
+    await outer;
     expect(runtime.getState(data).generation).toBe(1);
 
     await expect(runtime.transaction(async transaction => {
-      await runtime.transaction(() => {
-        transaction.publish(changed, undefined);
+      await transaction.transaction(inner => {
+        inner.publish(changed, undefined);
       });
-      throw new Error("root failed");
-    })).rejects.toThrowError("root failed");
+      throw new Error("outer failed");
+    })).rejects.toThrowError("outer failed");
 
     expect(runtime.getState(data).generation).toBe(1);
   });

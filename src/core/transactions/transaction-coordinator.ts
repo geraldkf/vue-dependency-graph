@@ -5,11 +5,13 @@ import type {
   ContextChange,
   EventPublication,
   GraphTransaction,
+  TransactionCommitContext,
 } from "./types";
 
 export interface RuntimeTransactionCoordinator {
   readonly runTransaction: <T>(
     work: (transaction: GraphTransaction) => T | Promise<T>,
+    commitContext: TransactionCommitContext,
   ) => Promise<T>;
   readonly setContext: <TValue>(
     node: ContextNodeDefinition<TValue>,
@@ -28,7 +30,7 @@ interface StagedContextChange extends ContextChange {
 /**
  * All staged state for one `runtime.transaction(...)` call, owned by that
  * call alone. Replaces the previous module-level `stagedContexts` /
- * `stagedEvents` / `activeGroup` shared across every open transaction on
+ * `stagedEvents` shared across every open transaction on
  * the runtime -- see ADR-005 "Amendment: isolated transaction sessions".
  * Two calls to `runtime.transaction(...)` never share a session unless one
  * explicitly reuses a handle it was already given.
@@ -36,13 +38,11 @@ interface StagedContextChange extends ContextChange {
 interface TransactionSession {
   readonly stagedContexts: Map<string, StagedContextChange>;
   readonly stagedEvents: EventPublication[];
+  readonly commitContext: TransactionCommitContext;
   settled: boolean;
 }
 
 export interface RuntimeTransactionCoordinatorDependencies {
-  readonly runWithBufferedNotifications: <T>(
-    work: () => T | Promise<T>,
-  ) => Promise<T>;
   readonly resolveContextNode: <TValue>(
     node: ContextNodeDefinition<TValue>,
   ) => ContextNodeDefinition<TValue>;
@@ -56,6 +56,7 @@ export interface RuntimeTransactionCoordinatorDependencies {
   readonly commitTransaction: (
     contextChanges: readonly ContextChange[],
     eventPublications: readonly EventPublication[],
+    commitContext: TransactionCommitContext,
   ) => void;
 }
 
@@ -73,7 +74,6 @@ export interface RuntimeTransactionCoordinatorDependencies {
  * `docs/implementation/114-transaction-overlap-isolation-plan.md`).
  */
 export const createRuntimeTransactionCoordinator = ({
-  runWithBufferedNotifications,
   resolveContextNode,
   getContextGeneration,
   commitImmediate,
@@ -95,6 +95,7 @@ export const createRuntimeTransactionCoordinator = ({
         value,
       })),
       session.stagedEvents,
+      session.commitContext,
     );
   };
 
@@ -151,7 +152,7 @@ export const createRuntimeTransactionCoordinator = ({
       ): Promise<T> => {
         assertActive();
         // Deliberately the same `session` -- no new commit boundary, no
-        // new root. This is an ordinary awaited nested call: if `work`
+        // new session. This is an ordinary awaited nested call: if `work`
         // throws and the caller doesn't catch it, the *outer* work throws
         // too, and this session's own `commitSession` is simply never
         // reached. Ordinary control flow does the rollback here; nothing
@@ -164,29 +165,30 @@ export const createRuntimeTransactionCoordinator = ({
     });
   };
 
-  const runTransaction = <T>(
+  const runTransaction = async <T>(
     work: (transaction: GraphTransaction) => T | Promise<T>,
-  ): Promise<T> =>
-    runWithBufferedNotifications(async () => {
-      const session: TransactionSession = {
-        stagedContexts: new Map<string, StagedContextChange>(),
-        stagedEvents: [],
-        settled: false,
-      };
-      const transaction = createGraphTransaction(session);
-      let succeeded = false;
+    commitContext: TransactionCommitContext,
+  ): Promise<T> => {
+    const session: TransactionSession = {
+      stagedContexts: new Map<string, StagedContextChange>(),
+      stagedEvents: [],
+      commitContext,
+      settled: false,
+    };
+    const transaction = createGraphTransaction(session);
+    let succeeded = false;
 
-      try {
-        const result = await work(transaction);
-        succeeded = true;
-        return result;
-      } finally {
-        session.settled = true;
-        if (succeeded) commitSession(session);
-        // else: nothing to do -- this session's own staged maps are simply
-        // discarded, never having been reachable from anywhere else.
-      }
-    });
+    try {
+      const result = await work(transaction);
+      succeeded = true;
+      return result;
+    } finally {
+      session.settled = true;
+      if (succeeded) commitSession(session);
+      // else: nothing to do -- this session's own staged maps are simply
+      // discarded, never having been reachable from anywhere else.
+    }
+  };
 
   const setContext = <TValue>(
     node: ContextNodeDefinition<TValue>,

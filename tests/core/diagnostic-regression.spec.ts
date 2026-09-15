@@ -79,8 +79,15 @@ describe("observability regression", () => {
       event => event.type === "node.load.started" && event.origin === "scheduler",
     );
     expect(schedulerLoads.length).toBeGreaterThanOrEqual(3);
+    expect(schedulerLoads.every(event => event.operationId !== undefined)).toBe(true);
+
+    const schedulerStarts = new Map(
+      events
+        .filter(event => event.type === "scheduler.started")
+        .map(event => [event.operationId, event.causeId] as const),
+    );
     expect(schedulerLoads.every(event =>
-      event.operationId !== undefined && event.causeId !== undefined
+      event.causeId === schedulerStarts.get(event.operationId)
     )).toBe(true);
 
     expect(events.filter(event => event.type === "transaction.committed")).toHaveLength(1);

@@ -7,11 +7,14 @@
 - [x] C1 — `TransactionSession` (folded C3 into this step — see below)
 - [x] C2 — `GraphTransaction.transaction()`
 - [x] C3 — done, folded into C1 (see C1 notes)
-- [ ] C4 — Notification dispatch fix
-- [ ] C5 — Conflict detection sanity pass
-- [ ] C6 — Migrate this repo's nested call sites
-- [ ] C7 — Rewrite tests describing the old shared-group behaviour
-- [ ] C8 — Documentation
+- [x] C4 — Notification and scheduling dispatch isolation
+- [x] C5 — Transaction diagnostic correlation isolation
+- [x] C6 — Conflict detection and genuine overlap sanity pass
+- [x] C7 — Event-only overlap isolation coverage
+- [x] C8 — Migrate this repo's nested call sites by intent
+- [x] C9 — Rewrite tests describing the old shared-group behaviour
+- [x] C10 — Transaction Isolation playground
+- [x] C11 — Documentation and final validation
 
 Each checked-off step's own section below records what actually shipped,
 including any deviation from the plan discovered during implementation.
@@ -193,126 +196,588 @@ deletion happening in the same diff. Nothing further to do here.
 
 ---
 
-## C4 — Notification dispatch fix
+## C4 — Notification and scheduling dispatch isolation
 
-**Status: planned.**
+**Status: implemented and validated.**
+
+### What shipped
+
+`notification-buffer.ts` remains temporarily as a compatibility seam for the
+existing runtime composition, but no longer owns transaction depth or pending
+dispatch state. `notify()`, `schedule()`, `resolveSettlementIfIdle()`, and
+`whenSettled()` now pass directly to their real runtime sinks.
+`runTransaction(...)` preserves asynchronous error normalisation only; it does
+not gate runtime activity.
+
+Source inspection during C4 confirmed that public `runtime.whenSettled()` had
+always been wired directly to `scheduler.whenSettled()`. The previous guarded
+`buffer.whenSettled()` implementation was unreachable from the public API.
+C4 records the effective scheduler-specific behaviour in ADR-005 and removes
+the unreachable transaction-aware settlement semantics instead of making them
+public.
+
+This is intentionally a small change. Removing or renaming the now-pass-through
+compatibility seam is deferred until final cleanup, after transaction call-site
+migration confirms that no remaining internal contract requires it.
+
+Focused coverage now proves that:
+
+- one transaction can commit, notify, schedule, and reload while another
+  independent transaction remains open;
+- a subscription created while a transaction remains open notifies and loads
+  immediately;
+- committed graph state remains isolated until each owning session closes;
+- scheduler-specific settlement remains available while an unrelated
+  transaction callback is open.
+
+**Expected temporary full-suite baseline:** the two obsolete shared-group
+assertions in `tests/core/transaction-overlap.spec.ts` remain the only known
+failures until C9 rewrites that file.
+
+### Problem
+
+`src/core/invalidation/invalidation.ts`'s `commitContexts` already
+dispatches `notify()` and `schedule()` once per commit call. The existing
+runtime-wide notification buffer therefore does not coalesce one
+transaction session's own commit. Instead, while any transaction callback
+is open, it can delay notification and scheduling caused by unrelated:
+
+- immediate context writes;
+- immediate event publications;
+- scheduler and execution transitions;
+- refresh-policy work;
+- mutations;
+- another independent transaction session.
+
+Per-session staging is not fully isolated while this runtime-wide dispatch
+gate remains.
 
 ### Change
 
-`src/core/invalidation/invalidation.ts`'s `commitContexts` already
-dispatches `notify()`/`schedule()` exactly once per call, confirmed from
-source — so the buffering `notification-buffer.ts` provides was never
-coalescing a transaction's *own* dispatch, only gating unrelated callers
-while any transaction anywhere is open. Per C1/C3, there is no longer a
-shared group for that gating to serve. Remove `notify`/`schedule` gating
-from `runWithBufferedNotifications`'s depth check — `commitSession` calls
-the real dispatch (`emitNotify`/`scheduler.schedule`) directly, same as
-the immediate-write path in `runtime.ts` already does.
+Remove transaction-depth gating from live `notify()` and `schedule()`
+dispatch. A transaction session's successful `commitSession(...)` already
+produces one coherent graph commit and can dispatch through the same real
+observer and scheduler paths used by immediate runtime changes.
 
-Per the ADR amendment's Option 1 decision, `whenSettled()`/
-`resolveSettlementIfIdle()` keep a guard — scoped to currently-open
-`TransactionSession`s rather than a global depth counter. Concretely: the
-coordinator (not the notification buffer) tracks which sessions are
-currently open, and a global `whenSettled()` call additionally waits for
-each of them to reach `settled: true` (and for whatever `schedule()` call
-their commit triggers) before resolving.
+Do not add session-aware notification buffers or one buffer per session.
+The transaction coordinator owns staged state; observation and scheduling
+remain independent runtime capabilities.
+
+### Settlement decision
+
+Keep `runtime.whenSettled()` scheduler-specific. The normal usage remains:
+
+```ts
+await runtime.transaction(async transaction => {
+  transaction.setContext(Context, value);
+});
+await runtime.whenSettled();
+```
+
+Once the transaction promise resolves, its commit has already requested
+any required scheduler work. The following `whenSettled()` call waits for
+that scheduler work without also waiting for unrelated open transaction
+callbacks.
+
+Do not broaden `whenSettled()` to wait for every open transaction session.
+That would reintroduce cross-feature coupling through settlement even after
+notification and scheduling isolation are fixed. A separate whole-runtime
+transaction-settlement API is deferred until a concrete consumer requires
+one.
 
 ### Tests
 
-New `tests/core/transaction-notification-isolation.spec.ts`: an unrelated
-node's `notify()` fires immediately even while a separate, independent
-transaction is open and mid-`await` — should fail against today's
-`notification-buffer.ts` and pass after this change. Plus a test for the
-Option 1 `whenSettled` guard: a `whenSettled()` call made while a
-transaction is open waits for that transaction's eventual schedule
-dispatch.
+Add `tests/core/transaction-notification-isolation.spec.ts` covering:
+
+- an unrelated immediate context update notifies before another transaction
+  callback closes;
+- an unrelated immediate event publication notifies and schedules before
+  another transaction closes;
+- unrelated scheduler execution completes while a transaction remains open;
+- `whenSettled()` remains scheduler-specific and does not wait for an
+  unrelated open transaction;
+- a caller that awaits its own transaction and then calls `whenSettled()`
+  still waits for commit-triggered scheduler work.
 
 ### Exit criterion
 
-New tests pass; `notification-buffer.ts` survives in a smaller form (the
-settlement-waiting piece only) rather than being deleted outright, since
-Option 1 was chosen over Option 2.
+Unrelated observer and scheduler activity is never delayed by an open
+transaction session. Existing transaction atomicity remains unchanged.
 
 ---
 
-## C5 — Conflict detection sanity pass
+## C5 — Transaction diagnostic correlation isolation
 
-**Status: planned.**
+**Status: implemented and validated.**
 
-Re-read `tests/core/transaction-conflicts.spec.ts` end to end against the
-C1 implementation. The generation-baseline check doesn't reference
-`activeGroup` today, so moving it onto `session.stagedContexts` should be
-a mechanical carry-over. This step is verification, not redesign — if any
-case needs a behavioural change rather than a call-site rename, that's a
-signal C1 missed something.
+### What shipped
 
-**Exit criterion:** `transaction-conflicts.spec.ts` passes with zero
-assertion changes.
+Each top-level transaction now receives an internal immutable
+`TransactionCommitContext` containing its runtime-local diagnostic operation
+ID. The transaction coordinator stores that context on the owning
+`TransactionSession` and returns it only through the session's commit callback.
+The public `GraphTransaction` API and diagnostic event schema are unchanged.
+
+`runtime.ts` no longer assigns a transaction operation ID to shared ambient
+state before awaiting the transaction callback. At commit, the owning
+operation ID is passed explicitly into `commitGraphChanges(...)`. That method
+scopes graph-change observation to the synchronous commit, emits context,
+event, and invalidation records with the owning ID, and restores the previous
+synchronous diagnostic state afterward.
+
+Focused coverage starts two independent sessions, commits them in reverse
+start order, and verifies that each session's context, event, invalidation,
+scheduler, node-load, and terminal transaction records retain the correct
+operation and cause chain.
+
+**Expected temporary full-suite baseline:** the two obsolete shared-group
+assertions in `tests/core/transaction-overlap.spec.ts` remain the only known
+failures until C9 rewrites that file.
+
+### Problem
+
+The runtime currently uses mutable composition-root diagnostic context,
+including `graphChangeOperationId`, while transaction callbacks may overlap.
+One transaction may overwrite that ambient operation ID before another
+session commits. This can attribute one session's `context.changed`,
+`node.invalidated`, scheduler, or node-execution records to another
+transaction's operation.
+
+Per-session state isolation must include per-session diagnostic causality.
+A transaction's terminal record and graph-change records must never disagree
+about operation ownership.
+
+### Change
+
+Remove ambient transaction diagnostic ownership from shared runtime fields.
+Carry a narrow internal diagnostic context explicitly through the transaction
+commit boundary, for example:
+
+```ts
+interface TransactionCommitContext {
+  readonly operationId: string;
+}
+```
+
+The runtime may pass this context to the coordinator/commit callback, or the
+runtime may retain it in a runtime-owned wrapper around one session. Keep the
+transaction coordinator independent of the diagnostics implementation. Do
+not make public transaction IDs or add a telemetry abstraction.
+
+The selected implementation must ensure that context changes, event matches,
+invalidation, scheduler requests, and scheduler-owned node attempts use the
+operation and cause IDs belonging to the session that actually committed.
+
+### Tests
+
+Add overlapping transaction diagnostics coverage that:
+
+- starts two independent sessions with distinct operation IDs;
+- commits the sessions in reverse start order;
+- verifies each `transaction.started` and terminal event retains its own ID;
+- verifies each session's context/event/invalidation records use that same
+  operation ID;
+- verifies scheduler and node-execution cause chains point to the correct
+  committing session;
+- verifies rollback or conflict from one session cannot alter another
+  session's diagnostic chain.
+
+### Exit criterion
+
+No transaction diagnostic event depends on mutable ambient ownership shared
+by overlapping sessions.
 
 ---
 
-## C6 — Migrate this repo's nested call sites
+## C6 — Conflict detection and genuine overlap sanity pass
 
-**Status: planned.**
+**Status: implemented and validated.**
 
-Every `runtime.transaction(...)` call made from *inside* another
-transaction's own callback needs to change to `transaction.transaction(
-...)`. Requires a full read of each file below — most
-`runtime.transaction(` occurrences in these files are ordinary top-level
-calls needing no change:
+### What shipped
 
-`tests/core/transaction-handle.spec.ts`,
-`tests/core/transaction-events.spec.ts`,
-`tests/core/transaction-settlement.spec.ts`,
-`tests/core/transaction-rollback.spec.ts`,
-`tests/core/transaction-staging.spec.ts`,
-`tests/core/transaction-invalidation.spec.ts`,
-`tests/core/transaction-conflicts.spec.ts`,
-`tests/core/transaction-context-isolation.spec.ts`,
-`tests/core/transaction-event-isolation.spec.ts`,
-`tests/core/transaction-operation-isolation.spec.ts`,
-`tests/core/transaction-races.spec.ts` (name suggests independent overlap,
-likely needs no migration — confirm rather than assume).
+The existing generation-baseline implementation required no production-code
+change. Each session already records the committed generation when a context
+is first staged, validates every staged context before predicate evaluation or
+graph mutation, and creates an immutable, unique, sorted conflict-key list.
 
-Also grep `src/` for any internal library code that nests
-`runtime.transaction(...)` re-entrantly — none expected, needs confirming.
+Focused genuine-overlap coverage now starts two sessions that both stage the
+same context while also staging session-specific context and event work. The
+suite releases the sessions in both completion orders and verifies that:
 
-**Exit criterion:** every migrated file's existing assertions pass
-unmodified with the new call spelling.
+- the first session to commit succeeds;
+- the later commit rejects with `GraphTransactionConflictError`;
+- the successful shared value remains committed;
+- the rejected session applies none of its other context or event effects;
+- observer snapshots never expose rejected partial state;
+- only the successful session emits graph-change diagnostics;
+- committed and conflicted terminal diagnostics retain their owning operation
+  IDs;
+- repeated writes still produce unique, sorted, immutable conflict keys.
+
+The pre-existing immediate-write conflict suite remains unchanged and
+continues covering a plain runtime write that advances generation after a
+transaction has staged its baseline.
+
+**Expected temporary full-suite baseline:** the two obsolete shared-group
+assertions in `tests/core/transaction-overlap.spec.ts` remain the only known
+failures until C9 rewrites that file.
+
+Re-read `tests/core/transaction-conflicts.spec.ts` against the isolated
+session implementation. Preserve generation-baseline conflict detection:
+a session records the committed generation when a context is first staged,
+and validates every staged context before event evaluation or graph mutation.
+
+Add genuine overlapping same-context tests rather than relying only on an
+immediate runtime write:
+
+```ts
+const first = runtime.transaction(async transaction => {
+  transaction.setContext(Context, 2);
+  await releaseFirst.promise;
+});
+
+const second = runtime.transaction(async transaction => {
+  transaction.setContext(Context, 3);
+  await releaseSecond.promise;
+});
+```
+
+Run both completion orders. In each case:
+
+- the first session to commit succeeds;
+- the later commit rejects with `GraphTransactionConflictError`;
+- the successful value remains committed;
+- no other context or event effect from the rejected session commits;
+- observers never see partial rejected state;
+- conflict keys remain unique, immutable, and sorted;
+- diagnostic events identify the correct successful and conflicted sessions.
+
+Also retain coverage for a plain immediate write changing a staged context's
+generation before commit.
+
+### Exit criterion
+
+Disjoint sessions commit independently. Same-context sessions resolve by
+ordinary optimistic generation conflict in either completion order, with no
+partial commit.
 
 ---
 
-## C7 — Rewrite tests describing the old shared-group behaviour
+## C7 — Event-only overlap isolation coverage
 
-**Status: planned.**
+**Status: implemented and validated.**
 
-`tests/core/transaction-overlap.spec.ts`'s current cases assert exactly
-the behaviour this plan removes (joins and commits together; a failing
-joined call's writes committing anyway via the root; a succeeding joined
-call's writes discarded anyway via the root). Repurpose the file to assert
-independence directly, or fold its cases into
-`transaction-session-isolation.spec.ts` from C1 and delete it — whichever
-reads more clearly once in front of the implementer.
+### What shipped
 
-**Exit criterion:** full suite passes; no remaining test describes two
-unrelated `runtime.transaction(...)` calls sharing an outcome.
+The existing session-local event staging and commit path required no
+production-code change. Focused overlap coverage now verifies event ownership
+independently from context staging:
+
+- two event-only sessions overlap while the committing session is released
+  first and the other session later rolls back;
+- both completion orders are covered;
+- the committed event notifies, schedules, and reloads its subscribed target
+  before the unrelated session closes;
+- the rolled-back event never invalidates, reloads, or emits a publication
+  diagnostic;
+- committed publication, scheduler, and node-load diagnostic causality remains
+  attached to the owning transaction operation;
+- a predicate exception rolls back only its owning session and cannot alter a
+  successfully committed event session;
+- a mixed context/event conflict commits all work from the winning session and
+  no context or event effect from the rejected session.
+
+The tests use the public runtime entry points and observable state, scheduler,
+listener, and diagnostic outcomes. No event matcher or coordinator internals
+are called directly.
+
+**Expected temporary full-suite baseline:** the two obsolete shared-group
+assertions in `tests/core/transaction-overlap.spec.ts` remain the only known
+failures until C9 rewrites that file.
+
+Add direct coverage for independent event-only sessions:
+
+- transaction A stages event A and remains open;
+- transaction B stages event B and commits;
+- B's matching invalidation, notification, scheduling, reload, and
+  diagnostics complete before A closes;
+- A subsequently rolls back and event A never applies;
+- reversing the completion order preserves the corresponding independent
+  outcomes;
+- a predicate exception in one session applies no event effect and does not
+  affect another session.
+
+Include one mixed context/event case proving that a rejected or conflicted
+session applies neither its context nor event work while another session's
+commit remains intact.
+
+### Exit criterion
+
+Event publication ownership is session-local and has the same independence
+and atomicity guarantees as staged context changes.
 
 ---
 
-## C8 — Documentation
+## C8 — Migrate this repo's nested call sites by intent
 
-**Status: planned.**
+**Status: implemented and validated.**
 
-- `docs/architecture/03-scheduler-transactions-and-concurrency.md`
-  "Transaction seam" section: rewrite for session isolation and
-  `transaction.transaction(...)`.
-- `docs/api/01-public-api.md`: update `GraphTransaction` and
-  `runtime.transaction`.
-- `README.md` "Transaction ownership" section: extend to show
-  `transaction.transaction(...)`; state that two `runtime.transaction(
-  ...)` calls are always independent.
-- `docs/implementation/23-transaction-notification-buffer-implementation-
-  note.md`: note pointing forward to this plan.
+### What shipped
 
-**Exit criterion:** docs accurately describe the shipped behaviour, no
-remaining reference to shared groups.
+A repository-wide structural audit found eight nested
+`runtime.transaction(...)` calls, all in transaction behaviour tests. Every
+call was intentional same-session composition rather than independent work:
+
+- two staged-value composition cases in
+  `tests/core/transaction-staging.spec.ts`;
+- three propagated, caught, and outer rollback cases in
+  `tests/core/transaction-rollback.spec.ts`;
+- two staged-event composition cases in
+  `tests/core/transaction-events.spec.ts`;
+- one nested-handle lifecycle case in
+  `tests/core/transaction-handle.spec.ts`.
+
+Each call now uses `transaction.transaction(...)` and performs nested writes
+or publications through the nested handle. Test names and local variable names
+that referred to root/joined group semantics were updated to describe outer,
+nested, and shared-session ownership.
+
+The audit found no nested `runtime.transaction(...)` call in `src/`, the
+playground scenarios, or the other listed transaction suites. Top-level
+runtime transactions that intentionally overlap remain unchanged and are
+covered by the C4 through C7 isolation suites.
+
+A structural follow-up check confirms that no `runtime.transaction(...)` call
+is lexically nested inside another runtime transaction callback anywhere in
+`src/` or `tests/`.
+
+**Expected temporary full-suite baseline:** the two obsolete shared-group
+assertions in `tests/core/transaction-overlap.spec.ts` remain the only known
+failures until C9 rewrites that file.
+
+Search every `runtime.transaction(...)` call made from inside an existing
+transaction callback. Do not perform a blind textual replacement. Classify
+each call site first:
+
+### Intended composition
+
+The inner work must share the caller's commit or rollback boundary. Change:
+
+```ts
+await runtime.transaction(...);
+```
+
+into:
+
+```ts
+await transaction.transaction(...);
+```
+
+### Intended independence
+
+The work is a separate operation that merely overlaps in time. Keep:
+
+```ts
+await runtime.transaction(...);
+```
+
+and add a focused comment or test where the independence is not obvious.
+
+Audit at least:
+
+- `tests/core/transaction-staging.spec.ts`;
+- `tests/core/transaction-rollback.spec.ts`;
+- `tests/core/transaction-events.spec.ts`;
+- `tests/core/transaction-invalidation.spec.ts`;
+- `tests/core/transaction-conflicts.spec.ts`;
+- `tests/core/transaction-context-isolation.spec.ts`;
+- `tests/core/transaction-event-isolation.spec.ts`;
+- `tests/core/transaction-operation-isolation.spec.ts`;
+- `tests/core/transaction-races.spec.ts`;
+- `src/` for internal re-entrant transaction calls.
+
+### Exit criterion
+
+Every nested call site documents its intended ownership through API choice.
+Existing behavioural assertions remain unchanged unless they explicitly
+encoded the removed ambient joining model.
+
+---
+
+## C9 — Rewrite tests describing the old shared-group behaviour
+
+**Status: implemented and validated.**
+
+### What shipped
+
+`tests/core/transaction-overlap.spec.ts` no longer describes root, joined, or
+shared-group ownership. Its three cases now verify observable isolated-session
+behaviour:
+
+- disjoint overlapping sessions commit independently in completion order;
+- a failed session cannot commit through an overlapping successful session;
+- one session's rollback cannot discard another session's successful commit.
+
+The focused conflict, event, dispatch, settlement, and diagnostic suites added
+in C4 through C7 remain responsible for the specialised overlap guarantees,
+so this file stays small and does not duplicate those scenarios.
+
+### Validation finding incorporated
+
+The supplied full-suite output contained six failures. Two were the obsolete
+shared-group assertions replaced by this step. The other four matched the
+behaviour produced when C4's pass-through notification buffer is absent: a
+committed event session remains gated behind another open session, and a later
+transaction can overwrite the scheduler cause used by the delayed work.
+
+To make that integration dependency explicit, this step carries the C4
+pass-through buffer forward and adds a focused event-session regression to
+`tests/core/transaction-notification-isolation.spec.ts`. The regression proves
+that an event transaction can notify, schedule, and reload while an unrelated
+transaction remains open. This also protects the C5 diagnostic-correlation and
+C7 event-isolation tests from silently running against the pre-C4 buffer.
+
+No transaction coordinator, conflict, event matching, or graph commit behaviour
+changed in C9.
+
+`tests/core/transaction-overlap.spec.ts` currently contains expectations for
+the removed shared-group model. Replace or delete those cases after the new
+isolation, conflict, event, dispatch, and diagnostic tests exist.
+
+Do not merely invert expected values. Reframe tests around observable
+business behaviour:
+
+- each unrelated session follows its own callback outcome;
+- disjoint commits are independent in either order;
+- same-context commits conflict deterministically;
+- one session's failure cannot commit or discard another session's work;
+- notifications, scheduling, settlement, and diagnostics remain isolated.
+
+### Exit criterion
+
+No test describes unrelated `runtime.transaction(...)` calls as sharing a
+root outcome or staged state.
+
+---
+
+## C10 — Transaction Isolation playground
+
+**Status: implemented and validated.**
+
+### What shipped
+
+A dedicated `Transaction Isolation` playground tab now demonstrates the
+behaviour delivered by C1 through C9 without overloading the existing Atomic
+Transaction scenario.
+
+The scenario presents two independent operations with separate transaction
+phases, committed values, dependent request counts, and completion controls.
+It supports:
+
+- starting two disjoint top-level sessions and committing them in either order;
+- rolling back either session without changing the other session's outcome;
+- staging the same context in both sessions and showing first-commit-wins
+  generation conflict behaviour;
+- showing that one committed session notifies, schedules, and reloads its
+  dependent node while the other session remains open;
+- displaying scheduler state separately from transaction state, reflecting the
+  scheduler-specific `runtime.whenSettled()` contract;
+- showing recent diagnostic operation and cause IDs for committed, rolled-back,
+  and conflicted outcomes;
+- deterministic reset and safe disposal of open sessions.
+
+The implementation is split between
+`src/playground/scenarios/transaction-isolation-model.ts` and
+`src/playground/scenarios/TransactionIsolationScenario.vue`. Behaviour-focused
+component tests exercise independent completion, rollback isolation, conflict,
+scheduler activity, diagnostics, reset, and unmount cleanup.
+
+The existing Atomic Transaction, Typed Events, and Runtime Observability
+scenarios remain applicable. Their introductory copy now directs overlap
+exploration to the new scenario and describes event ownership in session-local
+terms. No playground scenario was removed.
+
+### Exit criterion
+
+The playground visibly demonstrates isolated top-level session ownership,
+conflict behaviour, scheduler independence, and diagnostic causality through
+public runtime APIs only.
+
+---
+
+## C11 — Documentation and final validation
+
+**Status: complete. Milestone 10 closed on 16 September 2026.**
+
+### What shipped
+
+Maintained architecture, public API, README, ADR, migration, historical
+notification-buffer, roadmap, and test-strategy documentation now describe the
+isolated-session contract consistently. The legacy ADR path now points to the
+maintained decision record rather than preserving a conflicting contract.
+
+The temporary pass-through notification-buffer compatibility seam was removed.
+Runtime capabilities now call observer and scheduler sinks directly, and the
+transaction coordinator owns only session lifecycle, staging, generation
+validation, and commit.
+
+### Validation handoff
+
+The project owner reported final dependency-backed offline verification
+successful for:
+
+```text
+pnpm check:boundaries
+pnpm typecheck --pretty false
+pnpm test:run --reporter verbose --no-color
+pnpm build
+```
+
+Focused static validation and repository consistency checks were also completed
+for the final cleanup package. The Atomic Transaction, Transaction Isolation,
+Typed Events, and Runtime Observability playgrounds remain applicable and
+collectively demonstrate atomicity, overlap isolation, event ownership,
+scheduler-specific settlement, conflict handling, and diagnostic causality.
+
+Update maintained documentation only after the behaviour is validated:
+
+- `docs/architecture/03-scheduler-transactions-and-concurrency.md`;
+- `docs/api/01-public-api.md`;
+- `README.md` transaction ownership section;
+- `docs/implementation/23-transaction-notification-buffer-implementation-note.md`;
+- `docs/decisions/ADR-005-atomic-graph-transactions.md`;
+- transaction migration guidance;
+- test strategy and validation handoff.
+
+The maintained contract must state clearly:
+
+- every top-level `runtime.transaction(...)` creates an independent session;
+- `transaction.transaction(...)` is the only explicit same-session nesting
+  mechanism;
+- plain runtime operations remain independent;
+- generation conflicts protect overlapping writes to the same context;
+- notification and scheduling are not gated by unrelated sessions;
+- `whenSettled()` remains scheduler-specific;
+- diagnostic causality is session-local;
+- transactions provide local graph atomicity, not backend rollback.
+
+### Final validation
+
+Run:
+
+```text
+pnpm check:boundaries
+pnpm typecheck --pretty false
+pnpm test:run --reporter verbose --no-color
+pnpm build
+```
+
+Manually validate the Atomic Transaction, Transaction Isolation, Typed Events,
+and Runtime Observability playground paths, including both transaction
+completion orders, rollback, conflict, notification timing, scheduler-specific
+settlement, reset, unmount, and causal diagnostic output.
+
+### Exit criterion
+
+All commands pass, manual paths pass, maintained docs contain no shared-group
+language, and the completed implementation matches the isolated-session ADR.

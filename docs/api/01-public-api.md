@@ -194,35 +194,62 @@ const periods = useNode(PointPeriods, {
 
 Create the runtime inside the store factory so each Pinia instance owns an independent runtime. Keep graph definitions at module scope. Do not mirror graph node state into Pinia.
 
-## Transaction seam
+## Transactions
+
+Use the callback handle for all work that belongs to one atomic local graph transaction:
 
 ```ts
-await runtime.transaction(async transaction => {
+const result = await runtime.transaction(async transaction => {
   transaction.setContext(JobSeekerId, 123);
-  await someLocalWork();
+  transaction.publish(AppointmentBooked, payload);
+  return "committed";
 });
 ```
 
-Atomic local context transactions use the explicit `GraphTransaction` handle. Calls to `transaction.setContext(...)` are held until the successful outer transaction completes, and public reads remain committed reads while work is open. Final values commit together, shared descendants invalidate once, and affected attempts abort after generation advancement. Synchronous or asynchronous failure discards staged context changes. `runtime.whenSettled()` observes the ordinary scheduler directly. Call it after awaiting a transaction when settlement must include work triggered by that transaction commit. Plain `runtime.execute(...)`, `runtime.prefetch(...)`, and `runtime.refresh(...)` calls remain available while another transaction is open. They read committed graph state and publish their results independently. These operations are intentionally absent from `GraphTransaction`. Overlapping transaction calls on one runtime join a single group: the first call is the root, all joined calls settle before the group closes, and the root outcome controls commit or rollback. Plain `runtime.setContext(...)` calls are always committed immediately, even while another transaction is open, and are not discarded by that transaction's rollback. If a transaction staged the same context before an independent write changed its committed generation, transaction commit rejects atomically with `GraphTransactionConflictError`. The independent value is preserved, and no staged context or event effect commits. Observer notification and automatic scheduling for these plain runtime operations are also immediate and are not held behind the unrelated transaction. Transactions do not provide backend rollback.
+Context changes and event publications remain staged until the callback completes successfully. Commit validates the generation captured when each context was first staged. A conflict rejects with `GraphTransactionConflictError` and applies none of the session's context or event effects.
 
-The transaction handle exposes only `setContext(...)` and `publish(...)`. It becomes invalid when the shared transaction group closes. Later use throws `Graph transaction is no longer active.`
+Every top-level `runtime.transaction(...)` call creates an independent session. Overlapping calls do not join automatically, do not share staged work, and do not share commit or rollback outcomes.
 
-Conflicting immediate writes are observable:
+Use `transaction.transaction(...)` only when work must join the same atomic boundary:
 
 ```ts
-try {
-  await runtime.transaction(async transaction => {
-    transaction.setContext(JobSeekerId, 123);
-    await localWork();
+await runtime.transaction(async transaction => {
+  transaction.setContext(ContextA, valueA);
+
+  await transaction.transaction(async nested => {
+    nested.setContext(ContextB, valueB);
+    nested.publish(DomainChanged, payload);
   });
-} catch (error) {
-  if (error instanceof GraphTransactionConflictError) {
-    console.log(error.contextKeys);
-  }
-}
+});
 ```
 
-`GraphTransactionConflictError.contextKeys` is immutable and sorted deterministically. Conflict checking occurs before staged event predicates and graph mutation, so no staged context or event effect is partially applied.
+The nested callback uses the same session. If its failure escapes the outer callback, the session rolls back. If the outer callback catches the failure, the outer callback may continue and commit.
+
+Plain runtime operations remain independent while a transaction is open:
+
+```ts
+const pending = runtime.transaction(async transaction => {
+  transaction.setContext(ContextA, stagedValue);
+  await gate;
+});
+
+runtime.setContext(ContextB, immediateValue);
+runtime.publish(UnrelatedEvent, payload);
+await runtime.refresh([SomeNode]);
+```
+
+Those operations use committed state and dispatch notifications and scheduler work immediately.
+
+`runtime.whenSettled()` is scheduler-specific. For transaction-triggered scheduler work, await in this order:
+
+```ts
+await runtime.transaction(transaction => {
+  transaction.setContext(ContextA, valueA);
+});
+await runtime.whenSettled();
+```
+
+An open transaction that has not committed has not requested scheduler work and does not keep `whenSettled()` pending.
 
 ## Typed event definitions
 

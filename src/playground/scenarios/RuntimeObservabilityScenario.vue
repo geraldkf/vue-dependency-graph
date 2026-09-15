@@ -2,8 +2,9 @@
   <section aria-labelledby="runtime-observability-heading">
     <h2 id="runtime-observability-heading">Runtime Observability</h2>
     <p>
-      Run deterministic graph actions and inspect their causal event timeline,
-      metrics, and safely redacted snapshot without using console logging.
+      Run deterministic graph actions for one transaction at a time and inspect
+      the causal event timeline, metrics, and safely redacted snapshot. Use
+      Transaction Isolation to compare overlapping top-level sessions.
     </p>
 
     <p data-testid="observability-case">Selected case: {{ selectedCase }}</p>

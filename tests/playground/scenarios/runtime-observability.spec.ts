@@ -14,25 +14,48 @@ describe("RuntimeObservabilityScenario", () => {
     });
 
     await fireEvent.click(screen.getByRole("button", { name: "Change context" }));
-    expect(screen.getByTestId("observability-case").textContent).toContain("case-200");
-    expect(screen.getByTestId("observability-outcome").textContent).toContain(
-      "context changed",
-    );
+    await waitFor(() => {
+      expect(screen.getByTestId("observability-case").textContent).toContain("case-200");
+      expect(screen.getByTestId("observability-outcome").textContent).toContain(
+        "context changed",
+      );
+    });
 
     await fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
+    await waitFor(() => {
+      expect(screen.getByTestId("observability-outcome").textContent).toContain(
+        "explicit refresh",
+      );
+    });
+
     await fireEvent.click(screen.getByRole("button", { name: "Fail next request" }));
-    expect(screen.getByTestId("observability-timeline").textContent).toContain(
-      "node.load.failed",
-    );
+    await waitFor(() => {
+      expect(screen.getByTestId("observability-outcome").textContent).toContain(
+        "request failed",
+      );
+      expect(screen.getByTestId("observability-timeline").textContent).toContain(
+        "node.load.failed",
+      );
+    });
 
     await fireEvent.click(screen.getByRole("button", { name: "Recover" }));
+    await waitFor(() => {
+      expect(screen.getByTestId("observability-outcome").textContent).toContain(
+        "request recovered",
+      );
+    });
+
     await fireEvent.click(
       screen.getByRole("button", { name: "Run transaction rollback" }),
     );
-    await fireEvent.click(screen.getByRole("button", { name: "Run mutation" }));
+    await waitFor(() => {
+      expect(screen.getByTestId("observability-rollback-count").textContent).toContain("1");
+    });
 
-    expect(screen.getByTestId("observability-mutation-count").textContent).toContain("1");
-    expect(screen.getByTestId("observability-rollback-count").textContent).toContain("1");
+    await fireEvent.click(screen.getByRole("button", { name: "Run mutation" }));
+    await waitFor(() => {
+      expect(screen.getByTestId("observability-mutation-count").textContent).toContain("1");
+    });
     expect(screen.getByTestId("observability-snapshot").textContent).toContain(
       '"status": "omitted"',
     );
@@ -50,16 +73,20 @@ describe("RuntimeObservabilityScenario", () => {
     });
 
     await fireEvent.click(screen.getByRole("button", { name: "Run mutation" }));
-    expect(screen.getByTestId("observability-mutation-count").textContent).toContain("1");
+    await waitFor(() => {
+      expect(screen.getByTestId("observability-mutation-count").textContent).toContain("1");
+    });
 
     await fireEvent.click(screen.getByRole("button", { name: "Reset" }));
 
-    expect(screen.getByTestId("observability-case").textContent).toContain("case-100");
-    expect(screen.getByTestId("observability-mutation-count").textContent).toContain("0");
-    expect(screen.getByTestId("observability-outcome").textContent).toContain("reset");
-    expect(screen.getByTestId("observability-snapshot").textContent).toContain(
-      '"runtimeId": "runtime"',
-    );
+    await waitFor(() => {
+      expect(screen.getByTestId("observability-case").textContent).toContain("case-100");
+      expect(screen.getByTestId("observability-mutation-count").textContent).toContain("0");
+      expect(screen.getByTestId("observability-outcome").textContent).toContain("reset");
+      expect(screen.getByTestId("observability-snapshot").textContent).toContain(
+        '"runtimeId": "runtime"',
+      );
+    });
   });
 
   it("dispose releases the dedicated runtime subscription", async () => {

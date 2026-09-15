@@ -2,9 +2,22 @@
 
 ### Status
 
-Approved for sequential implementation. Planning and documentation are complete. Runtime implementation has not started.
+**Closed on 16 September 2026.**
 
-Milestone 9 and Milestone 9H combined offline validation were reported successful by the project owner on 15 September 2026. Milestone 10 may therefore proceed from the validated mutation lifecycle seams.
+M10A through M10G are implemented and validated: diagnostic foundations, execution causality, advanced lifecycle diagnostics, in-memory metrics, safe snapshots, stable normalisation, and the Runtime Observability playground.
+
+The post-M10 transaction-overlap isolation work is also complete. It replaced ambient shared transaction groups with independent sessions, made nested composition explicit, isolated notification, scheduling, settlement, and diagnostic causality, added conflict and event overlap coverage, and added the Transaction Isolation playground.
+
+The project owner reported the final dependency-backed offline verification successful. The maintained validation commands are:
+
+```text
+pnpm check:boundaries
+pnpm typecheck --pretty false
+pnpm test:run --reporter verbose --no-color
+pnpm build
+```
+
+Milestone 11 may proceed from the validated observability and transaction ownership contracts.
 
 ### Objective
 
@@ -336,7 +349,7 @@ Each step starts from the previous validated cumulative checkout. Do not combine
 
 #### M10A: Diagnostic foundation
 
-Status: Implemented and statically reviewed. Dependency-backed repository validation pending. See `docs/implementation/111-milestone-10a-diagnostic-foundation-note.md`.
+Status: Implemented and validated. See `docs/implementation/111-milestone-10a-diagnostic-foundation-note.md`.
 
 Deliver:
 
@@ -368,7 +381,7 @@ Exit criteria:
 
 #### M10B: Core execution causality
 
-Status: Implemented and statically reviewed. Dependency-backed repository validation pending. See `docs/implementation/112-milestone-10b-core-execution-causality-note.md`.
+Status: Implemented and validated. See `docs/implementation/112-milestone-10b-core-execution-causality-note.md`.
 
 Deliver instrumentation for:
 
@@ -397,7 +410,7 @@ Exit criteria:
 
 #### M10C: Advanced lifecycle diagnostics
 
-Status: Implemented and statically reviewed. Dependency-backed repository validation pending. See `docs/implementation/113-milestone-10c-advanced-lifecycle-diagnostics-note.md`.
+Status: Implemented and validated. See `docs/implementation/113-milestone-10c-advanced-lifecycle-diagnostics-note.md`.
 
 Deliver instrumentation for:
 
@@ -423,7 +436,7 @@ Exit criteria:
 
 #### M10D: In-memory collector and metrics
 
-Status: Implemented and statically reviewed. Dependency-backed repository validation pending. See `docs/implementation/114-milestone-10d-in-memory-diagnostics-metrics-note.md`.
+Status: Implemented and validated. See `docs/implementation/114-milestone-10d-in-memory-diagnostics-metrics-note.md`.
 
 Deliver:
 
@@ -451,7 +464,7 @@ Exit criteria:
 
 #### M10E: Snapshot schema and redaction
 
-Status: Implemented and statically reviewed. Dependency-backed repository validation pending. See `docs/implementation/115-milestone-10e-diagnostic-snapshots-redaction-note.md`.
+Status: Implemented and validated. See `docs/implementation/115-milestone-10e-diagnostic-snapshots-redaction-note.md`.
 
 Deliver:
 
@@ -481,7 +494,7 @@ Exit criteria:
 
 #### M10F: Stable normaliser and regression suite
 
-Status: Implemented and statically reviewed. Dependency-backed repository validation pending. See `docs/implementation/116-milestone-10f-stable-normaliser-regression-note.md`.
+Status: Implemented and validated. See `docs/implementation/116-milestone-10f-stable-normaliser-regression-note.md`.
 
 Deliver:
 
@@ -503,7 +516,7 @@ Exit criteria:
 
 #### M10G: Observability playground
 
-Status: Implemented and statically reviewed. Dependency-backed automated and manual browser validation pending. See `docs/implementation/117-milestone-10g-runtime-observability-playground-note.md`.
+Status: Implemented and validated. See `docs/implementation/117-milestone-10g-runtime-observability-playground-note.md`.
 
 Deliver one deterministic `Runtime Observability` scenario using a dedicated runtime and collector.
 

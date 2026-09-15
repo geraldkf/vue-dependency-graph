@@ -67,8 +67,8 @@ describe("transaction staging and operation boundaries", () => {
 
     await runtime.transaction(async transaction => {
       transaction.setContext(context, 2);
-      await runtime.transaction(() => {
-        transaction.setContext(context, 3);
+      await transaction.transaction(inner => {
+        inner.setContext(context, 3);
       });
       transaction.setContext(context, 4);
     });
@@ -106,8 +106,8 @@ describe("transaction staging and operation boundaries", () => {
 
     await runtime.transaction(async transaction => {
       transaction.setContext(context, 2);
-      await runtime.transaction(() => {
-        transaction.setContext(context, 3);
+      await transaction.transaction(inner => {
+        inner.setContext(context, 3);
         expect(runtime.getState(context).data).toBe(1);
       });
       expect(runtime.getState(context).data).toBe(1);

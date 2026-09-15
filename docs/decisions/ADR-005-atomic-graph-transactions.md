@@ -2,7 +2,23 @@
 
 ## Status
 
-Implemented and validated for Milestone 5 on 14 September 2026. This ADR records where the implementation will live and why, so Milestone 5 does not have to re-derive it, and so Milestone 9 (optimistic mutations) starts from a known constraint rather than discovering it after the fact.
+Accepted, implemented, and validated. Original Milestone 5 decision recorded on 14 September 2026. Isolated transaction-session amendment and final cleanup completed on 16 September 2026.
+
+## Current decision summary
+
+- Each top-level `runtime.transaction(...)` call creates an independent `TransactionSession`.
+- Context changes and event publications are staged on the callback handle.
+- `transaction.transaction(...)` is the explicit same-session composition API.
+- Plain runtime operations remain independent and use committed graph state.
+- Context generations provide first-commit-wins optimistic conflict detection.
+- A conflicted session applies no context, event, notification, or scheduler effect.
+- Observer notification and scheduler dispatch are direct runtime capabilities and are not gated by unrelated open sessions.
+- `runtime.whenSettled()` is scheduler-specific.
+- Transaction diagnostic operation and cause IDs remain session-local.
+- Transactions provide local graph atomicity only, not backend rollback.
+- The former transaction notification buffer and its final pass-through compatibility wrapper have been removed.
+
+The remainder of this ADR preserves the original decision history and subsequent amendments. Where historical text describes ambient transaction depth, shared groups, or a notification buffer, this current summary and the isolated-session amendment are authoritative.
 
 ## Context
 
@@ -144,33 +160,49 @@ coalescing a transaction's *own* dispatch — its only remaining effect,
 once transactions stop sharing a group, is this unrelated-caller delay.
 This is addressed as part of the same body of work.
 
-**Judgment call recorded here, per this amendment:** `whenSettled()` /
-`resolveSettlementIfIdle()` are the one place a narrow cross-transaction
-guard is arguably still legitimate — a transaction that hasn't committed
-yet hasn't made its eventual `schedule()` call, so the real scheduler can
-look idle a moment before it isn't. Two options were weighed:
+**Settlement decision:** keep `runtime.whenSettled()` scheduler-specific.
 
-1. **Keep a narrow guard, scoped to currently-open sessions** — a global
-   `whenSettled()` call waits on any open transaction session's eventual
-   commit (and whatever `schedule()` it triggers), in addition to the
-   scheduler's own idle state. No `notify`/`schedule` gating is
-   reintroduced; only settlement checks are affected, and "is everything
-   on this runtime settled" is inherently a whole-runtime question, so
-   this is a narrower and more defensible scope than the `notify` gating
-   being removed.
-2. **Remove the guard entirely** — `whenSettled()` reads the scheduler's
-   idle state directly. Zero residual cross-transaction coupling, at the
-   cost of a narrow race: a caller checking `whenSettled()` at the exact
-   moment an unrelated transaction is mid-commit could see "settled" one
-   tick early.
+Two options were considered:
 
-**Decision: Option 1.** The common case this protects — a caller awaiting
-its own transaction, then immediately checking `whenSettled()` for the
-same work to finish propagating — is more likely to matter in practice
-than the narrow unrelated-transaction case Option 2 leaves unprotected,
-and the scope (settlement checks only, not live `notify` dispatch) keeps
-it well short of reintroducing the coupling this amendment removes
-elsewhere.
+1. Make `runtime.whenSettled()` wait for every transaction session open at
+   the time of the call, then wait for scheduler work triggered by those
+   sessions.
+2. Keep `runtime.whenSettled()` as direct scheduler settlement. An open
+   transaction that has not committed has not yet requested scheduler work,
+   so it is outside this method's contract.
+
+**Decision: Option 2.** The runtime is shared by unrelated application
+features. Allowing one long-running transaction callback to block another
+feature's scheduler-settlement check would preserve cross-feature coupling
+through a different channel after notification and scheduling dispatch had
+been isolated.
+
+The intended usage for transaction-triggered work is explicit:
+
+```ts
+await runtime.transaction(async transaction => {
+  transaction.setContext(Context, value);
+});
+await runtime.whenSettled();
+```
+
+When the transaction promise resolves successfully, its commit has already
+requested any required scheduler work. The following `whenSettled()` waits
+for that work. Calling `whenSettled()` while a transaction remains open may
+resolve if the scheduler is currently idle; it does not predict work that an
+uncommitted session may request later.
+
+During C4 implementation, source inspection also confirmed that the former
+transaction-aware `buffer.whenSettled()` path had never been wired to the
+public runtime API; public `runtime.whenSettled()` already delegated directly
+to the scheduler. C4 therefore removes the unreachable guarded semantics
+rather than making them public. This clarifies and preserves the effective
+runtime contract while removing the notification buffer's remaining ambient
+transaction state.
+
+A separate whole-runtime quiescence API that includes open transactions is
+deferred until a concrete consumer requires one. It must not be added by
+silently broadening `runtime.whenSettled()`.
 
 Implementation plan: `docs/implementation/114-transaction-overlap-
 isolation-plan.md`.

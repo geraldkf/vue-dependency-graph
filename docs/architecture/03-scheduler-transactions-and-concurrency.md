@@ -189,7 +189,7 @@ Policy retries remain inside the refresh-policy controller and delegate every at
 
 Pause clears timers while retaining one remaining delay and timer purpose. Resume restores at most one timeout. Active loads continue during pause, and recurring policy timers remain outside scheduler settlement.
 
-## Transaction seam
+## Transaction sessions
 
 ```ts
 await runtime.transaction(async transaction => {
@@ -199,27 +199,37 @@ await runtime.transaction(async transaction => {
 });
 ```
 
-The transaction notification buffer defers only transaction-owned commit notification and scheduler dispatch until the transaction group commits. Nested transactions collapse into one outer commit. Context staging is explicitly owned by `GraphTransaction`: `transaction.setContext(...)` stages, while plain `runtime.setContext(...)` always mutates committed context state immediately. Immediate writes use direct observer and scheduler dispatch, so their effects proceed while an unrelated transaction remains open.
+Each top-level `runtime.transaction(...)` call creates one independent `TransactionSession`. The session stages context changes and event publications, validates context generations before commit, and applies all committed effects in one synchronous graph commit. A failed callback discards only that session's staged work.
 
-Milestone 5 context staging, commit-wide invalidation, rollback, settlement, and execution-race behaviour are implemented and validated. Successful commit reconciles effective final context values, deduplicates descendants, advances affected generations once, aborts affected attempts after generation commit, emits one notification, and requests at most one scheduler pass. `runtime.whenSettled()` observes the ordinary scheduler directly; callers that need transaction-triggered work included await the transaction before awaiting settlement. Rollback produces no phantom scheduling. A result committed before context commit is preserved as stale data, while a completion after generation advancement is rejected as obsolete even if abort is ignored. Overlapping calls on one runtime join the active transaction group. The first call owns the group outcome, all participants settle before commit or rollback, and notification buffering remains open for the full group lifetime. Automated repository validation and manual Atomic Transaction playground validation were reported successful on 14 September 2026.
+There is no ambient transaction group and no notification buffer. Observer notification and scheduler dispatch are direct runtime capabilities. A successful session notifies and schedules immediately even while another unrelated transaction callback remains open.
 
-Transaction event predicates evaluate before graph mutation using final staged context values as an overlay over committed dependency state. This preserves atomic failure: a predicate exception leaves both context and event effects uncommitted. Ordered publications may evaluate separately, while their resulting affected-node set is deduplicated before generation advancement. Event staging is explicitly owned by `GraphTransaction`: `transaction.publish(...)` stages, while plain `runtime.publish(...)` always applies event matching and graph invalidation immediately. Immediate publications use direct observer and scheduler dispatch, so their effects proceed while an unrelated transaction remains open.
+Explicit same-session composition uses the handle:
 
-Before transaction commit evaluates staged events or mutates graph state, the coordinator compares each staged context's first-observed committed generation with its current generation. Any mismatch rejects the whole transaction with `GraphTransactionConflictError`. Conflict keys are sorted for deterministic diagnostics. No staged context, staged event, invalidation, abort, notification, or scheduling effect is applied. A write completed before that context is first staged becomes the transaction's expected baseline and does not conflict.
+```ts
+await runtime.transaction(async transaction => {
+  transaction.setContext(ContextA, valueA);
+  await transaction.transaction(async nested => {
+    nested.setContext(ContextB, valueB);
+  });
+});
+```
 
-Explicit overlapping `runtime.transaction(...)` calls retain the existing joined-group model. They share staged values, initial expected generations, publications, and the root outcome. All handles close when the group closes.
+`transaction.transaction(...)` reuses the owning session. Ordinary async error propagation determines whether the outer callback catches a nested failure or lets the whole session roll back.
 
-Plain caller-owned `execute(...)`, `prefetch(...)`, and `refresh(...)` operations remain available while a transaction is open. They read committed context values because staged values are not part of public runtime state. Their execution notifications are dispatched directly rather than being held by the unrelated transaction buffer. The `GraphTransaction` handle does not expose these operations.
-
-The planned limit does not gate derived nodes and is orthogonal to transaction semantics.
-
+`runtime.whenSettled()` describes scheduler settlement only. Await the transaction promise before calling `whenSettled()` when commit-triggered scheduler work must complete. Open sessions that have not committed are outside the settlement contract.
 
 ## Transaction ownership boundary
 
-`GraphTransaction` is an explicit capability owned by the transaction coordinator. A callback receives a narrow facade over the active joined group. The facade stages context values and event publications, and every facade closes when the group commits, rolls back, or fails commit preparation. Public runtime methods do not infer participation from transaction depth.
+Transaction membership is explicit:
 
-Immediate graph changes use direct observer and scheduler dispatch. Transaction commit uses the transaction-owned notification buffer to emit one coherent notification and request at most one scheduler pass. `runtime.whenSettled()` observes the scheduler directly; callers await the transaction first when settlement must include commit-triggered work.
+- `transaction.setContext(...)` and `transaction.publish(...)` belong to that handle's session;
+- `transaction.transaction(...)` composes work into the same session;
+- each top-level `runtime.transaction(...)` call creates a separate session;
+- plain runtime operations read and update committed state immediately;
+- disjoint sessions commit or roll back independently in completion order;
+- overlapping sessions that stage the same context use generation-based first-commit-wins conflict detection;
+- conflicted sessions apply no context, event, notification, or scheduler effect;
+- diagnostic operation and cause IDs remain attached to the owning session.
 
-Generation-based conflict detection protects staged contexts from silently overwriting later immediate writes. Conflict validation runs before event predicate evaluation and before mutation. Explicit overlapping `runtime.transaction(...)` calls continue to join one group and share staged state, expected generations, publications, and the root outcome.
+The transaction model is local to one graph runtime. It does not provide remote, distributed, or cross-service rollback.
 
-See `docs/api/01-public-api.md` for the public contract and `docs/implementation/67-toi-8e-migration-guidance.md` for migration examples.

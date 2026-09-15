@@ -72,8 +72,8 @@ describe("transaction rollback", () => {
     await expect(
       runtime.transaction(async transaction => {
         transaction.setContext(context, 2);
-        await runtime.transaction(() => {
-          transaction.setContext(context, 3);
+        await transaction.transaction(inner => {
+          inner.setContext(context, 3);
           throw new Error("inner failure");
         });
       })
@@ -90,8 +90,8 @@ describe("transaction rollback", () => {
     await runtime.transaction(async transaction => {
       transaction.setContext(context, 2);
       try {
-        await runtime.transaction(() => {
-          transaction.setContext(context, 3);
+        await transaction.transaction(inner => {
+          inner.setContext(context, 3);
           throw new Error("caught inner failure");
         });
       } catch (error) {
@@ -110,8 +110,8 @@ describe("transaction rollback", () => {
 
     await expect(
       runtime.transaction(async transaction => {
-        await runtime.transaction(() => {
-          transaction.setContext(context, 2);
+        await transaction.transaction(inner => {
+          inner.setContext(context, 2);
         });
         throw new Error("outer failure");
       })

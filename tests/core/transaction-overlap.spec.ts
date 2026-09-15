@@ -6,85 +6,99 @@ import {
 } from "../../src/core";
 import { deferred } from "./test-helpers";
 
-describe("overlapping transactions", () => {
-  it("joins overlapping transaction calls and commits after every participant settles", async () => {
+describe("overlapping transaction sessions", () => {
+  it("commits disjoint sessions independently in completion order", async () => {
     const first = defineContextNode({ key: "overlap-first", initialValue: 1 });
     const second = defineContextNode({ key: "overlap-second", initialValue: 10 });
-    const releaseRoot = deferred<void>();
-    const releaseJoined = deferred<void>();
+    const releaseFirst = deferred<void>();
+    const releaseSecond = deferred<void>();
     const runtime = createGraphRuntime(createGraph({ nodes: [first, second] }));
-    let rootSettled = false;
 
-    const rootTransaction = runtime.transaction(async transaction => {
+    const firstTransaction = runtime.transaction(async transaction => {
       transaction.setContext(first, 2);
-      await releaseRoot.promise;
-    }).then(() => {
-      rootSettled = true;
+      await releaseFirst.promise;
     });
-
-    const joinedTransaction = runtime.transaction(async transaction => {
+    const secondTransaction = runtime.transaction(async transaction => {
       transaction.setContext(second, 20);
-      await releaseJoined.promise;
+      await releaseSecond.promise;
     });
 
-    releaseRoot.resolve();
-    await Promise.resolve();
+    releaseSecond.resolve();
+    await secondTransaction;
 
-    expect(rootSettled).toBe(false);
-    expect(runtime.getState(first).data).toBe(1);
-    expect(runtime.getState(second).data).toBe(10);
+    expect(runtime.getState(first)).toMatchObject({ data: 1, generation: 0 });
+    expect(runtime.getState(second)).toMatchObject({ data: 20, generation: 1 });
 
-    releaseJoined.resolve();
-    await Promise.all([rootTransaction, joinedTransaction]);
+    releaseFirst.resolve();
+    await firstTransaction;
 
-    expect(rootSettled).toBe(true);
-    expect(runtime.getState(first).data).toBe(2);
-    expect(runtime.getState(second).data).toBe(20);
+    expect(runtime.getState(first)).toMatchObject({ data: 2, generation: 1 });
+    expect(runtime.getState(second)).toMatchObject({ data: 20, generation: 1 });
   });
 
-  it("uses the root transaction outcome when a joined overlapping call fails", async () => {
-    const context = defineContextNode({ key: "overlap-joined-failure", initialValue: 1 });
-    const releaseRoot = deferred<void>();
-    const runtime = createGraphRuntime(createGraph({ nodes: [context] }));
-
-    const rootTransaction = runtime.transaction(async transaction => {
-      await releaseRoot.promise;
+  it("does not commit a failed session through an overlapping successful session", async () => {
+    const successful = defineContextNode({
+      key: "overlap-successful",
+      initialValue: 1,
     });
-    const joinedTransaction = runtime.transaction(transaction => {
-      transaction.setContext(context, 2);
-      throw new Error("joined failure");
+    const failed = defineContextNode({ key: "overlap-failed", initialValue: 10 });
+    const releaseSuccessful = deferred<void>();
+    const runtime = createGraphRuntime(
+      createGraph({ nodes: [successful, failed] }),
+    );
+
+    const successfulTransaction = runtime.transaction(async transaction => {
+      transaction.setContext(successful, 2);
+      await releaseSuccessful.promise;
+    });
+    const failedTransaction = runtime.transaction(transaction => {
+      transaction.setContext(failed, 20);
+      throw new Error("independent failure");
     });
 
-    await expect(joinedTransaction).rejects.toThrow("joined failure");
-    releaseRoot.resolve();
-    await rootTransaction;
+    await expect(failedTransaction).rejects.toThrow("independent failure");
+    expect(runtime.getState(successful)).toMatchObject({ data: 1, generation: 0 });
+    expect(runtime.getState(failed)).toMatchObject({ data: 10, generation: 0 });
 
-    expect(runtime.getState(context).data).toBe(2);
-    expect(runtime.getState(context).generation).toBe(1);
+    releaseSuccessful.resolve();
+    await successfulTransaction;
+
+    expect(runtime.getState(successful)).toMatchObject({ data: 2, generation: 1 });
+    expect(runtime.getState(failed)).toMatchObject({ data: 10, generation: 0 });
   });
 
-  it("rolls back joined overlapping work when the root transaction fails", async () => {
-    const context = defineContextNode({ key: "overlap-root-failure", initialValue: 1 });
-    const releaseRoot = deferred<void>();
-    const releaseJoined = deferred<void>();
-    const runtime = createGraphRuntime(createGraph({ nodes: [context] }));
-
-    const rootTransaction = runtime.transaction(async transaction => {
-      await releaseRoot.promise;
-      throw new Error("root failure");
+  it("preserves a successful session when another overlapping session rolls back", async () => {
+    const rolledBack = defineContextNode({
+      key: "overlap-rolled-back",
+      initialValue: 1,
     });
-    const joinedTransaction = runtime.transaction(async transaction => {
-      transaction.setContext(context, 2);
-      await releaseJoined.promise;
+    const committed = defineContextNode({
+      key: "overlap-committed",
+      initialValue: 10,
+    });
+    const releaseRollback = deferred<void>();
+    const releaseCommit = deferred<void>();
+    const runtime = createGraphRuntime(
+      createGraph({ nodes: [rolledBack, committed] }),
+    );
+
+    const rolledBackTransaction = runtime.transaction(async transaction => {
+      transaction.setContext(rolledBack, 2);
+      await releaseRollback.promise;
+      throw new Error("independent rollback");
+    });
+    const committedTransaction = runtime.transaction(async transaction => {
+      transaction.setContext(committed, 20);
+      await releaseCommit.promise;
     });
 
-    releaseRoot.resolve();
-    releaseJoined.resolve();
+    releaseRollback.resolve();
+    await expect(rolledBackTransaction).rejects.toThrow("independent rollback");
 
-    await expect(rootTransaction).rejects.toThrow("root failure");
-    await joinedTransaction;
+    releaseCommit.resolve();
+    await committedTransaction;
 
-    expect(runtime.getState(context).data).toBe(1);
-    expect(runtime.getState(context).generation).toBe(0);
+    expect(runtime.getState(rolledBack)).toMatchObject({ data: 1, generation: 0 });
+    expect(runtime.getState(committed)).toMatchObject({ data: 20, generation: 1 });
   });
 });

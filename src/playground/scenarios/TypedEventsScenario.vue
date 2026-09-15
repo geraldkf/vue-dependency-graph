@@ -24,8 +24,9 @@
     <section aria-labelledby="typed-events-independent-heading">
       <h3 id="typed-events-independent-heading">Unrelated runtime event</h3>
       <p>
-        A plain runtime publication remains immediate while the appointment
-        event transaction is staged and survives its rollback.
+        The appointment event belongs to its transaction session. This plain
+        runtime publication remains immediate while that session is open and
+        survives its rollback.
       </p>
       <p data-testid="typed-events-independent-status">
         Independent status: {{ unrelatedStatus.data.value }}

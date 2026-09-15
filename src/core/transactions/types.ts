@@ -11,6 +11,10 @@ export interface EventPublication {
   readonly payload: unknown;
 }
 
+export interface TransactionCommitContext {
+  readonly operationId: string;
+}
+
 export interface GraphTransaction {
   readonly setContext: <TValue>(
     node: ContextNodeDefinition<TValue>,

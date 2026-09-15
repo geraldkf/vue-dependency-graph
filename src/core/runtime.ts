@@ -9,15 +9,12 @@ import {
 } from "./scheduling/scheduler";
 import { createRuntimeObserver } from "./observation/observer";
 import type { RuntimeListener } from "./observation/types";
-import {
-  createRuntimeNotificationBuffer,
-  type RuntimeNotificationBuffer,
-} from "./transactions/notification-buffer";
 import { createRuntimeTransactionCoordinator } from "./transactions/transaction-coordinator";
 import type {
   ContextChange,
   EventPublication,
   GraphTransaction,
+  TransactionCommitContext,
 } from "./transactions/types";
 import { createRuntimeStateStore, type ActiveAttempt } from "./state/state";
 import type {
@@ -172,10 +169,8 @@ export const createGraphRuntime = (
   // - `invalidation`: read inside `execution`'s `onChangedRefreshResult`
   //   callback. `execution` is constructed first, before `invalidation`
   //   exists.
-  // - `buffer`: read inside `execution`'s `notify` callback, same reason.
   let subscriptions!: RuntimeSubscriptionController;
   let invalidation!: RuntimeInvalidationController;
-  let buffer!: RuntimeNotificationBuffer;
   let pendingSchedulerReason: import("./diagnostics/types").GraphExecutionReason =
     "subscription";
   let pendingSchedulerCauseId: string | undefined;
@@ -279,23 +274,10 @@ export const createGraphRuntime = (
     },
   });
 
-  // The buffer's real sinks are the observer's raw notify and the
-  // scheduler's own schedule/resolveSettlementIfIdle. Everything else in
-  // this composition root talks to `buffer.*`, never to `emitNotify` or
-  // `scheduler.schedule` directly, so a future `transaction(...)` call can
-  // defer dispatch without any capability needing to know a transaction is
-  // open.
-  buffer = createRuntimeNotificationBuffer({
-    notify: emitNotify,
-    schedule: scheduler.schedule,
-    resolveSettlementIfIdle: scheduler.resolveSettlementIfIdle,
-    whenSettled: scheduler.whenSettled,
-  });
-
   subscriptions = createRuntimeSubscriptionController({
     graph,
     resolveRegisteredNode: requireRegisteredNode,
-    notify: buffer.notify,
+    notify: emitNotify,
     onAdded: (nodeKeys, requiredNodeKeys) => {
       const operationId = diagnostics.createOperationId();
       diagnostics.emit({
@@ -315,7 +297,7 @@ export const createGraphRuntime = (
         requiredNodeKeys,
       });
     },
-    afterSubscribe: buffer.schedule,
+    afterSubscribe: scheduler.schedule,
     afterUnsubscribe: () => {
       for (const [key, attempt] of getActiveAttempts()) {
         const node = graph.getNode(key);
@@ -327,7 +309,7 @@ export const createGraphRuntime = (
           attempt.controller.abort();
         }
       }
-      buffer.resolveSettlementIfIdle();
+      scheduler.resolveSettlementIfIdle();
     },
   });
 
@@ -337,8 +319,8 @@ export const createGraphRuntime = (
     getActiveAttempt,
     hasSubscribers: subscriptions.hasSubscribers,
     resolveRegisteredNode: requireRegisteredNode,
-    notify: buffer.notify,
-    schedule: buffer.schedule,
+    notify: emitNotify,
+    schedule: scheduler.schedule,
     onContextsCommitted: (contextKeys, affectedNodeKeys, scheduled) => {
       if (!observeGraphChange || !graphChangeOperationId || contextKeys.length === 0) return;
       diagnostics.emit({
@@ -378,45 +360,68 @@ export const createGraphRuntime = (
     contextChanges: readonly ContextChange[],
     eventPublications: readonly EventPublication[],
     immediate: boolean,
+    commitContext?: TransactionCommitContext,
   ): void => {
-    const eventTargets = events.matchPublications(eventPublications, {
-      valueOverlay: contextChanges,
-    });
-    const operationId = graphChangeOperationId || diagnostics.createOperationId();
-    for (const publication of eventPublications) {
-      diagnostics.emit({
-        type: "event.published",
-        operationId,
-        eventKey: publication.event.key,
-        transactionOwned: !immediate,
+    const operationId =
+      commitContext?.operationId ||
+      graphChangeOperationId ||
+      diagnostics.createOperationId();
+    const previousOperationId = graphChangeOperationId;
+    const previousReason = graphChangeReason;
+    const previousObservation = observeGraphChange;
+    graphChangeOperationId = operationId;
+    graphChangeReason = "context-invalidation";
+    pendingSchedulerReason = "context-invalidation";
+    pendingSchedulerCauseId = operationId;
+    observeGraphChange = true;
+
+    try {
+      const eventTargets = events.matchPublications(eventPublications, {
+        valueOverlay: contextChanges,
       });
+      for (const publication of eventPublications) {
+        diagnostics.emit({
+          type: "event.published",
+          operationId,
+          eventKey: publication.event.key,
+          transactionOwned: !immediate,
+        });
+      }
+      if (eventPublications.length > 0) {
+        diagnostics.emit({
+          type: "event.matched",
+          operationId,
+          eventKey: eventPublications.map(({ event }) => event.key).join(","),
+          transactionOwned: !immediate,
+          matchedNodeKeys: eventTargets.map((node) => node.key),
+        });
+      }
+      invalidation.commitContexts(
+        contextChanges,
+        eventTargets,
+        immediate
+          ? { notify: emitNotify, schedule: scheduler.schedule }
+          : undefined,
+      );
+    } finally {
+      graphChangeOperationId = previousOperationId;
+      graphChangeReason = previousReason;
+      observeGraphChange = previousObservation;
     }
-    if (eventPublications.length > 0) {
-      diagnostics.emit({
-        type: "event.matched",
-        operationId,
-        eventKey: eventPublications.map(({ event }) => event.key).join(","),
-        transactionOwned: !immediate,
-        matchedNodeKeys: eventTargets.map((node) => node.key),
-      });
-    }
-    invalidation.commitContexts(
-      contextChanges,
-      eventTargets,
-      immediate
-        ? { notify: emitNotify, schedule: scheduler.schedule }
-        : undefined,
-    );
   };
 
   const transactions = createRuntimeTransactionCoordinator({
-    runWithBufferedNotifications: buffer.runTransaction,
     resolveContextNode: invalidation.resolveContextNode,
     getContextGeneration: (node) => getMutableState(node.key).generation,
     commitImmediate: (contextChanges, eventPublications) =>
       commitGraphChanges(contextChanges, eventPublications, true),
-    commitTransaction: (contextChanges, eventPublications) =>
-      commitGraphChanges(contextChanges, eventPublications, false),
+    commitTransaction: (contextChanges, eventPublications, commitContext) =>
+      commitGraphChanges(
+        contextChanges,
+        eventPublications,
+        false,
+        commitContext,
+      ),
   });
 
   const operations = createRuntimeOperationsController({
@@ -665,8 +670,7 @@ export const createGraphRuntime = (
         type: "transaction.started",
         operationId,
       });
-      graphChangeOperationId = operationId;
-      return transactions.runTransaction(work).then(
+      return transactions.runTransaction(work, { operationId }).then(
         result => {
           diagnostics.emit({
             type: "transaction.committed",

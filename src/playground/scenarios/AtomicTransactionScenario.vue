@@ -2,8 +2,9 @@
   <section aria-labelledby="atomic-transaction-heading">
     <h2 id="atomic-transaction-heading">Atomic Transaction</h2>
     <p>
-      Compare caller-owned transaction progress with committed runtime state.
-      The runtime continues to expose only committed values until commit.
+      Compare one transaction session's progress with committed runtime state.
+      The runtime continues to expose only committed values until commit. Use
+      Transaction Isolation to compare overlapping top-level sessions.
     </p>
 
     <p data-testid="transaction-state">

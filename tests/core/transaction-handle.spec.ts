@@ -56,25 +56,25 @@ describe("graph transaction handle lifecycle", () => {
     expect(runtime.getState(context)).toMatchObject({ data: 1, generation: 0 });
   });
 
-  it("closes joined handles together when the shared group closes", async () => {
+  it("closes nested handles together when their shared session closes", async () => {
     const context = defineContextNode({ key: "context", initialValue: 1 });
     const runtime = createGraphRuntime(createGraph({ nodes: [context] }));
-    let rootHandle!: GraphTransaction;
-    let joinedHandle!: GraphTransaction;
+    let outerHandle!: GraphTransaction;
+    let nestedHandle!: GraphTransaction;
 
     await runtime.transaction(async transaction => {
-      rootHandle = transaction;
-      await runtime.transaction(joinedTransaction => {
-        joinedHandle = joinedTransaction;
-        joinedTransaction.setContext(context, 2);
+      outerHandle = transaction;
+      await transaction.transaction(inner => {
+        nestedHandle = inner;
+        inner.setContext(context, 2);
       });
     });
 
     expect(runtime.getState(context).data).toBe(2);
-    expect(() => rootHandle.setContext(context, 3)).toThrow(
+    expect(() => outerHandle.setContext(context, 3)).toThrow(
       "Graph transaction is no longer active."
     );
-    expect(() => joinedHandle.setContext(context, 3)).toThrow(
+    expect(() => nestedHandle.setContext(context, 3)).toThrow(
       "Graph transaction is no longer active."
     );
   });

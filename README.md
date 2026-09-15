@@ -6,11 +6,9 @@ This repository begins as an isolated research and development project. The exis
 
 ## Status
 
-Design and prototyping. Milestones 1 through 7 are implemented, including the framework-agnostic runtime, subscription scheduler, Vue composables, Pinia-owned runtime integration, atomic local context transactions, typed event-driven invalidation, and reusable query groups.
+Design and prototyping. Milestones 1 through 10 are implemented and validated. The runtime now includes graph execution and scheduling, Vue integration, isolated atomic transaction sessions, typed events, query groups, refresh policies and polling, optimistic mutations, and opt-in runtime observability.
 
-Milestone 8 refresh policies and polling are implemented and validated. The runtime supports stale-after, fixed interval, typed poll-until completion and failure, timeout, bounded retry with backoff and jitter, pause/resume, optional browser lifecycle integration, and a deterministic Polling Progress playground. See `docs/implementation/86-milestone-8-implementation-summary.md`. APIs remain subject to change until the existing-application migration trial is complete.
-
-Milestone 9 and Milestone 9H mutation correctness hardening are implemented and validated, including rollback hardening, updater protection, reconciliation recovery, immediate descendant loading, safe mutation event predicate reads, and the mutation-controller decomposition. Milestone 10 observability is proceeding sequentially; M10A through M10G diagnostic foundations, lifecycle causality, advanced diagnostics, metrics, safe snapshots, stable normalisation, and the Runtime Observability playground are implemented with offline and manual validation pending. See `docs/implementation/110-milestone-10-observability-plan.md`.
+Milestone 10 is closed. It delivered diagnostic event and snapshot contracts, lifecycle causality, in-memory metrics, stable normalisation, the Runtime Observability playground, and transaction-overlap isolation hardening with a dedicated Transaction Isolation playground. APIs remain subject to change until the existing-application migration trial is complete. See `docs/implementation/110-milestone-10-observability-plan.md` and `docs/implementation/114-transaction-overlap-isolation-plan.md`.
 
 ## Repository model
 
@@ -84,6 +82,19 @@ await runtime.refresh([UnrelatedNode]);
 ```
 
 They use committed graph state and proceed independently. If a transaction staged a context before an independent write changed that same context, commit rejects atomically with `GraphTransactionConflictError` and preserves the independent value. Transactions remain local graph transactions and do not roll back remote work.
+
+Each top-level `runtime.transaction(...)` call owns an independent session. To compose work into the same atomic boundary, use the transaction handle explicitly:
+
+```ts
+await runtime.transaction(async transaction => {
+  transaction.setContext(JobSeekerId, 123);
+  await transaction.transaction(async nested => {
+    nested.publish(AppointmentBooked, payload);
+  });
+});
+```
+
+`runtime.whenSettled()` is scheduler-specific. Await the transaction first, then call `whenSettled()` when commit-triggered scheduler work must finish. An unrelated open transaction does not keep the scheduler unsettled.
 
 ## Non-goals
 

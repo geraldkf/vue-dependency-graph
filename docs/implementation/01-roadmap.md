@@ -400,7 +400,9 @@ Exit criteria: rollback cannot revive obsolete work, failed preparation cannot l
 
 ## Milestone 10: Observability
 
-Status: M10A through M10G are implemented with offline and manual validation pending. M10H has not started.  
+**Status: complete and validated on 16 September 2026.**
+
+Status: complete and validated. M10A through M10G observability delivery and final documentation are complete.  
 Implementation plan: docs/implementation/110-milestone-10-observability-plan.md  
 Design decision: docs/decisions/ADR-014-runtime-observability.md
 
@@ -417,6 +419,9 @@ Design decision: docs/decisions/ADR-014-runtime-observability.md
 - [ ] Keep devtools UI, snapshot import, persistence, and production telemetry adapters deferred
 
 Exit criteria: every node execution can be traced to its initiating subscription, invalidation, refresh, or caller-owned operation; metrics are derivable from the same event stream; and a safely redacted, deterministic diagnostic snapshot can be exported without changing runtime behaviour.
+
+
+Transaction ownership hardening completed with Milestone 10 closure: isolated top-level sessions, explicit nested composition, direct notification and scheduling, scheduler-specific settlement, session-local diagnostics, and the Transaction Isolation playground.
 
 ## Milestone 11: Devtools
 
@@ -460,4 +465,4 @@ Exit criteria: one production-shaped workflow runs successfully with measurable 
 
 ## Milestone 9H-G mutation decomposition
 
-M9H-G0 through M9H-G6 are implemented. Mutation update planning, optimistic session policy, graph commits, and settlement coordination now live in focused internal modules behind one runtime-facing mutation controller. Static validation is complete. Milestone 10 remains blocked until boundary checks, full type checking, the complete test suite, and the production build pass in the dependency-backed development environment.
+M9H-G0 through M9H-G6 are implemented and validated. Mutation update planning, optimistic session policy, graph commits, and settlement coordination now live in focused internal modules behind one runtime-facing mutation controller. Milestone 10 is complete and Milestone 11 may proceed.

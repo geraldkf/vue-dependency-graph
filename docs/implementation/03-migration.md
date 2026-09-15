@@ -81,3 +81,31 @@ A temporary adapter may expose old method names over the new graph for increment
 ## Rollback
 
 Keep the old implementation available behind a development or release switch during the first trial where practical. Rollback should not require data migration because the graph cache is client-side and disposable.
+
+## Transaction migration rules
+
+Classify every nested transaction call by ownership intent.
+
+Use `transaction.transaction(...)` when inner work must commit or roll back with the caller:
+
+```ts
+await runtime.transaction(async transaction => {
+  transaction.setContext(ContextA, valueA);
+  await transaction.transaction(nested => {
+    nested.setContext(ContextB, valueB);
+  });
+});
+```
+
+Keep a top-level `runtime.transaction(...)` call when the work is an independent operation that may overlap in time. Independent sessions do not share staged values or outcomes.
+
+After a successful transaction, call `runtime.whenSettled()` only when commit-triggered scheduler work must complete:
+
+```ts
+await runtime.transaction(transaction => {
+  transaction.setContext(ContextA, valueA);
+});
+await runtime.whenSettled();
+```
+
+Do not assume `whenSettled()` waits for unrelated open transactions. Handle `GraphTransactionConflictError` where overlapping sessions or immediate runtime writes may update the same context.

@@ -22,6 +22,7 @@
 import { computed, ref, type Component } from "vue";
 import AggregateQueryScenario from "./scenarios/AggregateQueryScenario.vue";
 import AtomicTransactionScenario from "./scenarios/AtomicTransactionScenario.vue";
+import TransactionIsolationScenario from "./scenarios/TransactionIsolationScenario.vue";
 import ConcurrentConsumersScenario from "./scenarios/ConcurrentConsumersScenario.vue";
 import ConcurrencyLimitScenario from "./scenarios/ConcurrencyLimitScenario.vue";
 import ContextSwitchingScenario from "./scenarios/ContextSwitchingScenario.vue";
@@ -49,6 +50,11 @@ const scenarios = [
     id: "atomic-transaction",
     label: "Atomic Transaction",
     component: AtomicTransactionScenario,
+  },
+  {
+    id: "transaction-isolation",
+    label: "Transaction Isolation",
+    component: TransactionIsolationScenario,
   },
   {
     id: "typed-events",
