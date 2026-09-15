@@ -347,26 +347,27 @@ Exit criteria: a long-running operation progresses to completion without overlap
 
 ## Milestone 9: Mutation framework
 
-Status: Detailed implementation plan prepared; runtime implementation has not started.
+Status: M9A through M9G implementation and maintained documentation complete; dependency-backed automated validation and manual browser verification pending.
 
 Implementation plan: docs/implementation/87-milestone-9-mutation-framework-plan.md  
 Design decision: docs/decisions/ADR-013-mutation-framework.md
 
-- [ ] M9A immutable mutation definitions, typed input/result contracts, and basic execution
-- [ ] M9B atomic direct cache reconciliation for successful data nodes
-- [ ] M9C combined success invalidation and typed event publication
-- [ ] M9D optimistic application, rollback snapshots, and known-rejection restoration
-- [ ] M9E overlap protection, race handling, and unknown remote outcomes
-- [ ] M9F deterministic Optimistic Appointment Booking playground and Vue behavioural coverage
-- [ ] M9G maintained documentation reconciliation and final validation
-- [ ] Preserve framework-agnostic core boundaries and the existing state, invalidation, event, scheduler, and transaction ownership models
-- [ ] Reject unsafe same-node optimistic overlap rather than adding speculative optimistic layers
-- [ ] Never overwrite newer graph work with an obsolete rollback snapshot
-- [ ] Distinguish a known server rejection from an unknown remote outcome
-- [ ] Keep mutation requests outside the data-load concurrency budget
-- [ ] Extract internal invalidation or active-attempt seams only when a concrete M9 slice requires them
-- [ ] Limit opportunistic cleanup to code paths already changed by the active slice
-- [ ] Defer refresh-policy strategy, transaction lifecycle, execution, and Vue adapter refactors that do not deliver mutation behaviour
+- [x] M9A immutable mutation definitions, typed input/result contracts, and basic execution
+- [x] M9B atomic direct cache reconciliation for successful data nodes
+- [x] M9C combined success invalidation and typed event publication
+- [x] M9D optimistic application, rollback snapshots, and known-rejection restoration
+- [x] M9E overlap protection, race handling, and unknown remote outcomes
+- [x] M9F deterministic Optimistic Appointment Booking playground and Vue behavioural coverage
+- [x] M9G maintained documentation reconciliation and migration guidance
+- [ ] M9G dependency-backed automated validation and manual browser verification
+- [x] Preserve framework-agnostic core boundaries and the existing state, invalidation, event, scheduler, and transaction ownership models
+- [x] Reject unsafe same-node optimistic overlap rather than adding speculative optimistic layers
+- [x] Never overwrite newer graph work with an obsolete rollback snapshot
+- [x] Distinguish a known server rejection from an unknown remote outcome
+- [x] Keep mutation requests outside the data-load concurrency budget
+- [x] Extract internal invalidation or active-attempt seams only when a concrete M9 slice requires them
+- [x] Limit opportunistic cleanup to code paths already changed by the active slice
+- [x] Defer refresh-policy strategy, transaction lifecycle, execution, and Vue adapter refactors that do not deliver mutation behaviour
 
 Exit criteria: a failed optimistic appointment booking restores the previous local graph state when the failure is known to be rejected by the server. An unknown outcome is retained and reconciled rather than falsely reported as rolled back.
 

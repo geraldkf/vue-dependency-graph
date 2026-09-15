@@ -2,11 +2,11 @@
 
 ## Status
 
-Proposed for Milestone 9.
+Accepted and implemented in Milestone 9. Full combined-checkout validation remains pending.
 
 ## Context
 
-The graph runtime can load, refresh, invalidate, transact local context changes, and publish typed invalidation events. It does not yet own remote command execution or the local cache effects that follow a command.
+Before Milestone 9, the graph runtime could load, refresh, invalidate, transact local context changes, and publish typed invalidation events, but did not own remote command execution or the local cache effects that follow a command.
 
 Application code therefore has no common way to coordinate:
 
@@ -55,9 +55,15 @@ Mutation execution does not keep a graph transaction or notification buffer open
 - Known rejection and ambiguous transport failure have deliberately different behaviour.
 - The framework avoids unsafe last-writer-wins rollback.
 - The first release cannot layer two optimistic mutations over the same data node.
+- Optimistic ownership is acquired before remote execution. A conflicting same-node request does not start.
+- Known rejection restores complete target and affected-descendant snapshots only when private ownership and all expected generations still match.
+- Rollback conflicts preserve newer values, mark affected state stale, schedule authoritative reconciliation, and report immutable sorted conflict keys with the original rejection as cause.
+- Unknown outcomes retain optimistic values, mark the affected subgraph stale, schedule subscribed reconciliation, and preserve the remote error as the cause of `GraphMutationOutcomeUnknownError`.
 - Direct updates cannot create a first successful value from a node's placeholder initial value.
 - Application code must classify API-specific known rejection when it wants automatic rollback.
 - Remote success followed by local reconciliation failure remains possible and must be reported honestly. No client library can roll back a committed server command automatically.
+- Confirmed success updates, explicit invalidation, and typed event effects share one local commit. Event predicates evaluate against final direct-update values before any graph mutation.
+- A directly updated value is retained as stale when the same node is invalidated, enabling immediate display followed by authoritative reload.
 - Mutation retries, idempotency keys, offline queues, and global command concurrency remain application or later-milestone concerns.
 - Mutation implementation may extract a narrow invalidation planner or safer active-attempt iteration only when required by a concrete commit or rollback path.
 - The runtime state store remains a storage capability and does not become the owner of stale-state, subscription, or cancellation policy.

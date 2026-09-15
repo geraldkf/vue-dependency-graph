@@ -245,7 +245,7 @@ A mutation must never keep a graph transaction or notification buffer open while
 
 Initial interaction rules:
 
-- Calling `runtime.mutate(...)` from a `GraphTransaction` callback is rejected.
+- Plain `runtime.mutate(...)` remains an independent caller-owned operation while a graph transaction is open, consistent with `execute(...)`, `prefetch(...)`, and `refresh(...)`. It reads no staged transaction state and its result is not committed or discarded by that transaction.
 - Calling `runtime.transaction(...)` while a mutation request is pending remains allowed as independent runtime work.
 - Mutation effect callbacks receive only the mutation effect capability and cannot open transactions through that capability.
 - Plain runtime context, event, execute, prefetch, and refresh calls remain independent while a mutation is pending.
@@ -402,85 +402,110 @@ Transaction correlation identifiers belong with Milestone 10 diagnostics. If req
 
 ### M9A: Mutation definitions and public typing
 
+Status: Implementation prepared. Offline validation pending. See `docs/implementation/88-milestone-9a-mutation-definitions-execution-note.md`.
+
 - Add immutable `defineMutation(...)` definitions.
 - Add input and result inference.
-- Add the provisional `runtime.mutate(...)` signature without optimistic behaviour.
+- Add `runtime.mutate(definition, input)` without local graph effects.
 - Validate blank keys and malformed definitions.
-- Add compile-time tests for input, result, data-node updates, invalidation target kinds, and event payloads.
+- Add compile-time tests for input and result typing.
 - Add a basic remote success and rejection execution path.
+- Confirm plain mutation execution remains independent while a graph transaction is open.
+
+Typed data-node updates, invalidation targets, and event payloads move to M9B and M9C, where the corresponding effect APIs and runtime behaviour are introduced together.
 
 Exit condition: a typed command can execute and return its typed result without changing graph state.
 
 ### M9B: Atomic direct cache reconciliation
 
-- Add mutation effect drafts.
+Status: Implementation prepared. Offline validation pending. See `docs/implementation/89-milestone-9b-atomic-cache-reconciliation-note.md`.
+
+- Add mutation success-effect drafts.
 - Support synchronous `onSuccess` direct updates for successful data nodes.
-- Validate every target and updater before state mutation.
+- Validate every target, duplicate key, successful-value requirement, and updater before state mutation.
 - Apply multi-node results atomically with one notification.
-- Advance generations and abort obsolete active attempts safely.
+- Advance changed generations once and abort obsolete active attempts after generation advancement.
+- Invalidate changed-result descendants once across all updated roots and schedule subscribed stale descendants through the existing scheduler.
+- Treat an equal value on an already successful fresh node as a silent no-op.
+- Reject asynchronous success callbacks and asynchronous updater results.
 - Cover updater exceptions and local reconciliation failure after remote success.
 
-Exit condition: a successful command can reconcile multiple cached data nodes without intermediate observer state.
+Exit condition prepared: a successful command can reconcile multiple cached data nodes without intermediate observer state, while dependent graph state becomes stale and reloads through existing subscription scheduling.
 
 ### M9C: Success invalidation and typed event publication
 
-- Add explicit invalidation effects.
-- Add typed mutation success publication.
-- Reuse the graph event index and predicate matching.
-- Combine direct updates, explicit invalidation, event invalidation, and descendants into one commit.
-- Request at most one scheduler pass.
-- Define update-plus-invalidate overlap behaviour.
+Status: Implementation prepared. Offline validation pending. See `docs/implementation/90-milestone-9c-success-invalidation-events-note.md`.
 
-Exit condition: confirmed remote success can update immediate UI state and trigger authoritative cross-domain reload through existing graph mechanisms.
+- Add explicit `effects.invalidate(...)` for data and derived nodes.
+- Add typed `effects.publish(...)` for success-only event publication.
+- Reuse the graph event index and predicate matching with final direct-update values available through an overlay.
+- Validate and match every success effect before graph mutation.
+- Combine direct updates, explicit invalidation, event invalidation, changed-result descendants, generation advancement, and abort ordering into one commit.
+- Deduplicate converging roots and descendants and request at most one scheduler pass.
+- Retain a direct response value but mark it stale when the same node is explicitly or event-invalidated.
+- Publish no mutation effects when remote execution rejects.
+
+Exit condition prepared: confirmed remote success can update immediate UI state and trigger authoritative cross-domain reload through existing graph mechanisms without partial observer state.
 
 ### M9D: Optimistic apply and known-rejection rollback
 
-- Add staged optimistic effect planning.
-- Capture complete rollback snapshots.
-- Apply multi-node optimistic values atomically.
-- Add per-node optimistic ownership.
-- Restore snapshots atomically for a failure classified as `rejected`.
-- Ensure success clears ownership and applies reconciliation without a transient rollback.
-- Reject optimistic updates for never-successful data nodes.
+Status: Implementation prepared. Offline validation pending. See `docs/implementation/91-milestone-9d-optimistic-rollback-note.md`.
 
-Exit condition: a known-rejected optimistic appointment booking restores the exact prior local state.
+- Add staged synchronous optimistic update planning.
+- Validate every optimistic target and updater before request execution.
+- Capture complete rollback snapshots for optimistic targets and affected descendants.
+- Apply multi-node optimistic values atomically and invalidate descendants through the existing graph path.
+- Add per-node optimistic ownership and reject same-node overlap before the second request starts.
+- Restore complete snapshots atomically for a failure classified as `rejected`.
+- Preserve the original remote rejection after successful rollback.
+- Ensure success clears ownership and applies reconciliation without a transient rollback.
+- Reject optimistic updates for never-successful data nodes before request execution.
+- Retain optimistic state for an unclassified or `unknown` outcome pending M9E stale reconciliation and framework error handling.
+
+Exit condition prepared: a known-rejected optimistic appointment booking restores the exact prior local target and descendant state in the no-race path.
 
 ### M9E: Concurrency, races, and unknown outcomes
 
-- Reject overlapping optimistic ownership for the same node.
-- Allow disjoint optimistic mutations and concurrent non-optimistic mutations.
-- Protect rollback with ownership and generation checks.
-- Add `GraphMutationOutcomeUnknownError` and `GraphMutationRollbackConflictError`.
-- Retain optimistic values for unknown outcomes and make affected nodes stale for reconciliation.
-- Cover context, event, refresh, polling, ignored-abort, and active-load races.
-- Confirm transaction interaction rules.
+Status: Implementation prepared. Offline validation pending. See `docs/implementation/92-milestone-9e-concurrency-outcomes-note.md`.
 
-Exit condition: mutation failure handling never overwrites newer committed graph work or falsely claims that an ambiguous remote command was rolled back.
+- Reject overlapping optimistic ownership for the same node before remote execution.
+- Allow disjoint optimistic mutations and concurrent non-optimistic mutations.
+- Protect rollback with optimistic ownership and expected-generation checks across targets and captured descendants.
+- Add `GraphMutationOutcomeUnknownError` and `GraphMutationRollbackConflictError` with immutable sorted node keys and original causes.
+- Retain optimistic values for unknown outcomes, mark all affected nodes stale, abort obsolete work, and schedule subscribed reconciliation.
+- Treat classifier exceptions and unsupported runtime results as unknown rather than proof of rejection.
+- Preserve newer graph values when context, event, refresh, polling, or independent mutation work prevents safe rollback.
+- Confirm plain transactions and other runtime operations remain independent while mutation work is pending.
+
+Exit condition prepared: mutation failure handling never overwrites newer committed graph work or falsely claims that an ambiguous remote command was rolled back.
 
 ### M9F: Vue-facing usage and deterministic playground
 
+Status: Implementation prepared. Offline validation pending. See `docs/implementation/93-milestone-9f-vue-playground-note.md`.
+
 - Add an Optimistic Appointment Booking scenario using the existing Pinia-owned runtime.
 - Show ready, submitting, optimistic, confirmed, rejected-and-rolled-back, and unknown-outcome states.
-- Provide deterministic API controls for success, known rejection, unknown outcome, and manual completion.
-- Show appointment data, node status/freshness, request count, and mutation outcome.
-- Demonstrate event-driven capability-status invalidation after confirmed success.
-- Add Vue Testing Library behaviour coverage.
-- Release pending scenario work cleanly on unmount without claiming remote cancellation safety.
+- Provide deterministic controls for starting, confirming, rejecting, making the outcome unknown, demonstrating same-node overlap, and resetting.
+- Show appointment values, node status and freshness, request count, capability status, and mutation outcome.
+- Demonstrate event-driven capability-status invalidation and reload after confirmed success.
+- Add Vue Testing Library behaviour coverage for optimistic visibility, confirmation, rollback, unknown reconciliation, overlap rejection, reset, and unmount.
+- Release pending scenario work on reset and unmount without claiming that the remote request was safely cancelled.
 
-No mutation composable is planned initially. Components can call the Pinia-owned runtime or an application service. Add a Vue composable only if the playground exposes repeated lifecycle code that cannot be kept application-local.
+No mutation composable was added. The scenario keeps request lifecycle state application-local and calls the Pinia-owned runtime directly; no repeated framework-level lifecycle abstraction was revealed.
 
-Exit condition: the playground visibly demonstrates optimistic display, confirmed reconciliation, safe rollback, and ambiguous-outcome handling.
+Exit condition prepared: the playground visibly demonstrates optimistic display, confirmed reconciliation, safe rollback, ambiguous-outcome handling, and overlap protection.
 
 ### M9G: Documentation, migration guidance, and validation
 
-- Reconcile the public API, architecture, ADR, roadmap, playground, and test strategy.
-- Document known rejection versus unknown outcome with application examples.
-- Document idempotency-key and authoritative-reload guidance without implementing transport policy.
-- Run full automated validation.
-- Complete all manual playground paths.
-- Record actual results without inventing command output or test totals.
+Status: Documentation and migration guidance complete. Full dependency-backed validation and manual browser verification remain pending on the combined checkout.
 
-Exit condition: Milestone 9 behaviour, limitations, and recovery guidance are validated and maintained documentation no longer describes mutations as merely planned.
+- Reconciled the public API, architecture, ADR, roadmap, playground, and test strategy.
+- Added application guidance for known rejection versus unknown outcome.
+- Added idempotency-key and authoritative-reload guidance without implementing transport policy.
+- Recorded only validation results actually observed.
+- Retained the local validation commands and manual playground checklist required for milestone closure.
+
+Exit condition partially met: maintained documentation describes implemented mutation behaviour and limitations. Milestone 9 must not be marked fully validated until the dependency-backed commands and manual playground paths below pass.
 
 ## Behavioural test plan
 
@@ -535,7 +560,7 @@ Exit condition: Milestone 9 behaviour, limitations, and recovery guidance are va
 - ignored-abort result cannot overwrite optimistic or reconciled data;
 - context and event operations remain immediate while a mutation is pending;
 - transaction calls remain independent;
-- mutate inside transaction is rejected before local or remote work.
+- plain mutate calls remain independent while a graph transaction is open and cannot see staged transaction state;
 
 ### Unknown outcomes
 
@@ -664,8 +689,8 @@ This plan makes the following decisions so implementation can proceed without bl
 - Mutation callbacks are synchronous and use narrow effect capabilities.
 - A Vue-specific mutation composable is deferred until demonstrated necessary.
 
-The main API detail intentionally left for M9A is the exact generic parameter and callback argument ordering. Compile-time tests should drive that choice without changing the behavioural decisions above.
+M9A finalised the generic parameter and callback ordering. Compile-time tests now preserve that public contract alongside the behavioural decisions above.
 
 ## Next task
 
-After review, implement **M9A: Mutation definitions and public typing** as the smallest executable slice.
+Run the complete dependency-backed validation and manual playground checklist. If all results pass, update the roadmap and milestone status from validation pending to complete. Otherwise fix only the observed failures before starting Milestone 10.

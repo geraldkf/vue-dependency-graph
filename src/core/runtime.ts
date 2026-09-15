@@ -50,6 +50,8 @@ import { getQueryNodes, getQueryRefreshableNodes } from "./queries/query";
 import { createDefaultRefreshPolicyEnvironment } from "./refresh-policies/environment";
 import { createRuntimeRefreshPolicyController } from "./refresh-policies/policy-controller";
 import type { RefreshPolicyEnvironment } from "./refresh-policies/types";
+import { createRuntimeMutationController } from "./mutations/mutation-controller";
+import type { MutationDefinition, MutationOptions } from "./mutations/types";
 
 export interface GraphRuntimeOptions {
   /**
@@ -83,6 +85,11 @@ export interface GraphRuntime {
     event: TEvent,
     payload: EventPayload<TEvent>,
   ) => void;
+  readonly mutate: <TInput, TResult>(
+    mutation: MutationDefinition<TInput, TResult>,
+    input: TInput,
+    options?: MutationOptions<TInput, TResult>,
+  ) => Promise<TResult>;
   readonly subscribeNodes: (
     nodes: readonly AnyNodeDefinition[],
   ) => NodeSubscription;
@@ -265,6 +272,17 @@ export const createGraphRuntime = (
     notify: emitNotify,
   });
 
+  const mutations = createRuntimeMutationController({
+    resolveRegisteredNode: requireRegisteredNode,
+    getMutableState,
+    getActiveAttempt,
+    matchPublications: events.matchPublications,
+    prepareCombinedInvalidation:
+      invalidation.prepareCombinedInvalidation,
+    notify: emitNotify,
+    schedule: scheduler.schedule,
+  });
+
   const refreshPolicies = createRuntimeRefreshPolicyController({
     graph,
     environment:
@@ -296,6 +314,7 @@ export const createGraphRuntime = (
     refreshQuery: (query: AnyQueryDefinition) =>
       operations.refresh(getQueryRefreshableNodes(query)),
     publish: transactions.publish,
+    mutate: mutations.mutate,
     subscribeNodes: subscriptions.subscribeNodes,
     getSubscriptionState: subscriptions.getSubscriptionState,
     hasSubscribers: subscriptions.hasSubscribers,

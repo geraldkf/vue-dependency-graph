@@ -14,6 +14,7 @@ import {
   userProfile,
 } from "../../src/playground/scenarios/context-switching-nodes";
 import { flakyResource } from "../../src/playground/scenarios/error-and-retry-nodes";
+import { optimisticAppointments } from "../../src/playground/scenarios/optimistic-appointment-nodes";
 import { toggleableResource } from "../../src/playground/scenarios/unmount-cleanup-nodes";
 
 describe("playground shell", () => {
@@ -42,6 +43,7 @@ describe("playground shell", () => {
     const tabs = [
       "Atomic Transaction",
       "Typed Events",
+      "Optimistic Appointment Booking",
       "Concurrent Consumers",
       "Error and Retry",
       "Unmount Cleanup",
@@ -71,9 +73,16 @@ describe("playground shell", () => {
     expect(runtime.getSubscriptionState(userProfile).direct).toBe(1);
 
     await fireEvent.click(
+      screen.getByRole("button", { name: "Optimistic Appointment Booking" })
+    );
+
+    expect(runtime.getSubscriptionState(optimisticAppointments).direct).toBe(1);
+
+    await fireEvent.click(
       screen.getByRole("button", { name: "Concurrent Consumers" })
     );
 
+    expect(runtime.getSubscriptionState(optimisticAppointments).direct).toBe(0);
     expect(runtime.getSubscriptionState(selectedUserId).direct).toBe(0);
     expect(runtime.getSubscriptionState(userProfile).direct).toBe(0);
     expect(runtime.getSubscriptionState(sharedResource).direct).toBe(2);

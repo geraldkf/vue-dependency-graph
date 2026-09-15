@@ -10,7 +10,7 @@ Design and prototyping. Milestones 1 through 7 are implemented, including the fr
 
 Milestone 8 refresh policies and polling are implemented and validated. The runtime supports stale-after, fixed interval, typed poll-until completion and failure, timeout, bounded retry with backoff and jitter, pause/resume, optional browser lifecycle integration, and a deterministic Polling Progress playground. See `docs/implementation/86-milestone-8-implementation-summary.md`. APIs remain subject to change until the existing-application migration trial is complete.
 
-Milestone 9 is planned but not implemented. The proposed mutation framework covers typed remote commands, atomic cache reconciliation, guarded optimistic rollback, success invalidation, typed event publication, and explicit unknown-outcome handling. See `docs/implementation/87-milestone-9-mutation-framework-plan.md`.
+Milestone 9 implementation and maintained documentation are complete, including typed mutation execution, atomic success effects, optimistic updates, guarded rollback and unknown outcomes, plus a deterministic Vue appointment-booking playground. Full dependency-backed validation and manual browser verification remain pending on the cumulative checkout. See `docs/implementation/87-milestone-9-mutation-framework-plan.md`.
 
 ## Repository model
 

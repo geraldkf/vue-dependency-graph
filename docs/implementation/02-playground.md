@@ -122,3 +122,9 @@ A contributor should be able to reproduce a graph behaviour by selecting a named
 The Query Groups scenario uses one aliased `defineQuery(...)` declaration for prefetch, `useQuery(...)` subscription, aggregate state, and refresh. It demonstrates fresh prefetch reuse and subscription cleanup with deterministic request counts.
 
 The planned Optimistic Appointment Booking scenario will distinguish confirmed success, known rejection, and unknown remote outcome. It will demonstrate immediate optimistic data, guarded snapshot rollback, authoritative reconciliation, success-only typed event publication, same-node overlap rejection, and clean unmount behaviour. The detailed manual paths are in `docs/implementation/87-milestone-9-mutation-framework-plan.md`.
+
+## Optimistic Appointment Booking
+
+The Milestone 9 scenario uses the existing Pinia-owned runtime directly rather than adding a mutation composable. It provides deterministic controls to start a request, confirm success, return a known rejection, produce an unknown outcome, attempt an overlapping optimistic write, and reset.
+
+The scenario displays optimistic appointment data immediately, reconciles the pending item on success, publishes the typed appointment-booked event to reload capability status, restores the previous graph snapshot on known rejection, and shows authoritative reconciliation after an unknown outcome. Pending scenario work is released on reset and unmount; the UI does not claim that this guarantees server cancellation.

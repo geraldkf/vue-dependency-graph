@@ -2,15 +2,17 @@ import type { AnyEventDefinition } from "./types";
 import { getEventInvalidationCandidates } from "./event-index";
 import type { AnyNodeDefinition, Graph } from "../graph/types";
 import type { MutableNodeRuntimeState } from "../state/state";
-import type {
-  ContextChange,
-  EventPublication,
-} from "../transactions/types";
+import type { EventPublication } from "../transactions/types";
+
+export interface EventValueOverlay {
+  readonly node: AnyNodeDefinition;
+  readonly value: unknown;
+}
 
 export interface RuntimeEventMatcher {
   readonly matchPublications: (
     publications: readonly EventPublication[],
-    contextChanges: readonly ContextChange[]
+    valueOverlay: readonly EventValueOverlay[]
   ) => readonly AnyNodeDefinition[];
 }
 
@@ -25,10 +27,10 @@ export const createRuntimeEventMatcher = ({
 }: RuntimeEventMatcherDependencies): RuntimeEventMatcher => {
   const matchPublications = (
     publications: readonly EventPublication[],
-    contextChanges: readonly ContextChange[]
+    valueOverlay: readonly EventValueOverlay[]
   ): readonly AnyNodeDefinition[] => {
-    const contextValues = new Map(
-      contextChanges.map(change => [change.node.key, change.value])
+    const overlayValues = new Map(
+      valueOverlay.map(change => [change.node.key, change.value])
     );
     const matchedNodes = new Map<string, AnyNodeDefinition>();
 
@@ -44,8 +46,8 @@ export const createRuntimeEventMatcher = ({
             );
           }
 
-          if (contextValues.has(dependency.key)) {
-            return contextValues.get(dependency.key);
+          if (overlayValues.has(dependency.key)) {
+            return overlayValues.get(dependency.key);
           }
 
           const state = getMutableState(dependency.key);

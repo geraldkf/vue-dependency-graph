@@ -14,6 +14,14 @@ export interface InvalidationDispatch {
   readonly schedule: () => void;
 }
 
+export interface CombinedInvalidationPlan {
+  readonly affectedNodes: readonly AnyNodeDefinition[];
+  readonly affectedPreservedKeys: ReadonlySet<string>;
+  readonly hasAffectedNodes: boolean;
+  readonly subscribedNodeChanged: boolean;
+  readonly commit: () => void;
+}
+
 export interface RuntimeInvalidationController {
   readonly resolveContextNode: <TValue>(
     node: ContextNodeDefinition<TValue>
@@ -30,6 +38,14 @@ export interface RuntimeInvalidationController {
   readonly invalidateChangedResultDescendants: (
     node: AnyNodeDefinition
   ) => void;
+  readonly invalidateChangedResultDescendantsWithoutDispatch: (
+    nodes: readonly AnyNodeDefinition[]
+  ) => boolean;
+  readonly prepareCombinedInvalidation: (
+    changedResultRoots: readonly AnyNodeDefinition[],
+    invalidationRoots: readonly AnyNodeDefinition[],
+    preservedRoots: readonly AnyNodeDefinition[]
+  ) => CombinedInvalidationPlan;
   readonly invalidateNodesAndDescendants: (
     nodes: readonly AnyNodeDefinition[]
   ) => void;
@@ -87,8 +103,8 @@ export const createRuntimeInvalidationController = ({
     const visited = new Set<string>();
     const queue = nodes.flatMap(node => graph.getChildren(node));
 
-    while (queue.length > 0) {
-      const descendant = queue.shift();
+    for (let index = 0; index < queue.length; index += 1) {
+      const descendant = queue[index];
       if (!descendant || visited.has(descendant.key)) continue;
       visited.add(descendant.key);
       descendants.push(descendant);
@@ -133,10 +149,52 @@ export const createRuntimeInvalidationController = ({
     return [...affected.values()];
   };
 
-  const invalidateDescendants = (
-    node: AnyNodeDefinition
-  ): boolean =>
-    invalidateNodes(collectDescendants([node]));
+  const invalidateChangedResultDescendantsWithoutDispatch = (
+    nodes: readonly AnyNodeDefinition[]
+  ): boolean => {
+    const changedKeys = new Set(nodes.map(node => node.key));
+    return invalidateNodes(
+      collectDescendants(nodes).filter(node => !changedKeys.has(node.key))
+    );
+  };
+
+  const prepareCombinedInvalidation = (
+    changedResultRoots: readonly AnyNodeDefinition[],
+    invalidationRoots: readonly AnyNodeDefinition[],
+    preservedRoots: readonly AnyNodeDefinition[]
+  ): CombinedInvalidationPlan => {
+    const affected = new Map<string, AnyNodeDefinition>();
+    for (const node of collectDescendants(changedResultRoots)) {
+      affected.set(node.key, node);
+    }
+    for (const node of collectNodesAndDescendants(invalidationRoots)) {
+      affected.set(node.key, node);
+    }
+
+    const preservedKeys = new Set(preservedRoots.map(node => node.key));
+    const affectedPreservedKeys = new Set<string>();
+    const nodesToInvalidate: AnyNodeDefinition[] = [];
+    let subscribedNodeChanged = false;
+
+    for (const node of affected.values()) {
+      if (hasSubscribers(node)) subscribedNodeChanged = true;
+      if (preservedKeys.has(node.key)) {
+        affectedPreservedKeys.add(node.key);
+      } else {
+        nodesToInvalidate.push(node);
+      }
+    }
+
+    return Object.freeze({
+      affectedNodes: Object.freeze([...affected.values()]),
+      affectedPreservedKeys: Object.freeze(affectedPreservedKeys),
+      hasAffectedNodes: affected.size > 0,
+      subscribedNodeChanged,
+      commit: () => {
+        invalidateNodes(nodesToInvalidate);
+      },
+    });
+  };
 
   const invalidateNodesAndDescendants = (
     nodes: readonly AnyNodeDefinition[]
@@ -203,7 +261,7 @@ export const createRuntimeInvalidationController = ({
     node: AnyNodeDefinition
   ): void => {
     const subscribedDescendantChanged =
-      invalidateDescendants(node);
+      invalidateChangedResultDescendantsWithoutDispatch([node]);
     if (graph.getChildren(node).length > 0) notify();
     if (subscribedDescendantChanged) schedule();
   };
@@ -213,6 +271,8 @@ export const createRuntimeInvalidationController = ({
     setContext,
     commitContexts,
     invalidateChangedResultDescendants,
+    invalidateChangedResultDescendantsWithoutDispatch,
+    prepareCombinedInvalidation,
     invalidateNodesAndDescendants,
   });
 };

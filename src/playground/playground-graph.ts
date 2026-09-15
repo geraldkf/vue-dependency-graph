@@ -6,6 +6,7 @@ import {
   userProfile,
 } from "./scenarios/context-switching-nodes";
 import { flakyResource } from "./scenarios/error-and-retry-nodes";
+import { optimisticAppointments } from "./scenarios/optimistic-appointment-nodes";
 import { toggleableResource } from "./scenarios/unmount-cleanup-nodes";
 import {
   capabilityInterviewStatus,
@@ -36,6 +37,7 @@ export const playgroundGraph = createGraph({
     capabilityJobSeekerId,
     capabilityInterviewStatus,
     unrelatedAppointmentStatus,
+    optimisticAppointments,
     queryGroupsJobSeekerId,
     queryGroupsAppointments,
     queryGroupsCapabilityStatus,

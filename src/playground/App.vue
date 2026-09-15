@@ -30,6 +30,7 @@ import UnmountCleanupScenario from "./scenarios/UnmountCleanupScenario.vue";
 import TypedEventsScenario from "./scenarios/TypedEventsScenario.vue";
 import QueryGroupsScenario from "./scenarios/QueryGroupsScenario.vue";
 import PollingProgressScenario from "./scenarios/PollingProgressScenario.vue";
+import OptimisticAppointmentBookingScenario from "./scenarios/OptimisticAppointmentBookingScenario.vue";
 
 interface PlaygroundScenario {
   readonly id: string;
@@ -52,6 +53,11 @@ const scenarios = [
     id: "typed-events",
     label: "Typed Events",
     component: TypedEventsScenario,
+  },
+  {
+    id: "optimistic-appointment-booking",
+    label: "Optimistic Appointment Booking",
+    component: OptimisticAppointmentBookingScenario,
   },
   {
     id: "concurrent-consumers",

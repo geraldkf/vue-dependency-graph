@@ -57,9 +57,9 @@ The current runtime cache is in-memory and belongs to one `GraphRuntime`. Defini
 
 A Pinia store may own a runtime instance, but Pinia does not mirror or persist graph cache state.
 
-## Planned mutation framework
+## Mutation framework
 
-Milestone 9 is planned in detail in [the mutation framework plan](../implementation/87-milestone-9-mutation-framework-plan.md), with the proposed design recorded in [ADR-013](../decisions/ADR-013-mutation-framework.md).
+Milestone 9 is implemented as described in [the mutation framework plan](../implementation/87-milestone-9-mutation-framework-plan.md), with the accepted design recorded in [ADR-013](../decisions/ADR-013-mutation-framework.md). Full combined-checkout validation remains pending.
 
 The planned runtime capability uses immutable typed mutation definitions and caller-owned `runtime.mutate(...)` operations. Mutation definitions own remote execution only. Per-call effect callbacks may update successful data-node values, invalidate data or derived nodes, and publish typed events after confirmed success.
 
@@ -76,6 +76,34 @@ The first release deliberately rejects overlapping optimistic ownership of one d
 Mutation execution must not keep the graph transaction notification buffer open while awaiting remote work. Confirmed success effects are planned and applied through one synchronous local commit so observers do not see partial multi-node reconciliation.
 
 Milestone 9 will not perform a general pre-implementation refactor. A narrow invalidation planner, safer active-attempt iteration, or index-based traversal may be extracted only when a concrete mutation slice requires that seam. Stale-state policy remains outside the state store, refresh-policy strategies remain intact, and optimistic rollback does not use graph transaction cancellation.
+
+### Implemented direct reconciliation
+
+Milestone 9B adds synchronous `onSuccess` update drafts for data nodes that already hold a successful value. The complete draft is validated and evaluated before the runtime changes graph state. Effective updates commit atomically, advance target generations once, abort obsolete target work after generation advancement, invalidate changed-result descendants once, notify once, and use the existing scheduler for subscribed stale descendants.
+
+The mutation controller owns this success-reconciliation boundary. The invalidation controller exposes one narrow dispatch-free changed-result descendant operation so direct root updates and dependent invalidation can share one observer commit. The state store remains storage-only and does not own mutation or stale-state policy.
+
+Direct reconciliation is not optimistic. It runs only after remote success. Local reconciliation failure is caller-visible but cannot roll back a remote command that has already committed.
+
+### Implemented success invalidation and events
+
+Milestone 9C adds explicit data or derived invalidation and typed event publication to the same synchronous success draft. Event predicates are evaluated before graph mutation and receive final direct-update values through an overlay. Direct updates, explicit roots, event roots, and descendants are deduplicated into one commit with one generation advancement per affected node, one observer notification, and at most one scheduler request.
+
+A directly updated node that is also invalidated retains the response value as successful stale data. Mutation events are success-only and are not published when remote execution rejects or local effect preparation fails.
+
+### Implemented optimistic apply and known-rejection rollback
+
+Milestone 9D applies validated optimistic data-node updates before remote execution. It snapshots each effective optimistic target and every descendant affected by changed-result invalidation, assigns private per-node ownership, commits optimistic values atomically, and uses the existing invalidation and scheduler path for dependants.
+
+A failure explicitly classified as `rejected` restores the complete snapshots and rethrows the original error. Success releases ownership and reconciles directly over optimistic state without exposing a transient rollback. Same-node optimistic overlap is rejected before the conflicting request starts.
+
+Unclassified failures default to `unknown` and are deliberately not rolled back.
+
+### Implemented race and unknown-outcome handling
+
+Milestone 9E guards rollback with private ownership and expected generations for every captured target and descendant. When newer context, event, refresh, polling, or independent mutation work changes a captured generation, snapshot restoration is skipped atomically. Current values are retained as stale, subscribed nodes reconcile through the existing scheduler, and `GraphMutationRollbackConflictError` preserves the original rejection as its cause.
+
+Unknown outcomes retain optimistic values, mark the complete affected subgraph stale, and reject with `GraphMutationOutcomeUnknownError`. A missing or failing classifier cannot prove rejection and therefore follows this safe path. Non-optimistic mutation failures continue to preserve their original errors.
 
 ## Deferred cache policies
 

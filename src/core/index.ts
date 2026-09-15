@@ -1,3 +1,21 @@
+export {
+  GraphMutationConflictError,
+  GraphMutationOutcomeUnknownError,
+  GraphMutationRollbackConflictError,
+  GraphMutationStateError,
+} from "./mutations/errors";
+export { defineMutation } from "./mutations/mutation";
+export type {
+  DefineMutationOptions,
+  MutationDefinition,
+  MutationExecuteContext,
+  MutationFailureKind,
+  MutationInput,
+  MutationOptions,
+  MutationResult,
+  MutationSuccessEffects,
+  MutationUpdateEffects,
+} from "./mutations/types";
 export { pollUntil, refreshInterval, staleAfter } from "./refresh-policies/policy";
 export {
   GraphPollingConditionError,

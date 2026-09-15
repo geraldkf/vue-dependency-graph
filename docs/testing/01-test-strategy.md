@@ -215,11 +215,11 @@ Add a type-test mechanism to verify:
 - Query alias result type
 - Invalid node usage fails compilation
 
-## Planned mutation testing
+## Mutation testing
 
-Milestone 9 tests must treat remote execution and local graph effects as separate phases.
+Mutation tests treat remote execution and local graph effects as separate phases.
 
-Core behavioural coverage will use deferred promises and deterministic outcomes for:
+Core behavioural coverage uses deferred promises and deterministic outcomes for:
 
 - typed mutation execution and runtime isolation;
 - atomic direct reconciliation across multiple data nodes;
@@ -234,7 +234,7 @@ Core behavioural coverage will use deferred promises and deterministic outcomes 
 - transaction ownership boundaries;
 - one notification and at most one scheduler pass per local mutation commit.
 
-Compile-time tests will verify mutation input/result inference, data-node-only direct updates, refreshable invalidation targets, and typed event payloads. Vue Testing Library coverage will exercise the deterministic Optimistic Appointment Booking playground through success, known rejection, unknown outcome, reset, and unmount paths.
+Compile-time tests verify mutation input/result inference, data-node-only direct updates, refreshable invalidation targets, and typed event payloads. Vue Testing Library coverage exercises the deterministic Optimistic Appointment Booking playground through success, known rejection, unknown outcome, overlap, reset, and unmount paths.
 
 Tests must not use real network requests, real delays, or framework-inferred HTTP semantics. Known rejection versus unknown outcome is supplied explicitly by the test classifier.
 

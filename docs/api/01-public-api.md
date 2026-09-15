@@ -376,32 +376,142 @@ const runtime = createGraphRuntime(graph, {
 
 It pauses policy timers while the document is hidden or the browser is offline. Resume restores one remaining delay without replaying missed ticks. Poll timeout excludes paused duration.
 
-## Planned mutation API
+## Mutation definitions and execution
 
-Milestone 9 has a detailed design plan but no implemented mutation API yet. The provisional direction is:
+Milestone 9A introduces immutable typed mutation definitions and caller-owned remote execution:
 
 ```ts
+interface SaveAppointmentInput {
+  readonly jobSeekerId: number;
+  readonly start: string;
+}
+
+interface SaveAppointmentResult {
+  readonly appointmentId: number;
+}
+
 const SaveAppointment = defineMutation({
   key: "appointment.save",
-  execute: ({ input, signal }) => api.saveAppointment(input, signal),
+  execute: async ({ input, signal }: MutationExecuteContext<SaveAppointmentInput>) =>
+    api.saveAppointment(input, signal),
 });
 
-const saved = await runtime.mutate(SaveAppointment, input, {
-  optimistic: effects => {
-    effects.update(Appointments, current => addPending(current, input));
+const result = await runtime.mutate(SaveAppointment, {
+  jobSeekerId: 123,
+  start: "2026-09-15T10:00:00+10:00",
+});
+```
+
+`defineMutation(...)` validates the key and execute function, returns a frozen definition, and retains input and asynchronous result types. `MutationInput<TMutation>` and `MutationResult<TMutation>` extract those types.
+
+`runtime.mutate(...)` creates one caller-owned mutation attempt, passes the exact input and an attempt-scoped `AbortSignal`, and returns the remote result. Each call is independent. M9A does not deduplicate, retry, cancel, reconcile graph data, invalidate nodes, publish events, apply optimistic state, or consume the data-load concurrency limit.
+
+A plain mutation call remains independent while a graph transaction is open. It cannot read staged transaction state and its result is not committed or rolled back by that transaction.
+
+### Direct success reconciliation
+
+Milestone 9B adds optional synchronous success effects:
+
+```ts
+const result = await runtime.mutate(SaveAppointment, input, {
+  onSuccess: (effects, saved, originalInput) => {
+    effects.update(Appointments, current =>
+      current.map(appointment =>
+        appointment.clientId === originalInput.clientId
+          ? saved
+          : appointment
+      )
+    );
+    effects.update(AppointmentSummary, current => ({
+      ...current,
+      lastAppointmentId: saved.appointmentId,
+    }));
   },
-  onSuccess: (effects, result) => {
-    effects.update(Appointments, current => confirmPending(current, result));
-    effects.publish(AppointmentBooked, toAppointmentBooked(result));
+});
+```
+
+`effects.update(...)` accepts registered data nodes only and preserves each node's value type in its updater. Every target must already have a successful value. Placeholder `initialValue` data is not treated as successful server state.
+
+The callback and all updaters are synchronous. The runtime records and validates the complete draft before mutation. Duplicate writes to one node, malformed targets, a missing successful value, callback failure, or updater failure apply no mutation-owned graph change.
+
+Effective updates commit together. Each changed target:
+
+- receives the replacement value;
+- becomes successful and fresh;
+- clears its error;
+- advances generation once;
+- aborts obsolete active work after generation advancement.
+
+Descendants of changed results are invalidated once across all updated roots. A descendant that is also directly updated remains fresh rather than being invalidated by another updated root. Subscribed stale descendants reload through the existing scheduler. Observers receive one coherent mutation commit notification before scheduler work begins.
+
+An `Object.is` equal update to an already successful, fresh, error-free node is silent. The remote mutation result is still returned.
+
+If remote execution succeeded but local reconciliation fails, `runtime.mutate(...)` rejects with the reconciliation error. This does not imply that the remote command was rolled back.
+
+### Success invalidation and typed publication
+
+Milestone 9C extends the same success-effect callback:
+
+```ts
+await runtime.mutate(SaveAppointment, input, {
+  onSuccess: (effects, saved) => {
+    effects.update(Appointments, current => reconcile(current, saved));
+    effects.invalidate([AppointmentSummary]);
+    effects.publish(AppointmentBooked, {
+      jobSeekerId: saved.jobSeekerId,
+      appointmentId: saved.appointmentId,
+    });
+  },
+});
+```
+
+`effects.invalidate(...)` accepts registered data and derived nodes. Context nodes remain writable only through the context APIs. Duplicate invalidation roots are harmless and their graph effects are deduplicated.
+
+`effects.publish(...)` preserves the typed event payload. Publications are evaluated only after confirmed remote success. Predicate matching occurs before graph mutation and can read final direct-update values from the same success draft. A predicate failure applies no mutation-owned update, invalidation, event effect, notification, or scheduling.
+
+Direct updates, explicit invalidation, event targets, and all descendants form one local commit. Every affected node advances generation at most once. Active work is aborted only after affected generations advance. Observers receive one coherent notification and subscribed stale work requests at most one scheduler pass.
+
+When one node is both directly updated and invalidated, the response value is retained as successful stale data. This supports immediate display while an authoritative reload proceeds. A direct update that is reached as the descendant of another changed or invalidated root follows the same stale-result rule.
+
+Remote rejection skips `onSuccess` entirely, so no success invalidation or event publication occurs.
+
+### Optimistic updates and known rejection
+
+Milestone 9D adds an optional optimistic update callback and failure classifier:
+
+```ts
+await runtime.mutate(BookAppointment, input, {
+  optimistic: (effects, originalInput) => {
+    effects.update(Appointments, current => [
+      ...current,
+      createPendingAppointment(originalInput),
+    ]);
+  },
+  onSuccess: (effects, saved) => {
+    effects.update(Appointments, current =>
+      replacePendingAppointment(current, saved)
+    );
   },
   classifyFailure: error =>
     isKnownRejectedResponse(error) ? "rejected" : "unknown",
 });
 ```
 
-This API is not available yet and its generic parameter ordering may change during M9A compile-time testing. The planned behaviour is stable: direct writes target successful data nodes only, known rejection may roll back guarded snapshots, unknown outcomes are retained for reconciliation, and confirmed success may combine direct updates, invalidation, and typed event publication atomically.
+The optimistic callback exposes direct data-node updates only. It runs before remote execution, must be synchronous, and uses the same successful-value, target-kind, duplicate-target, and updater validation as success reconciliation. Invalid optimistic work rejects before the remote request starts.
 
-See `docs/implementation/87-milestone-9-mutation-framework-plan.md` and `docs/decisions/ADR-013-mutation-framework.md`.
+Effective optimistic values commit atomically as successful fresh data. Changed-result descendants are invalidated through the existing graph path. The runtime captures complete target and affected-descendant snapshots before commit.
+
+Only one unresolved optimistic mutation may own a data node. A same-node conflict rejects with `GraphMutationConflictError` before the conflicting request starts. Disjoint optimistic work remains independent.
+
+A failure classified as `rejected` restores the complete captured snapshots atomically and preserves the original remote error. Successful completion does not perform a transient rollback. It retains the optimistic value when no success update replaces it, or applies normal M9B/M9C success effects directly over optimistic state.
+
+A missing classifier defaults to `unknown`. Classifier exceptions and unsupported runtime classifier results also take the safe unknown path.
+
+For an unknown outcome, optimistic values are retained, affected targets and descendants become stale, obsolete work is aborted, and subscribed stale nodes reconcile through the existing scheduler. The mutation rejects with `GraphMutationOutcomeUnknownError`; its immutable sorted `nodeKeys` identify affected optimistic state and its `cause` is the original remote error.
+
+Known-rejection rollback requires both optimistic ownership and the expected post-optimistic generation for every captured target and descendant. If newer graph work changed any captured node, no snapshot is restored. Current values are retained as stale for authoritative reconciliation and the mutation rejects with `GraphMutationRollbackConflictError`. Its immutable sorted `nodeKeys` identify conflicts and its `cause` is the original rejection.
+
+Context changes, event invalidation, refresh, polling, independent mutations, and transactions remain independent while mutation work is pending. Their newer graph state is never overwritten by an obsolete rollback snapshot.
 
 Diagnostics, snapshots, devtools, and cache garbage collection remain future APIs.
 
