@@ -666,3 +666,18 @@ Supported value policies are `"omit"`, `"include"`, or a redactor function. Incl
 Runtime and scheduler errors use bounded `{ name, message, cause }` serialisation. Cyclic or over-depth causes are marked `truncated`. Stack traces are not included.
 
 Snapshot construction is observational. It does not notify observers, schedule work, emit diagnostic events, or mutate graph-owned values and errors.
+
+
+#### Stable diagnostic normalisation
+
+Milestone 10F provides public pure normalisers for deterministic tests and offline comparisons:
+
+```ts
+const normalizedSnapshot = normalizeDiagnosticSnapshot(snapshot);
+const normalizedEvents = normalizeDiagnosticEvents(events);
+const normalizedExport = normalizeDiagnosticExport({ snapshot, events });
+```
+
+Normalisation replaces volatile timestamps, runtime IDs, operation IDs, cause IDs, timer due times, and duration totals with deterministic values. Operation and cause IDs are aliased consistently in first-seen order, so causal relationships remain visible.
+
+Sequence order, event types, node and event keys, generations, reasons, origins, outcomes, errors, redaction markers, values explicitly approved for diagnostics, counts, and graph state remain unchanged. The functions return new immutable values and never mutate their input. Normalising an already normalised value is stable.

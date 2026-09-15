@@ -29,3 +29,39 @@ const inspectDirectory = async directory => {
 
 await inspectDirectory(coreDirectory);
 console.log("Core boundary check passed.");
+
+const capabilityDirectories = [
+  "events",
+  "execution",
+  "invalidation",
+  "mutations",
+  "observation",
+  "operations",
+  "queries",
+  "refresh-policies",
+  "scheduling",
+  "state",
+  "subscriptions",
+  "transactions",
+];
+const forbiddenDiagnosticCapabilityImports = [
+  /diagnostics\/in-memory-diagnostics/,
+  /diagnostics\/metrics/,
+  /diagnostics\/snapshot-normaliser/,
+];
+
+for (const directory of capabilityDirectories) {
+  const path = join(coreDirectory, directory);
+  const entries = await readdir(path, { withFileTypes: true });
+  for (const entry of entries) {
+    if (!entry.isFile() || ![".ts", ".tsx"].includes(extname(entry.name))) {
+      continue;
+    }
+    const filePath = join(path, entry.name);
+    const source = await readFile(filePath, "utf8");
+    if (forbiddenDiagnosticCapabilityImports.some(pattern => pattern.test(source))) {
+      throw new Error(`Forbidden diagnostics implementation import found in ${filePath}`);
+    }
+  }
+}
+console.log("Diagnostic capability boundary check passed.");

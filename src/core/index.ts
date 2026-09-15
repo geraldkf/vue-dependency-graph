@@ -126,6 +126,12 @@ export type {
   GraphDiagnosticValue,
   GraphSerializedError,
 } from "./diagnostics/snapshot";
+export {
+  normalizeDiagnosticEvents,
+  normalizeDiagnosticExport,
+  normalizeDiagnosticSnapshot,
+} from "./diagnostics/snapshot-normaliser";
+export type { GraphDiagnosticExport } from "./diagnostics/snapshot-normaliser";
 export type {
   AnyNodeDefinition,
   ContextNodeDefinition,

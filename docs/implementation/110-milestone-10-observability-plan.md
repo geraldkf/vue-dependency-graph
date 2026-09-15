@@ -481,6 +481,8 @@ Exit criteria:
 
 #### M10F: Stable normaliser and regression suite
 
+Status: Implemented and statically reviewed. Dependency-backed repository validation pending. See `docs/implementation/116-milestone-10f-stable-normaliser-regression-note.md`.
+
 Deliver:
 
 - public or testing-entry snapshot normaliser decision based on actual consumers;
