@@ -503,6 +503,8 @@ Exit criteria:
 
 #### M10G: Observability playground
 
+Status: Implemented and statically reviewed. Dependency-backed automated and manual browser validation pending. See `docs/implementation/117-milestone-10g-runtime-observability-playground-note.md`.
+
 Deliver one deterministic `Runtime Observability` scenario using a dedicated runtime and collector.
 
 The scenario demonstrates:

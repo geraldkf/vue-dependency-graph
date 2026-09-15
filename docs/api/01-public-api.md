@@ -681,3 +681,9 @@ const normalizedExport = normalizeDiagnosticExport({ snapshot, events });
 Normalisation replaces volatile timestamps, runtime IDs, operation IDs, cause IDs, timer due times, and duration totals with deterministic values. Operation and cause IDs are aliased consistently in first-seen order, so causal relationships remain visible.
 
 Sequence order, event types, node and event keys, generations, reasons, origins, outcomes, errors, redaction markers, values explicitly approved for diagnostics, counts, and graph state remain unchanged. The functions return new immutable values and never mutate their input. Normalising an already normalised value is stable.
+
+#### Runtime Observability playground
+
+The playground includes a dedicated Runtime Observability scenario. It owns an isolated runtime and bounded collector, then demonstrates subscription-driven initial loading, context invalidation, explicit refresh, request failure and recovery, transaction rollback, mutation completion, recent events, cumulative metrics, redacted snapshot preview, and JSON export.
+
+Reset disposes the existing subscription and creates a clean runtime, collector, identifier sequence, and metrics baseline. Leaving the scenario also disposes its dedicated subscription. The scenario is an executable behaviour demonstration and does not introduce a devtools protocol or runtime command channel.

@@ -31,6 +31,7 @@ import TypedEventsScenario from "./scenarios/TypedEventsScenario.vue";
 import QueryGroupsScenario from "./scenarios/QueryGroupsScenario.vue";
 import PollingProgressScenario from "./scenarios/PollingProgressScenario.vue";
 import OptimisticAppointmentBookingScenario from "./scenarios/OptimisticAppointmentBookingScenario.vue";
+import RuntimeObservabilityScenario from "./scenarios/RuntimeObservabilityScenario.vue";
 
 interface PlaygroundScenario {
   readonly id: string;
@@ -93,6 +94,11 @@ const scenarios = [
     id: "polling-progress",
     label: "Polling Progress",
     component: PollingProgressScenario,
+  },
+  {
+    id: "runtime-observability",
+    label: "Runtime Observability",
+    component: RuntimeObservabilityScenario,
   },
 ] as const satisfies readonly PlaygroundScenario[];
 

@@ -44,6 +44,7 @@ describe("playground shell", () => {
       "Atomic Transaction",
       "Typed Events",
       "Optimistic Appointment Booking",
+      "Runtime Observability",
       "Concurrent Consumers",
       "Error and Retry",
       "Unmount Cleanup",

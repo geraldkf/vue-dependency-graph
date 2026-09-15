@@ -78,6 +78,7 @@ Use these maintained documents as the current sources of truth:
 - [Milestone 10D in-memory diagnostics and metrics](./implementation/114-milestone-10d-in-memory-diagnostics-metrics-note.md)
 - [Milestone 10E diagnostic snapshots and redaction](./implementation/115-milestone-10e-diagnostic-snapshots-redaction-note.md)
 - [Milestone 10F stable normaliser and regression coverage](./implementation/116-milestone-10f-stable-normaliser-regression-note.md)
+- [Milestone 10G Runtime Observability playground](./implementation/117-milestone-10g-runtime-observability-playground-note.md)
 - [ADR-014 runtime observability](./decisions/ADR-014-runtime-observability.md)
 - [Mutation adoption guide](./guides/04-mutation-adoption.md)
 - [ADR-013 mutation framework](./decisions/ADR-013-mutation-framework.md)
