@@ -20,4 +20,18 @@ export interface GraphTransaction {
     event: TEvent,
     payload: EventPayload<TEvent>,
   ) => void;
+  /**
+   * Nests further transactional work into the same transaction as this
+   * handle, sharing its staged context/event state and its eventual
+   * commit-or-rollback outcome. This is the only supported way to compose
+   * work into an already-open transaction -- calling `runtime.transaction(
+   * ...)` again from inside a callback does not join this one; it starts
+   * a fully independent transaction (see ADR-005, "Amendment: isolated
+   * transaction sessions"). Use this method instead whenever the intent is
+   * genuine composition rather than two unrelated operations that happen
+   * to overlap in time.
+   */
+  readonly transaction: <T>(
+    work: (transaction: GraphTransaction) => T | Promise<T>,
+  ) => Promise<T>;
 }

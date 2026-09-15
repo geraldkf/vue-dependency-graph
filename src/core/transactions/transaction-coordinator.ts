@@ -25,6 +25,20 @@ interface StagedContextChange extends ContextChange {
   readonly expectedGeneration: number;
 }
 
+/**
+ * All staged state for one `runtime.transaction(...)` call, owned by that
+ * call alone. Replaces the previous module-level `stagedContexts` /
+ * `stagedEvents` / `activeGroup` shared across every open transaction on
+ * the runtime -- see ADR-005 "Amendment: isolated transaction sessions".
+ * Two calls to `runtime.transaction(...)` never share a session unless one
+ * explicitly reuses a handle it was already given.
+ */
+interface TransactionSession {
+  readonly stagedContexts: Map<string, StagedContextChange>;
+  readonly stagedEvents: EventPublication[];
+  settled: boolean;
+}
+
 export interface RuntimeTransactionCoordinatorDependencies {
   readonly runWithBufferedNotifications: <T>(
     work: () => T | Promise<T>,
@@ -48,6 +62,15 @@ export interface RuntimeTransactionCoordinatorDependencies {
 /**
  * Owns runtime transaction lifecycle and transaction-local context/event work.
  * Notification dispatch remains a separate capability.
+ *
+ * Each `runtime.transaction(...)` call gets its own independent
+ * `TransactionSession` -- there is no shared "currently open transaction"
+ * state on this coordinator for a second, unrelated call to observe or
+ * join. Composing further work into an already-open transaction is only
+ * possible by explicitly reusing the `GraphTransaction` handle that call
+ * already received (see `docs/decisions/ADR-005-atomic-graph-
+ * transactions.md`, "Amendment: isolated transaction sessions", and
+ * `docs/implementation/114-transaction-overlap-isolation-plan.md`).
  */
 export const createRuntimeTransactionCoordinator = ({
   runWithBufferedNotifications,
@@ -56,21 +79,8 @@ export const createRuntimeTransactionCoordinator = ({
   commitImmediate,
   commitTransaction,
 }: RuntimeTransactionCoordinatorDependencies): RuntimeTransactionCoordinator => {
-  let depth = 0;
-  let rootSucceeded = false;
-  let resolveJoinedTransactions: (() => void) | undefined;
-  let joinedTransactionsSettled: Promise<void> | undefined;
-  let stagedContexts = new Map<string, StagedContextChange>();
-  let stagedEvents: EventPublication[] = [];
-  let activeGroup: symbol | undefined;
-
-  const commitStagedWork = (): void => {
-    const contexts = stagedContexts;
-    const events = stagedEvents;
-    stagedContexts = new Map<string, StagedContextChange>();
-    stagedEvents = [];
-
-    const conflicts = [...contexts.values()]
+  const commitSession = (session: TransactionSession): void => {
+    const conflicts = [...session.stagedContexts.values()]
       .filter(({ node, expectedGeneration }) =>
         getContextGeneration(node) !== expectedGeneration,
       )
@@ -80,35 +90,22 @@ export const createRuntimeTransactionCoordinator = ({
     }
 
     commitTransaction(
-      [...contexts.values()].map(({ node, value }) => ({ node, value })),
-      events,
+      [...session.stagedContexts.values()].map(({ node, value }) => ({
+        node,
+        value,
+      })),
+      session.stagedEvents,
     );
   };
 
-  const discardStagedWork = (): void => {
-    stagedContexts = new Map<string, StagedContextChange>();
-    stagedEvents = [];
-  };
-
-  const waitForJoinedTransactions = (): Promise<void> => {
-    joinedTransactionsSettled ??= new Promise<void>((resolve) => {
-      resolveJoinedTransactions = resolve;
-    });
-    return joinedTransactionsSettled;
-  };
-
-  const resetJoinedTransactionSettlement = (): void => {
-    resolveJoinedTransactions = undefined;
-    joinedTransactionsSettled = undefined;
-  };
-
   const stageContext = <TValue>(
+    session: TransactionSession,
     node: ContextNodeDefinition<TValue>,
     value: TValue,
   ): void => {
     const registered = resolveContextNode(node);
-    const existing = stagedContexts.get(registered.key);
-    stagedContexts.set(registered.key, {
+    const existing = session.stagedContexts.get(registered.key);
+    session.stagedContexts.set(registered.key, {
       node: registered as ContextNodeDefinition<unknown>,
       value,
       expectedGeneration:
@@ -118,16 +115,20 @@ export const createRuntimeTransactionCoordinator = ({
   };
 
   const stagePublication = <TEvent extends AnyEventDefinition>(
+    session: TransactionSession,
     event: TEvent,
     payload: EventPayload<TEvent>,
   ): void => {
-    stagedEvents.push({ event, payload });
+    session.stagedEvents.push({ event, payload });
   };
 
-  const createGraphTransaction = (group: symbol): GraphTransaction => {
+  const createGraphTransaction = (
+    session: TransactionSession,
+  ): GraphTransaction => {
     const assertActive = (): void => {
-      if (activeGroup === group) return;
-      throw new Error("Graph transaction is no longer active.");
+      if (session.settled) {
+        throw new Error("Graph transaction is no longer active.");
+      }
     };
 
     return Object.freeze({
@@ -136,14 +137,29 @@ export const createRuntimeTransactionCoordinator = ({
         value: TValue,
       ): void => {
         assertActive();
-        stageContext(node, value);
+        stageContext(session, node, value);
       },
       publish: <TEvent extends AnyEventDefinition>(
         event: TEvent,
         payload: EventPayload<TEvent>,
       ): void => {
         assertActive();
-        stagePublication(event, payload);
+        stagePublication(session, event, payload);
+      },
+      transaction: <T>(
+        work: (transaction: GraphTransaction) => T | Promise<T>,
+      ): Promise<T> => {
+        assertActive();
+        // Deliberately the same `session` -- no new commit boundary, no
+        // new root. This is an ordinary awaited nested call: if `work`
+        // throws and the caller doesn't catch it, the *outer* work throws
+        // too, and this session's own `commitSession` is simply never
+        // reached. Ordinary control flow does the rollback here; nothing
+        // bespoke is needed because there is no other, independently
+        // racing participant to coordinate with (see C3 in
+        // docs/implementation/114-transaction-overlap-isolation-plan.md
+        // for why that coordination was removable).
+        return Promise.resolve(work(createGraphTransaction(session)));
       },
     });
   };
@@ -152,41 +168,23 @@ export const createRuntimeTransactionCoordinator = ({
     work: (transaction: GraphTransaction) => T | Promise<T>,
   ): Promise<T> =>
     runWithBufferedNotifications(async () => {
-      const isRoot = depth === 0;
-      let completed = false;
-
-      if (isRoot) {
-        rootSucceeded = false;
-        activeGroup = Symbol("graph-transaction");
-      }
-      const group = activeGroup;
-      if (!group) throw new Error("Graph transaction group is not active.");
-      const transaction = createGraphTransaction(group);
-      depth += 1;
+      const session: TransactionSession = {
+        stagedContexts: new Map<string, StagedContextChange>(),
+        stagedEvents: [],
+        settled: false,
+      };
+      const transaction = createGraphTransaction(session);
+      let succeeded = false;
 
       try {
         const result = await work(transaction);
-        completed = true;
+        succeeded = true;
         return result;
       } finally {
-        if (isRoot) rootSucceeded = completed;
-        depth -= 1;
-
-        if (!isRoot && depth === 0) {
-          resolveJoinedTransactions?.();
-        }
-
-        if (isRoot) {
-          if (depth > 0) await waitForJoinedTransactions();
-
-          try {
-            if (rootSucceeded) commitStagedWork();
-            else discardStagedWork();
-          } finally {
-            activeGroup = undefined;
-            resetJoinedTransactionSettlement();
-          }
-        }
+        session.settled = true;
+        if (succeeded) commitSession(session);
+        // else: nothing to do -- this session's own staged maps are simply
+        // discarded, never having been reachable from anywhere else.
       }
     });
 
