@@ -1,6 +1,7 @@
 export {
   GraphMutationConflictError,
   GraphMutationOutcomeUnknownError,
+  GraphMutationReconciliationError,
   GraphMutationRollbackConflictError,
   GraphMutationStateError,
 } from "./mutations/errors";

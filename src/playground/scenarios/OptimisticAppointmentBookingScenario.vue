@@ -102,7 +102,7 @@ const runBooking = async (input: BookAppointmentInput): Promise<void> => {
             id: -nextClientId.value,
             clientId: input.clientId,
             jobSeekerId: input.jobSeekerId,
-            status: "pending",
+            status: "pending" as const,
           },
         ]);
         phase.value = "optimistic";
@@ -167,7 +167,7 @@ const startOverlappingBooking = async (): Promise<void> => {
             id: -nextClientId.value,
             clientId: input.clientId,
             jobSeekerId: input.jobSeekerId,
-            status: "pending",
+            status: "pending" as const,
           },
         ]);
       },

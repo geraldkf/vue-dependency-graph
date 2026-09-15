@@ -57,12 +57,19 @@ Mutation execution does not keep a graph transaction or notification buffer open
 - The first release cannot layer two optimistic mutations over the same data node.
 - Optimistic ownership is acquired before remote execution. A conflicting same-node request does not start.
 - Known rejection restores complete target and affected-descendant snapshots only when private ownership and all expected generations still match.
+- Rollback restores logical snapshot fields but advances every restored generation; generation values never move backwards.
+- Safe rollback requests one scheduler pass when it restores stale subscribed state; fresh or unsubscribed restored state does not schedule.
+- Optimistic invalidation schedules subscribed data descendants immediately; mutation requests remain outside the data-load limiter.
+- A changed data descendant settled before known rejection prevents snapshot rollback and is reported as a rollback conflict.
 - Rollback conflicts preserve newer values, mark affected state stale, schedule authoritative reconciliation, and report immutable sorted conflict keys with the original rejection as cause.
 - Unknown outcomes retain optimistic values, mark the affected subgraph stale, schedule subscribed reconciliation, and preserve the remote error as the cause of `GraphMutationOutcomeUnknownError`.
 - Direct updates cannot create a first successful value from a node's placeholder initial value.
+- Mutation update functions are pure replacement functions; development and test builds reject writes through recursively protected plain arrays and objects.
 - Application code must classify API-specific known rejection when it wants automatic rollback.
 - Remote success followed by local reconciliation failure remains possible and must be reported honestly. No client library can roll back a committed server command automatically.
+- For optimistic work, remote success followed by local reconciliation failure retains optimistic state as stale, releases ownership, schedules authoritative recovery, and reports `GraphMutationReconciliationError`.
 - Confirmed success updates, explicit invalidation, and typed event effects share one local commit. Event predicates evaluate against final direct-update values before any graph mutation.
+- Mutation event predicates cannot read a derived dependency affected by the same success draft; unaffected derived values and direct data overlays remain supported.
 - A directly updated value is retained as stale when the same node is invalidated, enabling immediate display followed by authoritative reload.
 - Mutation retries, idempotency keys, offline queues, and global command concurrency remain application or later-milestone concerns.
 - Mutation implementation may extract a narrow invalidation planner or safer active-attempt iteration only when required by a concrete commit or rollback path.

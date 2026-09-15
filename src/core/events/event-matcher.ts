@@ -3,16 +3,22 @@ import { getEventInvalidationCandidates } from "./event-index";
 import type { AnyNodeDefinition, Graph } from "../graph/types";
 import type { MutableNodeRuntimeState } from "../state/state";
 import type { EventPublication } from "../transactions/types";
+import { EventPredicateDependencyError } from "./errors";
 
 export interface EventValueOverlay {
   readonly node: AnyNodeDefinition;
   readonly value: unknown;
 }
 
+export interface EventMatchOptions {
+  readonly valueOverlay?: readonly EventValueOverlay[];
+  readonly prohibitedDependencyKeys?: ReadonlySet<string>;
+}
+
 export interface RuntimeEventMatcher {
   readonly matchPublications: (
     publications: readonly EventPublication[],
-    valueOverlay: readonly EventValueOverlay[]
+    options?: EventMatchOptions,
   ) => readonly AnyNodeDefinition[];
 }
 
@@ -27,10 +33,13 @@ export const createRuntimeEventMatcher = ({
 }: RuntimeEventMatcherDependencies): RuntimeEventMatcher => {
   const matchPublications = (
     publications: readonly EventPublication[],
-    valueOverlay: readonly EventValueOverlay[]
+    options?: EventMatchOptions,
   ): readonly AnyNodeDefinition[] => {
     const overlayValues = new Map(
-      valueOverlay.map(change => [change.node.key, change.value])
+      (options?.valueOverlay ?? []).map(change => [
+        change.node.key,
+        change.value,
+      ]),
     );
     const matchedNodes = new Map<string, AnyNodeDefinition>();
 
@@ -43,6 +52,13 @@ export const createRuntimeEventMatcher = ({
           if (!dependencyKeys.has(dependency.key)) {
             throw new Error(
               `Node "${candidate.node.key}" event predicate cannot read undeclared dependency "${dependency.key}".`
+            );
+          }
+
+          if (options?.prohibitedDependencyKeys?.has(dependency.key)) {
+            throw new EventPredicateDependencyError(
+              candidate.node.key,
+              dependency.key,
             );
           }
 

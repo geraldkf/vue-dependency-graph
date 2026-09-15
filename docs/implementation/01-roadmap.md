@@ -347,7 +347,7 @@ Exit criteria: a long-running operation progresses to completion without overlap
 
 ## Milestone 9: Mutation framework
 
-Status: M9A through M9G implementation and maintained documentation complete; dependency-backed automated validation and manual browser verification pending.
+Status: Milestone 9 implementation, automated validation, and manual verification complete. Post-milestone review identified focused correctness hardening to complete as M9H before Milestone 10.
 
 Implementation plan: docs/implementation/87-milestone-9-mutation-framework-plan.md  
 Design decision: docs/decisions/ADR-013-mutation-framework.md
@@ -359,7 +359,7 @@ Design decision: docs/decisions/ADR-013-mutation-framework.md
 - [x] M9E overlap protection, race handling, and unknown remote outcomes
 - [x] M9F deterministic Optimistic Appointment Booking playground and Vue behavioural coverage
 - [x] M9G maintained documentation reconciliation and migration guidance
-- [ ] M9G dependency-backed automated validation and manual browser verification
+- [x] M9G dependency-backed automated validation and manual browser verification
 - [x] Preserve framework-agnostic core boundaries and the existing state, invalidation, event, scheduler, and transaction ownership models
 - [x] Reject unsafe same-node optimistic overlap rather than adding speculative optimistic layers
 - [x] Never overwrite newer graph work with an obsolete rollback snapshot
@@ -370,6 +370,32 @@ Design decision: docs/decisions/ADR-013-mutation-framework.md
 - [x] Defer refresh-policy strategy, transaction lifecycle, execution, and Vue adapter refactors that do not deliver mutation behaviour
 
 Exit criteria: a failed optimistic appointment booking restores the previous local graph state when the failure is known to be rejected by the server. An unknown outcome is retained and reconciled rather than falsely reported as rolled back.
+
+## Milestone 9H: Mutation correctness hardening
+
+Status: Approved implementation plan. Runtime implementation has not started.
+
+Implementation plan: docs/implementation/95-milestone-9h-mutation-correctness-hardening-plan.md
+
+- [x] M9H-A monotonic rollback generations and ignored-abort protection
+- [x] M9H-B pure updater contract and development/test mutation guard
+- [x] M9H-C remote-success reconciliation-failure recovery
+- [x] M9H-D rollback scheduler recovery for restored stale subscribed state
+- [x] M9H-E explicit immediate optimistic data-descendant loading coverage
+- [x] M9H-F affected-derived mutation event predicate restriction
+- [ ] M9H-G internal mutation-controller decomposition before observability
+- [ ] Reconcile API, architecture, ADR, adoption, testing, and validation documentation
+- [ ] Complete automated and manual validation against the combined checkout
+
+Confirmed decisions:
+
+- Optimistic subscribed data descendants may reload before remote mutation settlement.
+- Mutation event predicates may not read a derived dependency affected by the same success draft.
+- Generation values remain monotonic and are not restored from rollback snapshots.
+- Mutation updater functions are pure replacement functions and must not mutate graph-owned values.
+- Remote success followed by local reconciliation failure retains optimistic values as stale and schedules authoritative recovery rather than rolling back.
+
+Exit criteria: rollback cannot revive obsolete work, failed preparation cannot leak in-place changes, every ambiguous or unreconciled state is recoverable, and M10 can instrument explicit mutation lifecycle transitions.
 
 ## Milestone 10: Observability
 

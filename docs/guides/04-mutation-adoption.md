@@ -33,7 +33,27 @@ const saved = await runtime.mutate(SaveAppointment, input, {
 
 Use `update(...)` when the response contains enough authoritative data to update a successful data node immediately. Use `invalidate(...)` when the server remains authoritative or the node has never loaded successfully. Use `publish(...)` for typed cross-domain invalidation already represented by graph event declarations.
 
+For mutation success events, predicates should read direct data or context dependencies whenever those values participate in the same draft. Do not read a derived dependency affected by the mutation's optimistic targets, a direct success update, or explicit invalidation. The derived value has not recomputed during preparation, so the runtime rejects that read instead of evaluating stale data. Unaffected derived dependencies remain valid.
+
 The success callback and all update functions must be synchronous. The runtime validates the complete draft before changing graph state.
+
+Update functions must also be pure. Treat `current` as deeply read-only for application purposes and return a replacement value:
+
+```ts
+// Supported
+effects.update(Appointments, current => [
+  ...current,
+  pendingAppointment,
+]);
+
+// Invalid
+effects.update(Appointments, current => {
+  current.push(pendingAppointment);
+  return current;
+});
+```
+
+Development and test builds detect writes through plain arrays and plain objects, including nested plain values, and reject before any local effect commits. Production builds omit this recursive guard for performance. Non-plain values are not guarded, so immutable replacement remains required for `Date`, `Map`, `Set`, class instances, and similar values.
 
 ## Add optimistic behaviour only when the user benefit is clear
 
@@ -89,9 +109,19 @@ The server outcome is ambiguous. Read `cause` for the original remote failure an
 
 A known rejection arrived after newer graph work changed captured state. No old snapshot was restored. Read `cause` for the rejection and `nodeKeys` for conflicts. Preserve the newer values and allow authoritative reconciliation.
 
+A successful known-rejection rollback restores prior logical values and statuses, but it does not restore old generation numbers. Rollback is a new committed transition, so generations continue increasing and obsolete asynchronous work remains obsolete.
+
+If the restored snapshot was already stale and remains subscribed, rollback automatically resumes authoritative graph work through the existing scheduler. Callers do not need to issue a second refresh merely because rollback restored stale state, and `whenSettled()` waits for this recovery work.
+
+Optimistic updates can start subscribed descendant reloads before the command settles. Design loaders and APIs with this timing in mind. A descendant that returns newer changed data before known rejection is preserved rather than overwritten by rollback, and the caller receives `GraphMutationRollbackConflictError`. Mutation execution does not consume a data-load concurrency slot, so a command may begin while descendant loading is queued behind `maxConcurrentLoads`.
+
 ### `GraphMutationStateError`
 
 The local effect draft was invalid, such as a never-successful update target or a malformed runtime target. This is an application integration error rather than a remote outcome.
+
+### `GraphMutationReconciliationError`
+
+The remote command succeeded, but local optimistic success reconciliation failed. Do not retry or roll back automatically. Read `mutationKey`, `nodeKeys`, and `cause`, keep any optimistic values presented as stale confirmation-pending state, and allow authoritative reload to settle. `remoteSucceeded` is always `true`. For non-optimistic mutations, local success-effect failures continue to surface as their original errors because there is no optimistic projection to recover.
 
 ## Transaction interaction
 

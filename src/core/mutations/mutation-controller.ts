@@ -1,3 +1,4 @@
+import type { EventMatchOptions } from "../events/event-matcher";
 import type { AnyEventDefinition, EventPayload } from "../events/types";
 import type {
   AnyNodeDefinition,
@@ -12,6 +13,7 @@ import type { EventPublication } from "../transactions/types";
 import {
   GraphMutationConflictError,
   GraphMutationOutcomeUnknownError,
+  GraphMutationReconciliationError,
   GraphMutationRollbackConflictError,
   GraphMutationStateError,
 } from "./errors";
@@ -21,6 +23,10 @@ import type {
   MutationSuccessEffects,
   MutationUpdateEffects,
 } from "./types";
+import {
+  guardMutationUpdaterValue,
+  isMutationValueMutationError,
+} from "./mutation-value-guard";
 
 interface MutationUpdateDraft {
   readonly node: AnyNodeDefinition;
@@ -72,12 +78,10 @@ export interface RuntimeMutationControllerDependencies {
   ) => AnyNodeDefinition;
   readonly getMutableState: (key: string) => MutableNodeRuntimeState;
   readonly getActiveAttempt: (key: string) => ActiveAttempt | undefined;
+  readonly hasSubscribers: (node: AnyNodeDefinition) => boolean;
   readonly matchPublications: (
     publications: readonly EventPublication[],
-    valueOverlay: readonly {
-      readonly node: AnyNodeDefinition;
-      readonly value: unknown;
-    }[],
+    options?: EventMatchOptions,
   ) => readonly AnyNodeDefinition[];
   readonly prepareCombinedInvalidation: (
     changedResultRoots: readonly AnyNodeDefinition[],
@@ -90,13 +94,14 @@ export interface RuntimeMutationControllerDependencies {
 
 /**
  * Owns caller-driven mutation execution, atomic success reconciliation, and
- * optimistic snapshot lifetime. Generation-protected rollback conflicts and
- * unknown-outcome reconciliation are completed by M9E.
+ * optimistic snapshot lifetime. Rollback restores logical snapshot state but
+ * always advances generations so obsolete work can never become current again.
  */
 export const createRuntimeMutationController = ({
   resolveRegisteredNode,
   getMutableState,
   getActiveAttempt,
+  hasSubscribers,
   matchPublications,
   prepareCombinedInvalidation,
   notify,
@@ -177,7 +182,19 @@ export const createRuntimeMutationController = ({
     });
 
     return validated.map(({ node, state, updater }) => {
-      const value = updater(state.data);
+      const guarded = guardMutationUpdaterValue(state.data);
+      let value: unknown;
+      try {
+        value = guarded.unwrap(updater(guarded.current));
+      } catch (error) {
+        if (isMutationValueMutationError(error)) {
+          throw new GraphMutationStateError(
+            node.key,
+            `Mutation updater for node "${node.key}" must not modify the current value.`,
+          );
+        }
+        throw error;
+      }
       if (isPromiseLike(value)) {
         void Promise.resolve(value).catch(() => undefined);
         throw new GraphMutationStateError(
@@ -304,10 +321,18 @@ export const createRuntimeMutationController = ({
         conflictingKeys.add(target.key);
       }
     }
+    const targetKeys = new Set(session.targets.map(node => node.key));
     for (const snapshot of session.snapshots) {
+      const state = getMutableState(snapshot.node.key);
       if (
-        getMutableState(snapshot.node.key).generation !==
-        session.expectedGenerations.get(snapshot.node.key)
+        state.generation !== session.expectedGenerations.get(snapshot.node.key) ||
+        (
+          !targetKeys.has(snapshot.node.key) &&
+          snapshot.node.kind === "data" &&
+          state.status === "success" &&
+          state.freshness === "fresh" &&
+          !Object.is(state.data, snapshot.data)
+        )
       ) {
         conflictingKeys.add(snapshot.node.key);
       }
@@ -327,20 +352,26 @@ export const createRuntimeMutationController = ({
       state.status = snapshot.status;
       state.freshness = snapshot.freshness;
       state.error = snapshot.error;
-      state.generation = snapshot.generation;
+      state.generation += 1;
       state.hasSuccessfulValue = snapshot.hasSuccessfulValue;
     }
     for (const snapshot of session.snapshots) {
       getActiveAttempt(snapshot.node.key)?.controller.abort();
     }
+    const shouldSchedule = session.snapshots.some(
+      snapshot =>
+        snapshot.freshness === "stale" && hasSubscribers(snapshot.node),
+    );
     releaseOptimisticOwnership(session);
     notify();
+    if (shouldSchedule) schedule();
   };
 
   const applySuccessEffects = <TInput, TResult>(
     options: MutationOptions<TInput, TResult>,
     result: TResult,
     input: TInput,
+    optimisticTargets: readonly AnyNodeDefinition[] = [],
   ): void => {
     if (!options.onSuccess) return;
 
@@ -385,13 +416,26 @@ export const createRuntimeMutationController = ({
     }, "success");
 
     const prepared = prepareUpdates(updateDrafts);
-    const eventTargets = matchPublications(
-      publications,
-      prepared.map(({ node, value }) => ({ node, value })),
+    const changedUpdates = prepared.filter(update => update.changed);
+    const preliminaryInvalidation = prepareCombinedInvalidation(
+      [
+        ...optimisticTargets,
+        ...changedUpdates.map(({ node }) => node),
+      ],
+      [...invalidationRoots.values()],
+      prepared.map(({ node }) => node),
     );
+    const affectedDerivedKeys = new Set(
+      preliminaryInvalidation.affectedNodes
+        .filter(node => node.kind === "derived")
+        .map(node => node.key),
+    );
+    const eventTargets = matchPublications(publications, {
+      valueOverlay: prepared.map(({ node, value }) => ({ node, value })),
+      prohibitedDependencyKeys: affectedDerivedKeys,
+    });
     for (const node of eventTargets) invalidationRoots.set(node.key, node);
 
-    const changedUpdates = prepared.filter(update => update.changed);
     const invalidation = prepareCombinedInvalidation(
       changedUpdates.map(({ node }) => node),
       [...invalidationRoots.values()],
@@ -444,10 +488,20 @@ export const createRuntimeMutationController = ({
       .then(
         result => {
           try {
-            if (options) applySuccessEffects(options, result, input);
-            return result;
-          } finally {
+            if (options) {
+              applySuccessEffects(options, result, input, optimistic?.targets);
+            }
             releaseOptimisticOwnership(optimistic);
+            return result;
+          } catch (error) {
+            if (!optimistic) throw error;
+
+            reconcileOptimisticState(optimistic);
+            throw new GraphMutationReconciliationError(
+              mutation.key,
+              optimistic.snapshots.map(snapshot => snapshot.node.key),
+              error,
+            );
           }
         },
         error => {

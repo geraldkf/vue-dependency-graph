@@ -83,11 +83,15 @@ Milestone 9B adds synchronous `onSuccess` update drafts for data nodes that alre
 
 The mutation controller owns this success-reconciliation boundary. The invalidation controller exposes one narrow dispatch-free changed-result descendant operation so direct root updates and dependent invalidation can share one observer commit. The state store remains storage-only and does not own mutation or stale-state policy.
 
+Updater preparation treats graph-owned values as immutable. Development and test builds pass recursively protected views for plain arrays and plain objects, convert attempted writes to `GraphMutationStateError`, and unwrap protected nested references before commit. The committed runtime value itself is not frozen, and production builds avoid recursive guard overhead.
+
 Direct reconciliation is not optimistic. It runs only after remote success. Local reconciliation failure is caller-visible but cannot roll back a remote command that has already committed.
 
 ### Implemented success invalidation and events
 
 Milestone 9C adds explicit data or derived invalidation and typed event publication to the same synchronous success draft. Event predicates are evaluated before graph mutation and receive final direct-update values through an overlay. Direct updates, explicit roots, event roots, and descendants are deduplicated into one commit with one generation advancement per affected node, one observer notification, and at most one scheduler request.
+
+Milestone 9H-F prevents mutation predicates from reading derived values invalidated by that same draft. Before event matching, mutation reconciliation computes a preliminary affected set from optimistic targets, effective direct success updates, explicit invalidation roots, and descendants. Affected derived keys are passed to the shared event matcher as prohibited dependencies. The matcher reports a generic dependency-read error, which optimistic remote-success handling exposes through `GraphMutationReconciliationError`. Runtime publication and transaction publication do not supply this restriction.
 
 A directly updated node that is also invalidated retains the response value as successful stale data. Mutation events are success-only and are not published when remote execution rejects or local effect preparation fails.
 
@@ -102,6 +106,14 @@ Unclassified failures default to `unknown` and are deliberately not rolled back.
 ### Implemented race and unknown-outcome handling
 
 Milestone 9E guards rollback with private ownership and expected generations for every captured target and descendant. When newer context, event, refresh, polling, or independent mutation work changes a captured generation, snapshot restoration is skipped atomically. Current values are retained as stale, subscribed nodes reconcile through the existing scheduler, and `GraphMutationRollbackConflictError` preserves the original rejection as its cause.
+
+Milestone 9H-A makes successful rollback a new graph transition. Snapshot data and visible state are restored, but generations advance monotonically instead of returning to their pre-optimistic values. This preserves the execution engine's obsolete-attempt protection for loaders that ignore abort signals.
+
+Milestone 9H-D applies the existing subscribed-stale scheduler rule after safe rollback. If any restored target or descendant was stale in its snapshot and currently has direct or required subscribers, rollback emits its atomic notification and requests one scheduler pass. Fresh restored state and stale unsubscribed state do not create scheduler work.
+
+Milestone 9H-E confirms that optimistic invalidation is not deferred until command settlement. Subscribed data descendants can load while the command is pending, under the normal data-load limiter. Mutation requests remain independent of that limiter. If a non-target data descendant commits a changed fresh value before known rejection, rollback treats it as newer graph state even when its invalidation generation is unchanged, retains current values as stale, and schedules authoritative reconciliation. Active unsettled descendant work remains protected by rollback generation advancement and abort ordering.
+
+Milestone 9H-C distinguishes confirmed remote success from successful local reconciliation. If an optimistic command succeeds remotely but local success preparation fails, rollback is unsafe because the server may already contain the change. The runtime retains optimistic values as stale, invalidates the captured affected subgraph, advances generations, aborts obsolete work, releases ownership, and schedules subscribed reload. `GraphMutationReconciliationError` reports the mutation key, immutable affected node keys, remote success, and the original local cause. No success update, explicit invalidation, or event publication partially commits.
 
 Unknown outcomes retain optimistic values, mark the complete affected subgraph stale, and reject with `GraphMutationOutcomeUnknownError`. A missing or failing classifier cannot prove rejection and therefore follows this safe path. Non-optimistic mutation failures continue to preserve their original errors.
 

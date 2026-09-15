@@ -10,7 +10,7 @@ Design and prototyping. Milestones 1 through 7 are implemented, including the fr
 
 Milestone 8 refresh policies and polling are implemented and validated. The runtime supports stale-after, fixed interval, typed poll-until completion and failure, timeout, bounded retry with backoff and jitter, pause/resume, optional browser lifecycle integration, and a deterministic Polling Progress playground. See `docs/implementation/86-milestone-8-implementation-summary.md`. APIs remain subject to change until the existing-application migration trial is complete.
 
-Milestone 9 implementation and maintained documentation are complete, including typed mutation execution, atomic success effects, optimistic updates, guarded rollback and unknown outcomes, plus a deterministic Vue appointment-booking playground. Full dependency-backed validation and manual browser verification remain pending on the cumulative checkout. See `docs/implementation/87-milestone-9-mutation-framework-plan.md`.
+Milestone 9 implementation, documentation, automated validation, and manual verification are complete. Milestone 9H correctness hardening is in progress before Milestone 10 observability; M9H-A through M9H-F are implemented with offline validation pending, including rollback hardening, updater protection, reconciliation recovery, immediate descendant loading, and safe mutation event predicate reads. See `docs/implementation/87-milestone-9-mutation-framework-plan.md`.
 
 ## Repository model
 
@@ -148,5 +148,6 @@ pnpm install --frozen-lockfile
 - Vue and Pinia integration: `docs/architecture/07-vue-and-pinia-integration.md`
 - Roadmap: `docs/implementation/01-roadmap.md`
 - Test strategy: `docs/testing/01-test-strategy.md`
+- Mutation hardening plan: `docs/implementation/95-milestone-9h-mutation-correctness-hardening-plan.md`
 
 Historical implementation notes preserve point-in-time decisions and validation evidence. Use the documents above for the current architecture and API.

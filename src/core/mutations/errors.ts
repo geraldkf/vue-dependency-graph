@@ -36,6 +36,28 @@ export class GraphMutationOutcomeUnknownError extends Error {
   }
 }
 
+
+export class GraphMutationReconciliationError extends Error {
+  public readonly mutationKey: string;
+  public readonly nodeKeys: readonly string[];
+  public readonly remoteSucceeded = true as const;
+
+  public constructor(
+    mutationKey: string,
+    nodeKeys: readonly string[],
+    cause: unknown,
+  ) {
+    const sortedKeys = normalizeNodeKeys(nodeKeys);
+    super(
+      `Mutation "${mutationKey}" succeeded remotely but local reconciliation failed for nodes: ${sortedKeys.join(", ")}.`,
+      { cause },
+    );
+    this.name = "GraphMutationReconciliationError";
+    this.mutationKey = mutationKey;
+    this.nodeKeys = sortedKeys;
+  }
+}
+
 export class GraphMutationRollbackConflictError extends Error {
   public readonly nodeKeys: readonly string[];
 

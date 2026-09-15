@@ -241,10 +241,9 @@ export const createGraphRuntime = (
     eventPublications: readonly EventPublication[],
     immediate: boolean,
   ): void => {
-    const eventTargets = events.matchPublications(
-      eventPublications,
-      contextChanges,
-    );
+    const eventTargets = events.matchPublications(eventPublications, {
+      valueOverlay: contextChanges,
+    });
     invalidation.commitContexts(
       contextChanges,
       eventTargets,
@@ -276,6 +275,7 @@ export const createGraphRuntime = (
     resolveRegisteredNode: requireRegisteredNode,
     getMutableState,
     getActiveAttempt,
+    hasSubscribers: subscriptions.hasSubscribers,
     matchPublications: events.matchPublications,
     prepareCombinedInvalidation:
       invalidation.prepareCombinedInvalidation,

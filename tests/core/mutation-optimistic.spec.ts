@@ -117,8 +117,147 @@ describe("optimistic mutations", () => {
     request.reject(failure);
     await expect(result).rejects.toBe(failure);
 
-    expect(runtime.getState(appointments)).toEqual(beforeAppointments);
-    expect(runtime.getState(summary)).toEqual(beforeSummary);
+    expect(runtime.getState(appointments)).toEqual({
+      ...beforeAppointments,
+      generation: 2,
+    });
+    expect(runtime.getState(summary)).toEqual({
+      ...beforeSummary,
+      generation: 2,
+    });
+    expect(runtime.getState(appointments).generation).toBeGreaterThan(
+      beforeAppointments.generation,
+    );
+    expect(runtime.getState(summary).generation).toBeGreaterThan(
+      beforeSummary.generation,
+    );
+  });
+
+  it("advances every restored generation once for a multi-node rollback", async () => {
+    const appointments = createAppointments();
+    const count = defineDataNode({
+      key: "optimistic-rollback-count",
+      initialValue: 0,
+      load: async () => 1,
+    });
+    const summary = defineDerivedNode({
+      key: "optimistic-rollback-summary",
+      dependencies: [appointments, count] as const,
+      derive: ({ get }) => get(appointments).length + get(count),
+    });
+    const request = deferred<never>();
+    const failure = new Error("Booking rejected");
+    const mutation = defineMutation({
+      key: "appointment.multi-node-reject",
+      execute: async () => request.promise,
+    });
+    const runtime = createGraphRuntime(
+      createGraph({ nodes: [summary, count, appointments] }),
+    );
+    await runtime.execute([summary]);
+    const beforeAppointments = runtime.getState(appointments);
+    const beforeCount = runtime.getState(count);
+    const beforeSummary = runtime.getState(summary);
+
+    const result = runtime.mutate(mutation, undefined, {
+      optimistic: effects => {
+        effects.update(appointments, current => [
+          ...current,
+          { id: -1, status: "pending" },
+        ]);
+        effects.update(count, current => current + 1);
+      },
+      classifyFailure: () => "rejected",
+    });
+    await waitForCondition(
+      () => runtime.getState(appointments).data.length === 2,
+      "multi-node optimistic values to appear",
+    );
+
+    expect(runtime.getState(appointments).generation).toBe(1);
+    expect(runtime.getState(count).generation).toBe(1);
+    expect(runtime.getState(summary).generation).toBe(1);
+
+    request.reject(failure);
+    await expect(result).rejects.toBe(failure);
+
+    expect(runtime.getState(appointments)).toEqual({
+      ...beforeAppointments,
+      generation: 2,
+    });
+    expect(runtime.getState(count)).toEqual({
+      ...beforeCount,
+      generation: 2,
+    });
+    expect(runtime.getState(summary)).toEqual({
+      ...beforeSummary,
+      generation: 2,
+    });
+  });
+
+  it("keeps an ignored-abort refresh obsolete after rollback", async () => {
+    const refreshResult = deferred<Appointment[]>();
+    let loadCount = 0;
+    const appointments = defineDataNode({
+      key: "optimistic-rollback-ignored-abort",
+      initialValue: [] as Appointment[],
+      load: async () => {
+        loadCount += 1;
+        if (loadCount === 1) {
+          return [{ id: 1, status: "confirmed" }];
+        }
+        return refreshResult.promise;
+      },
+    });
+    const request = deferred<never>();
+    const failure = new Error("Booking rejected");
+    const mutation = defineMutation({
+      key: "appointment.rollback-ignored-abort",
+      execute: async () => request.promise,
+    });
+    const runtime = createGraphRuntime(createGraph({ nodes: [appointments] }));
+    await runtime.execute([appointments]);
+
+    const refresh = runtime.refresh([appointments]);
+    await waitForCondition(
+      () => loadCount === 2,
+      "ignored-abort refresh to start",
+    );
+    const generationBeforeOptimistic = runtime.getState(appointments).generation;
+
+    const result = runtime.mutate(mutation, undefined, {
+      optimistic: effects => {
+        effects.update(appointments, current => [
+          ...current,
+          { id: -1, status: "pending" },
+        ]);
+      },
+      classifyFailure: () => "rejected",
+    });
+    await waitForCondition(
+      () => runtime.getState(appointments).data.length === 2,
+      "optimistic appointment to appear during refresh",
+    );
+    const optimisticGeneration = runtime.getState(appointments).generation;
+
+    request.reject(failure);
+    await expect(result).rejects.toBe(failure);
+
+    const rollbackGeneration = runtime.getState(appointments).generation;
+    expect(generationBeforeOptimistic).toBe(1);
+    expect(optimisticGeneration).toBe(2);
+    expect(rollbackGeneration).toBe(3);
+    expect(runtime.getState(appointments).data).toEqual([
+      { id: 1, status: "confirmed" },
+    ]);
+
+    refreshResult.resolve([{ id: 99, status: "confirmed" }]);
+    await refresh;
+
+    expect(runtime.getState(appointments)).toMatchObject({
+      data: [{ id: 1, status: "confirmed" }],
+      generation: rollbackGeneration,
+    });
   });
 
   it("reconciles success without a transient rollback", async () => {

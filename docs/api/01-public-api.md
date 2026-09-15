@@ -432,6 +432,8 @@ const result = await runtime.mutate(SaveAppointment, input, {
 
 `effects.update(...)` accepts registered data nodes only and preserves each node's value type in its updater. Every target must already have a successful value. Placeholder `initialValue` data is not treated as successful server state.
 
+Mutation update functions are pure replacement functions. They must treat `current` and nested values reachable from it as read-only and return the intended replacement value. Development and test builds protect plain arrays and plain objects with recursive read-only views. A detected direct or nested write rejects with `GraphMutationStateError` before any mutation effect commits. Production builds omit this guard overhead, so purity remains an application contract. Non-plain values such as `Date`, `Map`, `Set`, class instances, and platform objects are not recursively protected.
+
 The callback and all updaters are synchronous. The runtime records and validates the complete draft before mutation. Duplicate writes to one node, malformed targets, a missing successful value, callback failure, or updater failure apply no mutation-owned graph change.
 
 Effective updates commit together. Each changed target:
@@ -469,6 +471,8 @@ await runtime.mutate(SaveAppointment, input, {
 
 `effects.publish(...)` preserves the typed event payload. Publications are evaluated only after confirmed remote success. Predicate matching occurs before graph mutation and can read final direct-update values from the same success draft. A predicate failure applies no mutation-owned update, invalidation, event effect, notification, or scheduling.
 
+A mutation event predicate may not read a derived dependency affected by the mutation's optimistic targets, a direct success update, or explicit invalidation. Such a read would observe the previous committed derived value, so preparation rejects before any success effect commits. Directly updated data dependencies remain readable through the overlay, and unaffected derived dependencies remain readable from committed state. Normal runtime and transaction event publication retain their existing predicate semantics.
+
 Direct updates, explicit invalidation, event targets, and all descendants form one local commit. Every affected node advances generation at most once. Active work is aborted only after affected generations advance. Observers receive one coherent notification and subscribed stale work requests at most one scheduler pass.
 
 When one node is both directly updated and invalidated, the response value is retained as successful stale data. This supports immediate display while an authoritative reload proceeds. A direct update that is reached as the descendant of another changed or invalidated root follows the same stale-result rule.
@@ -501,6 +505,8 @@ The optimistic callback exposes direct data-node updates only. It runs before re
 
 Effective optimistic values commit atomically as successful fresh data. Changed-result descendants are invalidated through the existing graph path. The runtime captures complete target and affected-descendant snapshots before commit.
 
+Optimistic invalidation immediately participates in normal subscription scheduling. Subscribed derived descendants may recompute and subscribed data descendants may reload before the remote mutation settles. Data descendants continue to use `maxConcurrentLoads`; mutation execution remains outside that limiter. A changed data descendant that settles before known rejection is treated as newer graph state, so snapshot rollback is skipped and `GraphMutationRollbackConflictError` preserves that descendant. An active descendant that has not settled remains eligible for safe rollback and is made obsolete by generation advancement before abort.
+
 Only one unresolved optimistic mutation may own a data node. A same-node conflict rejects with `GraphMutationConflictError` before the conflicting request starts. Disjoint optimistic work remains independent.
 
 A failure classified as `rejected` restores the complete captured snapshots atomically and preserves the original remote error. Successful completion does not perform a transient rollback. It retains the optimistic value when no success update replaces it, or applies normal M9B/M9C success effects directly over optimistic state.
@@ -510,6 +516,12 @@ A missing classifier defaults to `unknown`. Classifier exceptions and unsupporte
 For an unknown outcome, optimistic values are retained, affected targets and descendants become stale, obsolete work is aborted, and subscribed stale nodes reconcile through the existing scheduler. The mutation rejects with `GraphMutationOutcomeUnknownError`; its immutable sorted `nodeKeys` identify affected optimistic state and its `cause` is the original remote error.
 
 Known-rejection rollback requires both optimistic ownership and the expected post-optimistic generation for every captured target and descendant. If newer graph work changed any captured node, no snapshot is restored. Current values are retained as stale for authoritative reconciliation and the mutation rejects with `GraphMutationRollbackConflictError`. Its immutable sorted `nodeKeys` identify conflicts and its `cause` is the original rejection.
+
+When rollback is safe, the runtime restores the prior logical state fields but does not restore old generation numbers. Every restored target and descendant advances to a new generation before active work is aborted. Generations therefore remain monotonic, and work made obsolete by optimistic application cannot become current again after rollback.
+
+After safe rollback, the runtime requests one scheduler pass when any restored snapshot is stale and currently subscribed. Fresh restored snapshots and stale unsubscribed snapshots do not schedule work. `whenSettled()` includes rollback-triggered scheduler work.
+
+If remote execution succeeds but optimistic success reconciliation fails, the runtime does not roll back a command that may already be committed. It retains the optimistic values, marks every captured target and descendant stale, advances generations, aborts obsolete work, releases optimistic ownership, and schedules subscribed authoritative reconciliation. The mutation rejects with `GraphMutationReconciliationError`, whose immutable sorted `nodeKeys` identify affected state, `mutationKey` identifies the command definition, `remoteSucceeded` is `true`, and `cause` preserves the local reconciliation failure. Non-optimistic success-reconciliation failures continue to reject with their original local error.
 
 Context changes, event invalidation, refresh, polling, independent mutations, and transactions remain independent while mutation work is pending. Their newer graph state is never overwritten by an obsolete rollback snapshot.
 

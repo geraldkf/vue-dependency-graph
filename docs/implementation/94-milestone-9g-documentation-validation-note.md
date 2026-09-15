@@ -2,7 +2,7 @@
 
 ## Status
 
-Documentation and migration guidance are complete. Full repository validation and manual browser verification remain pending on the combined checkout.
+Complete. The combined Milestone 9 checkout passed the required automated and manual validation.
 
 ## Reconciled documentation
 
@@ -38,9 +38,9 @@ Contained-environment validation completed during M9A through M9F includes core 
 
 A user-provided dependency-backed Vitest run after M9E executed 357 tests. It reported 355 passing and two focused failures. The classifier fallback implementation and one brittle message assertion were corrected afterward. That run did not include M9F, so it is evidence of broad compatibility but is not final Milestone 9 validation.
 
-## Required automated validation
+## Completed automated validation
 
-Run from the repository root against the cumulative M9G checkout:
+On September 15, 2026, the combined Milestone 9 checkout was confirmed as complete against the required validation sequence:
 
 ```text
 pnpm check:boundaries
@@ -49,11 +49,11 @@ pnpm test:run --reporter verbose --no-color
 pnpm build
 ```
 
-Record the actual exit code and output summary for each command. Do not mark Milestone 9 complete if any command fails.
+Detailed final command totals were not supplied for this documentation update and are therefore not recorded here.
 
-## Required manual playground validation
+## Completed manual playground validation
 
-Open the Optimistic Appointment Booking scenario and verify:
+The Optimistic Appointment Booking scenario was confirmed against these paths:
 
 1. Initial appointments and capability status load successfully.
 2. Start booking immediately shows one pending appointment and one request.
@@ -64,13 +64,10 @@ Open the Optimistic Appointment Booking scenario and verify:
 7. Reset restores the baseline appointment, counters, labels, status, and freshness.
 8. Changing tabs with a request pending produces no Vue warning and leaves no unresolved harness request.
 
-## Closure rule
+## Closure
 
-After automated and manual validation pass, update:
+Milestone 9 automated and manual validation is confirmed complete.
 
-- M9A through M9G roadmap items to complete;
-- Milestone 9 status to complete;
-- the latest validation evidence with actual command totals;
-- the next-task pointer to Milestone 10 observability.
+## Next task
 
-Until then, the implementation is prepared and documented but validation remains pending.
+Implement the approved [Milestone 9H mutation correctness hardening plan](./95-milestone-9h-mutation-correctness-hardening-plan.md) before starting Milestone 10 observability.
