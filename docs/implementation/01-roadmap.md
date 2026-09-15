@@ -446,3 +446,7 @@ Exit criteria: one production-shaped workflow runs successfully with measurable 
 - Async derived nodes
 - Distributed event transport
 - Offline mutation queue
+
+## Milestone 9H-G mutation decomposition
+
+M9H-G0 through M9H-G6 are implemented. Mutation update planning, optimistic session policy, graph commits, and settlement coordination now live in focused internal modules behind one runtime-facing mutation controller. Static validation is complete. Milestone 10 remains blocked until boundary checks, full type checking, the complete test suite, and the production build pass in the dependency-backed development environment.

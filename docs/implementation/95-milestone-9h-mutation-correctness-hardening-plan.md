@@ -2,7 +2,7 @@
 
 ## Status
 
-Approved for implementation. M9H-A through M9H-F are implemented with offline validation pending; M9H-G remains planned.
+Implemented through M9H-G6. Static validation is complete; the final dependency-backed type check, full test suite, and production build remain the completion gate.
 
 ## Purpose
 
@@ -402,6 +402,8 @@ The current controller owns update planning, ownership, snapshotting, optimistic
 
 Perform this extraction only after M9H-A through M9H-F tests pass. Keep it mechanical and internal.
 
+The full staged decomposition is specified in `docs/implementation/102-milestone-9h-g-full-mutation-decomposition-plan.md`. Implement it as M9H-G0 through M9H-G6, with a passing cumulative package after every step.
+
 ### Candidate internal modules
 
 #### `mutation-update-planner.ts`
@@ -553,4 +555,4 @@ M9H is complete when:
 
 ## Next task
 
-Implement **M9H-G internal mutation-controller decomposition** next. M9H-A through M9H-F are implemented.
+Complete the dependency-backed M9H-G6 validation gate before starting Milestone 10 observability.

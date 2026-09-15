@@ -269,3 +269,13 @@ Tests must not use real network requests, real delays, or framework-inferred HTT
 ## Offline validation responsibility
 
 Milestone 8 validation is complete. The combined checkout passed boundary checks, strict typechecking, the complete Vitest suite, and the production build. The Polling Progress manual browser paths also passed. Future milestones must continue to report validation against the exact combined checkout.
+
+M9H-G1 keeps runtime-level mutation tests as the primary specification while extracting update planning. Existing reconciliation, optimistic, updater-purity, and G0 safety tests jointly protect callback lifetime, validation-before-evaluation, duplicate rejection, Promise-like rejection, protected-value handling, no-op detection, and unchanged public errors. The planner remains internal and is not tested through public exports.
+
+M9H-G2 relies on the runtime-level optimistic, outcome-race, rollback-scheduling, reconciliation-failure, optimistic-descendant, and G0 safety suites to specify session behaviour. These tests protect no-op ownership, overlapping conflicts, snapshot restoration, monotonic generations, settled descendant conflicts, immutable sorted keys, release after every settlement path, and stale subscribed recovery while the implementation boundary moves.
+
+M9H-G3 is protected by the existing generation-before-abort, ignored-abort, atomic optimistic, success reconciliation, success-effects, rollback scheduling, unknown-outcome, rollback-conflict, reconciliation-failure, optimistic-descendant, and G0 lifecycle tests. These runtime-level tests remain the specification for the four extracted commit transitions; direct tests that only verify delegation are intentionally avoided.
+
+M9H-G4 is protected by the ownership-release, callback-lifetime, multi-publication atomicity, public error, classifier single-invocation, rollback-conflict, unknown-outcome, reconciliation-failure, success-effects, and G0 lifecycle tests. These runtime-level tests verify the settlement boundary through observable behaviour rather than mocks between the controller and coordinator.
+
+M9H-G5 preserves the complete runtime-level mutation suite as the lifecycle-seam specification. The controller remains tested through public `mutate(...)` behaviour rather than direct tests of private transition names. Static checks additionally protect acyclic dependency direction, single-controller runtime wiring, private extracted modules, and the absence of premature observability emissions.
