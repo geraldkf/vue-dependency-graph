@@ -96,6 +96,6 @@ pnpm build
 
 M10C was validated successfully against the combined checkout during Milestone 10 closure.
 
-## Next step
+## Completion
 
-After successful offline validation, implement M10D bounded in-memory diagnostics and cumulative metrics projection from the same event stream.
+M10C is complete and was validated as part of the successful combined Milestone 10 offline verification.

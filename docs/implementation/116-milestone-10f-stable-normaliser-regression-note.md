@@ -47,6 +47,6 @@ pnpm build
 
 M10F was validated successfully against the combined checkout during Milestone 10 closure.
 
-## Next step
+## Completion
 
-After successful offline validation, implement M10G as a deterministic Runtime Observability playground scenario without introducing the Milestone 11 devtools protocol.
+M10F is complete and was validated as part of the successful combined Milestone 10 offline verification.

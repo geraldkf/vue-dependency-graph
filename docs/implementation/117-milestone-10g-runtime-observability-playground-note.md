@@ -76,6 +76,6 @@ Manual browser validation:
 
 M10G was validated successfully through the combined automated and manual Milestone 10 closure checks.
 
-## Next step
+## Completion
 
-After successful offline and manual validation, proceed with M10H documentation reconciliation and final Milestone 10 validation handoff.
+M10G is complete. M10H documentation reconciliation and final validation are also complete, and Milestone 10 is closed.

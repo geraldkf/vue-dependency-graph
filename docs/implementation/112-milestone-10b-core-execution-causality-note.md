@@ -98,6 +98,6 @@ pnpm build
 
 M10B was validated successfully against the combined checkout during Milestone 10 closure.
 
-## Next step
+## Completion
 
-After successful offline validation, implement M10C advanced lifecycle diagnostics for transactions, typed events, refresh policies, polling, and mutations.
+M10B is complete and was validated as part of the successful combined Milestone 10 offline verification.

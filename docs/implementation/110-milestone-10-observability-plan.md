@@ -548,6 +548,13 @@ Exit criteria:
 
 #### M10H: Documentation and final validation
 
+**Status: completed and validated on 16 September 2026.**
+
+The project owner confirmed the complete dependency-backed offline validation
+suite passed. Public documentation, architecture documents, ADRs, test
+strategy, roadmap status, implementation notes, transaction-overlap guidance,
+and release-facing examples have been reconciled with the implemented runtime.
+
 Deliver:
 
 - current public API documentation;
@@ -578,10 +585,10 @@ Manual validation:
 
 Exit criteria:
 
-- all repository commands pass against the combined checkout;
-- manual playground validation passes;
-- maintained documentation describes implemented behaviour only;
-- Milestone 10 is marked complete only after reported validation.
+- [x] all repository commands pass against the combined checkout;
+- [x] manual playground validation passes;
+- [x] maintained current-contract documentation describes implemented behaviour only;
+- [x] Milestone 10 is marked complete after reported validation.
 
 ### File and module direction
 

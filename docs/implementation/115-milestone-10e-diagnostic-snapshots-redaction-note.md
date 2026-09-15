@@ -62,6 +62,6 @@ pnpm build
 
 M10E was validated successfully against the combined checkout during Milestone 10 closure.
 
-## Next step
+## Completion
 
-After successful offline validation, implement M10F stable snapshot normalisation and the complete observability regression suite.
+M10E is complete and was validated as part of the successful combined Milestone 10 offline verification.

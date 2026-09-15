@@ -105,6 +105,6 @@ pnpm build
 
 M10D was validated successfully against the combined checkout during Milestone 10 closure.
 
-## Next step
+## Completion
 
-After successful offline validation, implement M10E versioned diagnostic snapshots, safe value omission and redaction, bounded error serialisation, and deterministic snapshot ordering.
+M10D is complete and was validated as part of the successful combined Milestone 10 offline verification.

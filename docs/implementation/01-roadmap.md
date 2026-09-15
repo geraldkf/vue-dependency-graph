@@ -413,10 +413,10 @@ Design decision: docs/decisions/ADR-014-runtime-observability.md
 - [x] M10E diagnostic snapshot schema, safe value redaction, and error serialisation. Implementation note: docs/implementation/115-milestone-10e-diagnostic-snapshots-redaction-note.md
 - [x] M10F stable snapshot normaliser and behaviour-focused regression coverage. Implementation note: docs/implementation/116-milestone-10f-stable-normaliser-regression-note.md
 - [x] M10G deterministic observability playground scenario. Implementation note: docs/implementation/117-milestone-10g-runtime-observability-playground-note.md
-- [ ] M10H public documentation reconciliation and final validation
-- [ ] Preserve existing runtime behaviour when diagnostics are omitted
-- [ ] Keep diagnostics observational, synchronous, failure-isolated, and outside scheduler settlement
-- [ ] Keep devtools UI, snapshot import, persistence, and production telemetry adapters deferred
+- [x] M10H public documentation reconciliation and final validation
+- [x] Preserve existing runtime behaviour when diagnostics are omitted
+- [x] Keep diagnostics observational, synchronous, failure-isolated, and outside scheduler settlement
+- [x] Keep devtools UI, snapshot import, persistence, and production telemetry adapters deferred
 
 Exit criteria: every node execution can be traced to its initiating subscription, invalidation, refresh, or caller-owned operation; metrics are derivable from the same event stream; and a safely redacted, deterministic diagnostic snapshot can be exported without changing runtime behaviour.
 

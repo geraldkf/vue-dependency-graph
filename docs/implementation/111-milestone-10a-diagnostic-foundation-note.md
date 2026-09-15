@@ -104,6 +104,6 @@ pnpm build
 
 M10A was validated successfully against the combined checkout during Milestone 10 closure.
 
-## Next step
+## Completion
 
-After successful offline validation, implement M10B core execution causality. M10B must propagate operation and cause identity through subscriptions, scheduling, execution, invalidation, prefetch, refresh, queries, dependency execution, concurrency queueing, attempt reuse, fresh skips, outcomes, aborts, and discarded results without changing runtime behaviour.
+M10A is complete and was validated as part of the successful combined Milestone 10 offline verification.
