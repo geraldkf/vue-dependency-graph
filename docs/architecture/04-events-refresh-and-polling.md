@@ -114,7 +114,7 @@ Consumers should read progress from node data. The polling engine should not req
 
 ## Event and transaction interaction
 
-Events published inside a graph transaction are staged in call order and discarded on rollback. On successful commit, context values commit first, event predicates evaluate against committed values, and the combined affected-node set is invalidated once. Publication records are not deduplicated by key or payload; only their resulting graph effects are deduplicated. Diagnostic history remains deferred to Milestone 10.
+Events published inside a graph transaction are staged in call order and discarded on rollback. On successful commit, context values commit first, event predicates evaluate against committed values, and the combined affected-node set is invalidated once. Publication records are not deduplicated by key or payload; only their resulting graph effects are deduplicated. Diagnostic history for event publication is available through the Milestone 10 diagnostic event stream (`event.published`, `event.matched`; see `docs/api/01-public-api.md`).
 
 ### Implemented manual refresh
 

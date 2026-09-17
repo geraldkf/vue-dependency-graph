@@ -69,7 +69,7 @@ Asynchronous work belongs in a data node so it shares the runtime's loading, can
 
 ## Refresh policy metadata
 
-Data-node definitions may carry one immutable refresh policy created by `staleAfter(...)`, `refreshInterval(...)`, or `pollUntil<TValue>(...)`. The policy is graph metadata only. Runtime timers, retry counters, pause state, and polling sessions belong to each `GraphRuntime` and are not implemented until later Milestone 8 slices.
+Data-node definitions may carry one immutable refresh policy created by `staleAfter(...)`, `refreshInterval(...)`, or `pollUntil<TValue>(...)`. The policy is graph metadata only; a runtime's refresh-policy controller owns the actual timers, retry counters, pause state, and polling sessions built on top of that metadata (Milestone 8, complete - see `docs/architecture/03-scheduler-transactions-and-concurrency.md`).
 
 Context and derived nodes cannot declare refresh policies. Graph creation defensively validates policy metadata but does not evaluate polling predicates or create runtime activity.
 

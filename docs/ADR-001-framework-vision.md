@@ -1,21 +1,7 @@
-# ADR-001
+# ADR-001: Dependency Graph Framework
 
-## Title
-Dependency Graph Framework
+This legacy path is retained for existing links only. It predates and is superseded by the maintained foundation decision.
 
-## Status
-Accepted
+The maintained record is:
 
-## Decision
-Build a reusable framework instead of continuing as store-specific infrastructure.
-
-## Rationale
-
-The current implementation already supports:
-
-- dependency execution
-- subscriptions
-- invalidation
-- dependency resolution
-
-The next evolution should be a standalone framework.
+- `docs/decisions/ADR-001-foundation.md`

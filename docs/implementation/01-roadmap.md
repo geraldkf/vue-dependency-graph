@@ -400,9 +400,7 @@ Exit criteria: rollback cannot revive obsolete work, failed preparation cannot l
 
 ## Milestone 10: Observability
 
-**Status: complete and validated on 16 September 2026.**
-
-Status: complete and validated. M10A through M10G observability delivery and final documentation are complete.  
+Status: complete and validated on 16 September 2026. M10A through M10G observability delivery and final documentation are complete.  
 Implementation plan: docs/implementation/110-milestone-10-observability-plan.md  
 Design decision: docs/decisions/ADR-014-runtime-observability.md
 

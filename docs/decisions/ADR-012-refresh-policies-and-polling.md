@@ -35,7 +35,7 @@ The core does not import browser APIs. Optional Vue/browser integration provides
 - Manual refresh remains caller-owned and does not inherit policy retry behaviour.
 - `whenSettled()` remains scheduler-specific because interval policies may never become permanently idle.
 - Deterministic tests require an injected fake clock and random source.
-- Structured policy diagnostics remain deferred to Milestone 10.
+- Structured policy diagnostics (`refresh-policy.*` events) were delivered in Milestone 10; see `docs/decisions/ADR-014-runtime-observability.md`.
 
 ### Alternatives considered
 

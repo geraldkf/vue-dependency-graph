@@ -552,9 +552,11 @@ If remote execution succeeds but optimistic success reconciliation fails, the ru
 
 Context changes, event invalidation, refresh, polling, independent mutations, and transactions remain independent while mutation work is pending. Their newer graph state is never overwritten by an obsolete rollback snapshot.
 
-Diagnostics, snapshots, devtools, and cache garbage collection remain future APIs.
+Devtools and cache garbage collection remain future APIs.
 
 
+
+## Diagnostics and observability
 
 ### Runtime diagnostics foundation
 

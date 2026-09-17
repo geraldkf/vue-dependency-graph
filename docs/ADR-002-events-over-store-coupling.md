@@ -1,20 +1,7 @@
-# ADR-002
+# ADR-002: Events Over Store Coupling
 
-## Decision
-Use domain events instead of direct store dependencies.
+This legacy path is retained for existing links only. It predates and is superseded by the maintained domain-events decision.
 
-## Example
+The maintained record is:
 
-Appointment module publishes:
-
-```text
-AppointmentBooked
-```
-
-Compliance module reacts through graph invalidation.
-
-## Benefits
-
-- loose coupling
-- multi-team ownership
-- cleaner boundaries
+- `docs/decisions/ADR-006-domain-events.md`

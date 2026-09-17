@@ -3,6 +3,7 @@ import type { GraphExecutionReason } from "../diagnostics/types";
 import type { ExecutionConcurrencyLimiter } from "./concurrency-limiter";
 import {
   GraphExecutionError,
+  type NodeAttemptOutcome,
   type NodeExecutionFailure,
   isAbortError,
   toError,
@@ -53,6 +54,12 @@ export interface RuntimeExecutionDependencies {
   readonly diagnostics: RuntimeDiagnosticEmitter;
 }
 
+// Module-private sentinels used only inside `runInternal` below, to keep
+// the delicate load/derive staleness-and-abort logic exactly as it was.
+// Unlike before, neither type crosses `executeNode`'s boundary: the outer
+// wrapper translates both into a resolved `NodeAttemptOutcome`, so nothing
+// outside this one function needs an `instanceof` check to interpret an
+// execution result.
 class NodeAttemptFailure extends Error {
   public constructor(
     public readonly nodeKey: string,
@@ -60,16 +67,6 @@ class NodeAttemptFailure extends Error {
   ) {
     super(`Node "${nodeKey}" failed.`);
     this.name = "NodeAttemptFailure";
-  }
-}
-
-class NodeBlockedFailure extends Error {
-  public constructor(
-    public readonly nodeKey: string,
-    public readonly blockedBy: readonly string[]
-  ) {
-    super(`Node "${nodeKey}" was blocked by: ${blockedBy.join(", ")}.`);
-    this.name = "NodeBlockedFailure";
   }
 }
 
@@ -162,11 +159,11 @@ export const createRuntimeExecutionController = ({
     node: AnyNodeDefinition,
     origin: ExecutionOrigin,
     context: ExecutionDiagnosticContext | undefined,
-  ): Promise<void> => {
+  ): Promise<NodeAttemptOutcome> => {
     const state = getMutableState(node.key);
     if (hasFreshSuccessfulValue(state)) {
       emitExecution("node.execution.skipped", node, state.generation, origin, context);
-      return Promise.resolve();
+      return Promise.resolve({ status: "ok" });
     }
 
     const active = getActiveAttempt(node.key);
@@ -176,7 +173,7 @@ export const createRuntimeExecutionController = ({
       return active.promise;
     }
 
-    if (node.kind === "context") return Promise.resolve();
+    if (node.kind === "context") return Promise.resolve({ status: "ok" });
 
     const generation = state.generation;
     const previousData = state.data;
@@ -191,7 +188,11 @@ export const createRuntimeExecutionController = ({
     state.error = null;
     notify();
 
-    const run = async (): Promise<void> => {
+    // Unchanged from before the Result-type migration: still throws
+    // ObsoleteAttempt/NodeAttemptFailure internally. Only `run` below,
+    // which wraps this, changed - it translates those throws into a
+    // resolved outcome instead of letting the promise reject.
+    const runInternal = async (): Promise<void> => {
       try {
         let value: unknown;
         if (isDataNode(node)) {
@@ -289,6 +290,21 @@ export const createRuntimeExecutionController = ({
       }
     };
 
+    const run = async (): Promise<NodeAttemptOutcome> => {
+      try {
+        await runInternal();
+        return { status: "ok" };
+      } catch (error) {
+        if (error instanceof ObsoleteAttempt) return { status: "obsolete" };
+        if (error instanceof NodeAttemptFailure) {
+          return { status: "failed", error: error.causeError };
+        }
+        // Not one of runInternal's own sentinels - a genuine, unexpected
+        // error. Let it reject rather than miscategorise it.
+        throw error;
+      }
+    };
+
     const promise = Promise.resolve().then(run);
     setActiveAttempt(node.key, {
       generation,
@@ -308,14 +324,14 @@ export const createRuntimeExecutionController = ({
     if (targets.length === 0) return;
 
     const failures = new Map<string, NodeExecutionFailure>();
-    const requested = new Map<string, Promise<void>>();
+    const requested = new Map<string, Promise<NodeAttemptOutcome>>();
     const targetKeys = new Set(targets.map((target) => target.key));
 
     const recordFailure = (failure: NodeExecutionFailure): void => {
       if (!failures.has(failure.nodeKey)) failures.set(failure.nodeKey, failure);
     };
 
-    const ensureNode = (node: AnyNodeDefinition): Promise<void> => {
+    const ensureNode = (node: AnyNodeDefinition): Promise<NodeAttemptOutcome> => {
       const existing = requested.get(node.key);
       if (existing) return existing;
 
@@ -327,23 +343,28 @@ export const createRuntimeExecutionController = ({
           }
         : undefined;
 
-      const promise = (async (): Promise<void> => {
-        const parentResults = await Promise.allSettled(
-          graph.getParents(node).map(parent => ensureNode(parent))
+      const promise = (async (): Promise<NodeAttemptOutcome> => {
+        const parents = graph.getParents(node);
+        const parentSettlements = await Promise.allSettled(
+          parents.map(parent => ensureNode(parent))
         );
-        if (
-          parentResults.some(
-            result =>
-              result.status === "rejected" &&
-              result.reason instanceof ObsoleteAttempt
-          )
-        ) {
-          throw new ObsoleteAttempt();
+        // A settlement can only reject for a genuinely unexpected error
+        // (see the comment in `run` above) - expected outcomes always
+        // resolve. Treat an unexpected rejection as a failure for
+        // blocking purposes rather than letting it derail the traversal.
+        const parentOutcomes: NodeAttemptOutcome[] = parentSettlements.map(
+          settlement =>
+            settlement.status === "fulfilled"
+              ? settlement.value
+              : { status: "failed", error: toError(settlement.reason) },
+        );
+
+        if (parentOutcomes.some(outcome => outcome.status === "obsolete")) {
+          return { status: "obsolete" };
         }
 
-        const parents = graph.getParents(node);
-        const blockedBy = parentResults.flatMap((result, index) =>
-          result.status === "rejected"
+        const blockedBy = parentOutcomes.flatMap((outcome, index) =>
+          outcome.status === "failed"
             ? [parents[index]?.key].filter(
                 (key): key is string => key !== undefined
               )
@@ -351,12 +372,7 @@ export const createRuntimeExecutionController = ({
         );
 
         if (blockedBy.length > 0) {
-          const failure: NodeExecutionFailure = {
-            nodeKey: node.key,
-            kind: "blocked",
-            blockedBy,
-          };
-          recordFailure(failure);
+          recordFailure({ nodeKey: node.key, kind: "blocked", blockedBy });
           if (nodeContext) {
             diagnostics.emit({
               type: "node.execution.blocked",
@@ -372,22 +388,19 @@ export const createRuntimeExecutionController = ({
               blockedBy,
             });
           }
-          throw new NodeBlockedFailure(node.key, blockedBy);
+          return {
+            status: "failed",
+            error: new Error(
+              `Node "${node.key}" was blocked by: ${blockedBy.join(", ")}.`
+            ),
+          };
         }
 
-        try {
-          await executeNode(node, origin, nodeContext);
-        } catch (error) {
-          if (error instanceof ObsoleteAttempt) throw error;
-          if (error instanceof NodeAttemptFailure) {
-            recordFailure({
-              nodeKey: node.key,
-              kind: "failed",
-              error: error.causeError,
-            });
-          }
-          throw error;
+        const outcome = await executeNode(node, origin, nodeContext);
+        if (outcome.status === "failed") {
+          recordFailure({ nodeKey: node.key, kind: "failed", error: outcome.error });
         }
+        return outcome;
       })();
 
       requested.set(node.key, promise);

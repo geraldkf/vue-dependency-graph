@@ -10,6 +10,7 @@ import type {
   DataNodeDefinition,
   Graph,
 } from "../graph/types";
+import type { NodeAttemptOutcome } from "../execution/types";
 
 export interface MutableNodeRuntimeState {
   data: unknown;
@@ -32,7 +33,7 @@ export interface ActiveAttempt {
   readonly token: symbol;
   readonly controller: AbortController;
   readonly origins: Set<ExecutionOrigin>;
-  readonly promise: Promise<void>;
+  readonly promise: Promise<NodeAttemptOutcome>;
 }
 
 export interface RuntimeStateStore {

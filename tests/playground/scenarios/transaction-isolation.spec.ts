@@ -74,6 +74,12 @@ describe("TransactionIsolationScenario", () => {
     await fireEvent.click(
       screen.getByRole("button", { name: "Start shared-context conflict" }),
     );
+    await waitFor(() => {
+      expect(screen.getByTestId("transaction-isolation-a-phase").textContent)
+        .toContain("open");
+      expect(screen.getByTestId("transaction-isolation-b-phase").textContent)
+        .toContain("open");
+    });
 
     await fireEvent.click(screen.getByRole("button", { name: "Commit operation B" }));
     await waitFor(() => {

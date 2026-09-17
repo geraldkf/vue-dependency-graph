@@ -7,12 +7,28 @@ import {
 import type { AnyEventDefinition } from "../events/types";
 import type {
   AnyNodeDefinition,
+  DataNodeDefinition,
+  DerivedNodeDefinition,
   Graph,
   NodeOrKey,
 } from "./types";
 
 const isRecord = (value: unknown): value is Readonly<Record<string, unknown>> =>
   typeof value === "object" && value !== null;
+
+// `AnyNodeDefinition` only carries the fields common to every node kind;
+// `refresh` and `invalidatedBy` live on the kind-specific interfaces. These
+// guards (mirroring execution.ts's `isDataNode`/`isDerivedNode`) narrow to
+// those interfaces so the fields can be read without a cast.
+const isDataNode = (
+  node: AnyNodeDefinition
+): node is DataNodeDefinition<unknown, readonly AnyNodeDefinition[]> =>
+  node.kind === "data";
+
+const isDerivedNode = (
+  node: AnyNodeDefinition
+): node is DerivedNodeDefinition<unknown, readonly AnyNodeDefinition[]> =>
+  node.kind === "derived";
 
 const readEventInvalidation = (
   declaration: unknown,
@@ -60,23 +76,28 @@ const readEventInvalidation = (
 };
 
 const validateRefreshPolicy = (node: AnyNodeDefinition): void => {
-  const refresh = (node as unknown as Record<string, unknown>).refresh;
-  if (refresh === undefined) return;
+  if (isDataNode(node)) {
+    if (node.refresh === undefined) return;
+    try {
+      assertValidRefreshPolicy(node.refresh, node.key);
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      throw new GraphValidationError(
+        "INVALID_REFRESH_POLICY",
+        `Node "${node.key}" has an invalid refresh policy: ${reason}`
+      );
+    }
+    return;
+  }
 
-  if (node.kind !== "data") {
+  // Non-data nodes have no `refresh` field in the type, but graph
+  // definitions can be constructed outside TypeScript, so this guards
+  // against a stray refresh policy on a context/derived node. `in` needs
+  // no cast - it's a safe check on any object, typed or not.
+  if ("refresh" in node) {
     throw new GraphValidationError(
       "INVALID_REFRESH_POLICY",
       `Node "${node.key}" cannot declare a refresh policy because it is not a data node.`
-    );
-  }
-
-  try {
-    assertValidRefreshPolicy(refresh, node.key);
-  } catch (error) {
-    const reason = error instanceof Error ? error.message : String(error);
-    throw new GraphValidationError(
-      "INVALID_REFRESH_POLICY",
-      `Node "${node.key}" has an invalid refresh policy: ${reason}`
     );
   }
 };
@@ -87,9 +108,16 @@ const buildEventInvalidationIndex = (
   const candidatesByEvent = new Map<string, EventInvalidationCandidate[]>();
 
   for (const node of nodes) {
-    const invalidatedBy = "invalidatedBy" in node
-      ? (node as AnyNodeDefinition & { readonly invalidatedBy?: unknown }).invalidatedBy
-      : undefined;
+    // Data/derived nodes: read through the guard, no cast needed. Other
+    // kinds (context) have no `invalidatedBy` in the type at all, but - as
+    // with `refresh` above - untyped input can still carry one, and that
+    // must still be caught below rather than silently ignored, so this
+    // falls back to a narrow, explained cast for that case only.
+    const invalidatedBy = isDataNode(node) || isDerivedNode(node)
+      ? node.invalidatedBy
+      : "invalidatedBy" in node
+        ? (node as AnyNodeDefinition & { readonly invalidatedBy?: unknown }).invalidatedBy
+        : undefined;
 
     if (invalidatedBy === undefined) continue;
     if (!Array.isArray(invalidatedBy)) {

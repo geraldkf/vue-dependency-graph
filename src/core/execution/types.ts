@@ -7,6 +7,19 @@ export interface NodeExecutionFailure {
   readonly blockedBy?: readonly string[];
 }
 
+/**
+ * The outcome of one node execution attempt, used in place of throwing
+ * ObsoleteAttempt/NodeAttemptFailure across the recursive async graph
+ * walk in execution.ts. `ActiveAttempt.promise` (state.ts) resolves to
+ * this - it never rejects for expected outcomes, only for genuine
+ * programmer errors.
+ */
+export type NodeAttemptOutcome =
+  | { readonly status: "ok" }
+  | { readonly status: "obsolete" }
+  | { readonly status: "failed"; readonly error: Error };
+
+
 export class GraphExecutionError extends Error {
   public readonly failures: readonly NodeExecutionFailure[];
 

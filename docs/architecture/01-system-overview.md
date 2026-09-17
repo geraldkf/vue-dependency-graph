@@ -116,7 +116,7 @@ A controlled Vue application where developers can change latency, failures, depe
 
 ## Refresh-policy runtime
 
-Milestone 8B adds a runtime-local policy controller for stale-after data nodes. It observes committed runtime transitions, tracks successful timestamps, owns timers, and delegates due work to the existing refresh and execution capabilities. Graph definitions remain immutable and carry metadata only.
+Milestone 8 (complete) adds a runtime-local policy controller for data nodes carrying `staleAfter(...)`, `refreshInterval(...)`, or `pollUntil(...)` metadata. It observes committed runtime transitions, tracks successful timestamps, owns timers, applies bounded retry with backoff and jitter, and delegates due work to the existing refresh and execution capabilities. Graph definitions remain immutable and carry metadata only.
 
 ## Why one package
 

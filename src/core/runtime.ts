@@ -7,6 +7,7 @@ import {
   createRuntimeSchedulerController,
   type RuntimeSchedulerController,
 } from "./scheduling/scheduler";
+import { createSchedulerRequestTracker } from "./scheduling/request-tracker";
 import { createRuntimeObserver } from "./observation/observer";
 import type { RuntimeListener } from "./observation/types";
 import { createRuntimeTransactionCoordinator } from "./transactions/transaction-coordinator";
@@ -48,12 +49,6 @@ import { createDefaultRefreshPolicyEnvironment } from "./refresh-policies/enviro
 import { createRuntimeRefreshPolicyController } from "./refresh-policies/policy-controller";
 import type { RefreshPolicyEnvironment } from "./refresh-policies/types";
 import { createRuntimeMutationController } from "./mutations/mutation-controller";
-import {
-  GraphMutationOutcomeUnknownError,
-  GraphMutationReconciliationError,
-  GraphMutationRollbackConflictError,
-} from "./mutations/errors";
-import { GraphTransactionConflictError } from "./transactions/errors";
 import type { MutationDefinition, MutationOptions } from "./mutations/types";
 import { createRuntimeDiagnosticEmitter } from "./diagnostics/diagnostic-emitter";
 import type { GraphDiagnosticsOptions } from "./diagnostics/types";
@@ -62,6 +57,10 @@ import {
   type DiagnosticCollectorInspection,
   type GraphDiagnosticSnapshotV1,
 } from "./diagnostics/snapshot";
+import { createOperationObservationTracker } from "./diagnostics/operation-observation";
+import { beginMutationDiagnostics } from "./diagnostics/mutation-diagnostics";
+import { beginTransactionDiagnostics } from "./diagnostics/transaction-diagnostics";
+import { createLateBinding } from "./util/late-binding";
 
 export interface GraphRuntimeOptions {
   /**
@@ -156,29 +155,36 @@ export const createGraphRuntime = (
     return registered;
   };
 
-  // Only these three bindings are genuinely forward-referenced: each is
-  // read inside a closure that is constructed before the binding itself
-  // is assigned. `execution` and `scheduler` are never read before their
-  // own assignment anywhere in this function, so they're declared with
-  // `const` below instead of joining this list.
-  //
-  // - `subscriptions`: read inside its own `afterUnsubscribe` callback
-  //   (constructed as part of its own call below) and inside
-  //   `getSubscribedTargetsNeedingWork` (defined before subscriptions
-  //   exists, called later by the scheduler).
-  // - `invalidation`: read inside `execution`'s `onChangedRefreshResult`
-  //   callback. `execution` is constructed first, before `invalidation`
-  //   exists.
-  let subscriptions!: RuntimeSubscriptionController;
-  let invalidation!: RuntimeInvalidationController;
-  let pendingSchedulerReason: import("./diagnostics/types").GraphExecutionReason =
-    "subscription";
-  let pendingSchedulerCauseId: string | undefined;
+  // `subscriptions` and `invalidation` are genuinely forward-referenced:
+  // each is read inside a closure that is constructed before the
+  // controller itself is assigned below (`execution`'s
+  // `onChangedRefreshResult`, and `subscriptions`' own `afterUnsubscribe`
+  // and `getSubscribedTargetsNeedingWork`). These bindings make that
+  // explicit and guard against reading them too early, instead of a bare
+  // `let x!: T` non-null assertion. Everywhere else in this function reads
+  // `subscriptions`/`invalidation` after they're assigned, so those sites
+  // use the plain local `const` created alongside each `set()` call below.
+  const subscriptionsBinding =
+    createLateBinding<RuntimeSubscriptionController>("subscriptions");
+  const invalidationBinding =
+    createLateBinding<RuntimeInvalidationController>("invalidation");
+
+  // Tracks *why* the next scheduler flush is happening. The scheduler's
+  // `schedule()` takes no arguments and flushes on a microtask, so the
+  // reason has to be recorded ahead of time by whichever trigger requested
+  // the run, then read back when the flush actually executes.
+  const schedulerRequest = createSchedulerRequestTracker("subscription");
+
+  // Tracks the operation id/reason of the graph-change currently being
+  // committed, so invalidation callbacks several layers down can attribute
+  // their diagnostics to it without threading it through every signature
+  // in between. Correctly nests (and restores) via `runObserved`.
+  const operationObservation = createOperationObservationTracker();
+
+  // Only read/written from within the four scheduler callbacks wired
+  // below, so - unlike `subscriptions`/`invalidation` - it needs no
+  // forward-reference guard, just a declaration ahead of that wiring.
   let schedulerOperationId = "";
-  let graphChangeOperationId = "";
-  let graphChangeReason: "context-invalidation" | "changed-result" =
-    "context-invalidation";
-  let observeGraphChange = false;
 
   const execution = createRuntimeExecutionController({
     graph,
@@ -192,16 +198,12 @@ export const createGraphRuntime = (
     resolveRegisteredNode: (node) => requireRegisteredNode(node, "execution"),
     notify: emitNotify,
     onChangedRefreshResult: (node, diagnosticContext) => {
-      graphChangeOperationId = diagnosticContext?.operationId ?? "";
-      graphChangeReason = "changed-result";
-      pendingSchedulerReason = "changed-result";
-      pendingSchedulerCauseId = diagnosticContext?.operationId;
-      observeGraphChange = true;
-      try {
-        invalidation.invalidateChangedResultDescendants(node);
-      } finally {
-        observeGraphChange = false;
-      }
+      const operationId = diagnosticContext?.operationId ?? "";
+      schedulerRequest.request("changed-result", diagnosticContext?.operationId);
+      operationObservation.runObserved(
+        { operationId, reason: "changed-result" },
+        () => invalidationBinding.get().invalidateChangedResultDescendants(node),
+      );
     },
     diagnostics,
   });
@@ -221,60 +223,57 @@ export const createGraphRuntime = (
   const getSubscribedTargetsNeedingWork = (): readonly AnyNodeDefinition[] =>
     graph.getNodes().filter((node) => {
       if (node.kind === "context") return false;
-      if (!subscriptions.hasDirectSubscribers(node)) return false;
+      if (!subscriptionsBinding.get().hasDirectSubscribers(node)) return false;
       return execution.needsExecution(node);
     });
 
   const scheduler = createRuntimeSchedulerController({
     getTargetsNeedingWork: getSubscribedTargetsNeedingWork,
-    execute: (targets) => execution.execute(targets, "scheduler", {
-      operationId: schedulerOperationId,
-      ...(pendingSchedulerCauseId === undefined
-        ? {}
-        : { causeId: pendingSchedulerCauseId }),
-      reason: pendingSchedulerReason,
-    }),
+    execute: (targets) => {
+      const pending = schedulerRequest.peek();
+      return execution.execute(targets, "scheduler", {
+        operationId: schedulerOperationId,
+        ...(pending.causeId === undefined ? {} : { causeId: pending.causeId }),
+        reason: pending.reason,
+      });
+    },
     notify: emitNotify,
     onRequested: () => {
       schedulerOperationId = diagnostics.createOperationId();
+      const pending = schedulerRequest.peek();
       diagnostics.emit({
         type: "scheduler.requested",
         operationId: schedulerOperationId,
-        ...(pendingSchedulerCauseId === undefined
-          ? {}
-          : { causeId: pendingSchedulerCauseId }),
-        reason: pendingSchedulerReason,
+        ...(pending.causeId === undefined ? {} : { causeId: pending.causeId }),
+        reason: pending.reason,
         nodeKeys: [],
       });
     },
     onStarted: (targets) => {
+      const pending = schedulerRequest.peek();
       diagnostics.emit({
         type: "scheduler.started",
         operationId: schedulerOperationId,
-        ...(pendingSchedulerCauseId === undefined
-          ? {}
-          : { causeId: pendingSchedulerCauseId }),
-        reason: pendingSchedulerReason,
+        ...(pending.causeId === undefined ? {} : { causeId: pending.causeId }),
+        reason: pending.reason,
         nodeKeys: targets.map((node) => node.key),
       });
     },
     onCompleted: (error) => {
+      const pending = schedulerRequest.peek();
       diagnostics.emit({
         type: error ? "scheduler.failed" : "scheduler.completed",
         operationId: schedulerOperationId,
-        ...(pendingSchedulerCauseId === undefined
-          ? {}
-          : { causeId: pendingSchedulerCauseId }),
-        reason: pendingSchedulerReason,
+        ...(pending.causeId === undefined ? {} : { causeId: pending.causeId }),
+        reason: pending.reason,
         nodeKeys: [],
         ...(error ? { error: diagnostics.toError(error) } : {}),
       });
-      pendingSchedulerReason = "subscription";
-      pendingSchedulerCauseId = undefined;
+      schedulerRequest.reset();
     },
   });
 
-  subscriptions = createRuntimeSubscriptionController({
+  const subscriptions = createRuntimeSubscriptionController({
     graph,
     resolveRegisteredNode: requireRegisteredNode,
     notify: emitNotify,
@@ -286,8 +285,7 @@ export const createGraphRuntime = (
         nodeKeys,
         requiredNodeKeys,
       });
-      pendingSchedulerReason = "subscription";
-      pendingSchedulerCauseId = operationId;
+      schedulerRequest.request("subscription", operationId);
     },
     onRemoved: (nodeKeys, requiredNodeKeys) => {
       diagnostics.emit({
@@ -303,7 +301,7 @@ export const createGraphRuntime = (
         const node = graph.getNode(key);
         if (
           node &&
-          !subscriptions.hasSubscribers(node) &&
+          !subscriptionsBinding.get().hasSubscribers(node) &&
           isAutomaticOnlyAttempt(attempt)
         ) {
           attempt.controller.abort();
@@ -312,8 +310,9 @@ export const createGraphRuntime = (
       scheduler.resolveSettlementIfIdle();
     },
   });
+  subscriptionsBinding.set(subscriptions);
 
-  invalidation = createRuntimeInvalidationController({
+  const invalidation = createRuntimeInvalidationController({
     graph,
     getMutableState,
     getActiveAttempt,
@@ -322,16 +321,17 @@ export const createGraphRuntime = (
     notify: emitNotify,
     schedule: scheduler.schedule,
     onContextsCommitted: (contextKeys, affectedNodeKeys, scheduled) => {
-      if (!observeGraphChange || !graphChangeOperationId || contextKeys.length === 0) return;
+      const observation = operationObservation.current();
+      if (!observation || !observation.operationId || contextKeys.length === 0) return;
       diagnostics.emit({
         type: "context.changed",
-        operationId: graphChangeOperationId,
+        operationId: observation.operationId,
         contextKeys,
         affectedNodeKeys,
       });
       diagnostics.emit({
         type: "node.invalidated",
-        operationId: graphChangeOperationId,
+        operationId: observation.operationId,
         reason: "context-invalidation",
         rootNodeKeys: contextKeys,
         affectedNodeKeys,
@@ -339,17 +339,19 @@ export const createGraphRuntime = (
       });
     },
     onChangedResultInvalidated: (rootNodeKeys, affectedNodeKeys, scheduled) => {
-      if (!observeGraphChange || !graphChangeOperationId) return;
+      const observation = operationObservation.current();
+      if (!observation || !observation.operationId) return;
       diagnostics.emit({
         type: "node.invalidated",
-        operationId: graphChangeOperationId,
-        reason: graphChangeReason,
+        operationId: observation.operationId,
+        reason: observation.reason,
         rootNodeKeys,
         affectedNodeKeys,
         scheduled,
       });
     },
   });
+  invalidationBinding.set(invalidation);
 
   const events = createRuntimeEventMatcher({
     graph,
@@ -364,50 +366,42 @@ export const createGraphRuntime = (
   ): void => {
     const operationId =
       commitContext?.operationId ||
-      graphChangeOperationId ||
+      operationObservation.current()?.operationId ||
       diagnostics.createOperationId();
-    const previousOperationId = graphChangeOperationId;
-    const previousReason = graphChangeReason;
-    const previousObservation = observeGraphChange;
-    graphChangeOperationId = operationId;
-    graphChangeReason = "context-invalidation";
-    pendingSchedulerReason = "context-invalidation";
-    pendingSchedulerCauseId = operationId;
-    observeGraphChange = true;
+    schedulerRequest.request("context-invalidation", operationId);
 
-    try {
-      const eventTargets = events.matchPublications(eventPublications, {
-        valueOverlay: contextChanges,
-      });
-      for (const publication of eventPublications) {
-        diagnostics.emit({
-          type: "event.published",
-          operationId,
-          eventKey: publication.event.key,
-          transactionOwned: !immediate,
+    operationObservation.runObserved(
+      { operationId, reason: "context-invalidation" },
+      () => {
+        const eventTargets = events.matchPublications(eventPublications, {
+          valueOverlay: contextChanges,
         });
-      }
-      if (eventPublications.length > 0) {
-        diagnostics.emit({
-          type: "event.matched",
-          operationId,
-          eventKey: eventPublications.map(({ event }) => event.key).join(","),
-          transactionOwned: !immediate,
-          matchedNodeKeys: eventTargets.map((node) => node.key),
-        });
-      }
-      invalidation.commitContexts(
-        contextChanges,
-        eventTargets,
-        immediate
-          ? { notify: emitNotify, schedule: scheduler.schedule }
-          : undefined,
-      );
-    } finally {
-      graphChangeOperationId = previousOperationId;
-      graphChangeReason = previousReason;
-      observeGraphChange = previousObservation;
-    }
+        for (const publication of eventPublications) {
+          diagnostics.emit({
+            type: "event.published",
+            operationId,
+            eventKey: publication.event.key,
+            transactionOwned: !immediate,
+          });
+        }
+        if (eventPublications.length > 0) {
+          diagnostics.emit({
+            type: "event.matched",
+            operationId,
+            eventKey: eventPublications.map(({ event }) => event.key).join(","),
+            transactionOwned: !immediate,
+            matchedNodeKeys: eventTargets.map((node) => node.key),
+          });
+        }
+        invalidation.commitContexts(
+          contextChanges,
+          eventTargets,
+          immediate
+            ? { notify: emitNotify, schedule: scheduler.schedule }
+            : undefined,
+        );
+      },
+    );
   };
 
   const transactions = createRuntimeTransactionCoordinator({
@@ -506,16 +500,11 @@ export const createGraphRuntime = (
       getSnapshot(node),
     setContext: <TValue>(node: ContextNodeDefinition<TValue>, value: TValue) => {
       const operationId = diagnostics.createOperationId();
-      graphChangeOperationId = operationId;
-      graphChangeReason = "context-invalidation";
-      pendingSchedulerReason = "context-invalidation";
-      pendingSchedulerCauseId = operationId;
-      observeGraphChange = true;
-      try {
-        transactions.setContext(node, value);
-      } finally {
-        observeGraphChange = false;
-      }
+      schedulerRequest.request("context-invalidation", operationId);
+      operationObservation.runObserved(
+        { operationId, reason: "context-invalidation" },
+        () => transactions.setContext(node, value),
+      );
     },
     execute,
     prefetch: (nodes: readonly AnyNodeDefinition[]) => {
@@ -564,84 +553,21 @@ export const createGraphRuntime = (
       event: TEvent,
       payload: EventPayload<TEvent>,
     ) => {
-      graphChangeOperationId = diagnostics.createOperationId();
-      transactions.publish(event, payload);
+      const operationId = diagnostics.createOperationId();
+      operationObservation.runObserved(
+        { operationId, reason: "context-invalidation" },
+        () => transactions.publish(event, payload),
+      );
     },
     mutate: <TInput, TResult>(
       mutation: MutationDefinition<TInput, TResult>,
       input: TInput,
       mutationOptions?: MutationOptions<TInput, TResult>,
     ) => {
-      const operationId = diagnostics.createOperationId();
-      const startedAt = diagnostics.now();
-      diagnostics.emit({
-        type: "mutation.started",
-        operationId,
-        mutationKey: mutation.key,
-      });
-      return mutations.mutate(
-        mutation,
-        input,
-        mutationOptions,
-        (type, affectedNodeKeys) => {
-          diagnostics.emit({
-            type: `mutation.${type}` as
-              | "mutation.optimistic-committed"
-              | "mutation.remote-started"
-              | "mutation.remote-succeeded"
-              | "mutation.remote-failed"
-              | "mutation.success-committed",
-            operationId,
-            mutationKey: mutation.key,
-            ...(affectedNodeKeys === undefined ? {} : { affectedNodeKeys }),
-          });
-        },
-      ).then(
-        result => {
-          diagnostics.emit({
-            type: "mutation.completed",
-            operationId,
-            mutationKey: mutation.key,
-            outcome: "succeeded",
-            durationMs: diagnostics.now() - startedAt,
-          });
-          return result;
-        },
-        error => {
-          const normalised = error instanceof Error ? error : new Error(String(error));
-          const type = error instanceof GraphMutationRollbackConflictError
-            ? "mutation.rollback-conflicted"
-            : error instanceof GraphMutationOutcomeUnknownError
-              ? "mutation.outcome-unknown"
-              : error instanceof GraphMutationReconciliationError
-                ? "mutation.reconciliation-failed"
-                : "mutation.rolled-back";
-          const outcome = error instanceof GraphMutationRollbackConflictError
-            ? "rollback-conflict"
-            : error instanceof GraphMutationOutcomeUnknownError
-              ? "unknown"
-              : error instanceof GraphMutationReconciliationError
-                ? "reconciliation-failed"
-                : "rejected";
-          diagnostics.emit({
-            type,
-            operationId,
-            mutationKey: mutation.key,
-            outcome,
-            durationMs: diagnostics.now() - startedAt,
-            error: diagnostics.toError(normalised),
-          });
-          diagnostics.emit({
-            type: "mutation.completed",
-            operationId,
-            mutationKey: mutation.key,
-            outcome,
-            durationMs: diagnostics.now() - startedAt,
-            error: diagnostics.toError(normalised),
-          });
-          throw error;
-        },
-      );
+      const session = beginMutationDiagnostics(diagnostics, mutation.key);
+      return mutations
+        .mutate(mutation, input, mutationOptions, session.onLifecycle)
+        .then(session.reportSuccess, session.reportFailure);
     },
     subscribeNodes: subscriptions.subscribeNodes,
     getSubscriptionState: subscriptions.getSubscriptionState,
@@ -664,42 +590,10 @@ export const createGraphRuntime = (
           }),
     }),
     transaction: <T>(work: (transaction: GraphTransaction) => T | Promise<T>) => {
-      const operationId = diagnostics.createOperationId();
-      const startedAt = diagnostics.now();
-      diagnostics.emit({
-        type: "transaction.started",
-        operationId,
-      });
-      return transactions.runTransaction(work, { operationId }).then(
-        result => {
-          diagnostics.emit({
-            type: "transaction.committed",
-            operationId,
-            durationMs: diagnostics.now() - startedAt,
-          });
-          return result;
-        },
-        error => {
-          const normalised = error instanceof Error ? error : new Error(String(error));
-          if (error instanceof GraphTransactionConflictError) {
-            diagnostics.emit({
-              type: "transaction.conflicted",
-              operationId,
-              conflictKeys: error.contextKeys,
-              durationMs: diagnostics.now() - startedAt,
-              error: diagnostics.toError(normalised),
-            });
-          } else {
-            diagnostics.emit({
-              type: "transaction.rolled-back",
-              operationId,
-              durationMs: diagnostics.now() - startedAt,
-              error: diagnostics.toError(normalised),
-            });
-          }
-          throw error;
-        },
-      );
+      const session = beginTransactionDiagnostics(diagnostics);
+      return transactions
+        .runTransaction(work, { operationId: session.operationId })
+        .then(session.reportCommitted, session.reportFailed);
     },
   });
 };
