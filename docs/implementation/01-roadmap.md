@@ -423,12 +423,16 @@ Transaction ownership hardening completed with Milestone 10 closure: isolated to
 
 ## Milestone 11: Devtools
 
-- [ ] Inspector protocol
-- [ ] Graph view
-- [ ] Node inspector
-- [ ] Timeline
-- [ ] Metrics panel
-- [ ] Snapshot export and offline viewer
+Status: complete and validated on 18 September 2026.
+
+- [x] Inspector protocol
+- [x] Graph view
+- [x] Node inspector
+- [x] Timeline
+- [x] Metrics panel
+- [x] Snapshot export and offline viewer
+
+Delivered as an embeddable Vue component panel (`src/devtools`) over a pure, framework-agnostic protocol layer, rather than a `@vue/devtools-api` browser-extension integration - see [ADR-015](../decisions/ADR-015-devtools-inspector-protocol.md). The Node inspector does not surface "last execution" or "last invalidation reason" as distinct fields (cross-reference the Timeline instead), and the original vision's write/remote-control section ("Controls" in `docs/architecture/06-observability-devtools-and-snapshots.md`) was not built - the panel is read-only plus export/import. Neither gap blocks the exit criterion below.
 
 Exit criteria: framework behaviour can be understood without console logging.
 

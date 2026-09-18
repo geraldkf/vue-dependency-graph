@@ -715,4 +715,62 @@ Sequence order, event types, node and event keys, generations, reasons, origins,
 
 The playground includes a dedicated Runtime Observability scenario. It owns an isolated runtime and bounded collector, then demonstrates subscription-driven initial loading, context invalidation, explicit refresh, request failure and recovery, transaction rollback, mutation completion, recent events, cumulative metrics, redacted snapshot preview, and JSON export.
 
-Reset disposes the existing subscription and creates a clean runtime, collector, identifier sequence, and metrics baseline. Leaving the scenario also disposes its dedicated subscription. The scenario is an executable behaviour demonstration and does not introduce a devtools protocol or runtime command channel.
+Reset disposes the existing subscription and creates a clean runtime, collector, identifier sequence, and metrics baseline. Leaving the scenario also disposes its dedicated subscription. The scenario is an executable behaviour demonstration and does not introduce a devtools protocol or runtime command channel - that's what Milestone 11, below, added.
+
+## Devtools
+
+Milestone 11 adds an embeddable devtools panel (`vue-dependency-graph/devtools`) built on the diagnostics foundation above. See [ADR-015](../decisions/ADR-015-devtools-inspector-protocol.md) for why it's an embeddable component rather than a browser-extension integration, and `docs/architecture/06-observability-devtools-and-snapshots.md` for what shipped against the original devtools vision.
+
+### Panel
+
+```vue
+<script setup lang="ts">
+import { GraphDevtoolsPanel } from "vue-dependency-graph/devtools";
+import { runtime, diagnostics } from "./graph/runtime"; // the same collector passed as diagnostics.sink
+</script>
+
+<template>
+  <GraphDevtoolsPanel :runtime="runtime" :diagnostics="diagnostics" />
+</template>
+```
+
+`diagnostics` must be the same `InMemoryGraphDiagnostics` instance passed as `createGraphRuntime`'s `diagnostics.sink` option - the panel has nothing to show without one, and doesn't create one implicitly. The panel has four tabs (Graph, Node, Timeline, Metrics), an **Export snapshot** button that downloads the current state as JSON, and a **Load snapshot** button that loads a previously exported file into the same views with no live runtime attached ("viewing offline snapshot" mode, with a **Return to live** button to switch back).
+
+### Composables
+
+For a custom UI instead of the pre-built panel:
+
+```ts
+import { useGraphDevtools } from "vue-dependency-graph/devtools";
+
+const {
+  graphView,        // ComputedRef<InspectorGraphView>
+  timeline,          // ComputedRef<readonly InspectorTimelineEntry[]>
+  metricsView,       // ComputedRef<InspectorMetricsView>
+  selectedNodeKey,   // Ref<string | undefined>
+  selectedNodeDetail,// ComputedRef<InspectorNodeDetail | undefined>
+  select,            // (key: string | undefined) => void
+  exportSnapshot,    // () => string (pretty-printed JSON)
+} = useGraphDevtools({ runtime, diagnostics });
+```
+
+Must be called inside `setup()` or an active effect scope, same requirement as `useNode`. Updates are coalesced into one microtask per burst of runtime activity, the same idiom the runtime's own scheduler uses internally.
+
+`useOfflineDevtoolsSnapshot()` is the same shape without a runtime - `loadFromJson(json)` loads a previously exported file (throwing `InvalidDevtoolsExportError` for anything that isn't one), `clear()` resets it.
+
+### Protocol
+
+The data transformation from a diagnostic snapshot/event stream into the view models above is exported as pure, framework-agnostic functions with no Vue dependency - the panel is one consumer of this, not the layer itself:
+
+```ts
+import {
+  computeGraphView,
+  computeNodeDetail,
+  computeTimeline,
+  computeMetricsView,
+} from "vue-dependency-graph/devtools";
+
+const view = computeGraphView(runtime.createDiagnosticSnapshot());
+```
+
+`computeGraphView` lays nodes out deterministically by dependency depth (column) and alphabetical order within a column (row) - the same snapshot always produces the same layout, with no force-simulation jitter to account for in a UI or a test. Events get their own lane at column `-1`, with edges into every node that declares them in `invalidatedBy`.

@@ -18,6 +18,7 @@ Decision records capture choices that materially affect correctness, compatibili
 - ADR-012: Subscription-aware refresh policies and polling
 - ADR-013: Typed mutations with guarded optimistic rollback
 - ADR-014: Runtime observability through a structured event stream
+- ADR-015: Devtools as an embeddable component over a protocol layer
 
 Every number above now has a file. ADR-009 and ADR-010 are short pointers rather than full records: by the time polling and observability were actually designed, each had grown well beyond its original ADR-002 bullet, so the full decision is recorded once, in ADR-012 and ADR-014 respectively, rather than duplicated.
 

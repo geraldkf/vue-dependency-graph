@@ -6,40 +6,9 @@ Build a dedicated Vue application to validate framework behaviour.
 
 ## Features
 
-### Graph Explorer
+An early wishlist for a single unified explorer UI, written before the playground existed. It didn't happen in that shape: the playground grew into one dedicated scenario page per behaviour instead (see "Implemented scenarios" below), which turned out to suit "demonstrate and manually validate one specific mechanism at a time" better than a single do-everything panel would have.
 
-Show:
-
-- nodes
-- dependencies
-- status
-
-### Event Console
-
-Publish events.
-
-### Transaction Console
-
-Execute batched updates.
-
-### API Simulator
-
-Configure:
-
-- delay
-- failure rates
-- polling completion
-
-### Metrics Dashboard
-
-View:
-
-- execution count
-- cache statistics
-
-### Snapshot Export
-
-Download current graph state.
+The graph-explorer/metrics/snapshot-export part of this list is fulfilled differently than originally envisioned here - not as a bespoke playground feature, but as the Milestone 11 devtools panel (`src/devtools`), a reusable component embeddable in any consuming app. The Devtools scenario below demonstrates it against this playground's own runtimes.
 
 
 ## Implemented scenarios
@@ -196,3 +165,25 @@ Manual validation:
 - Select **Refresh page** and confirm both request counts become 2 and all aliased results update together.
 - Select **Unmount consumer** and confirm direct subscriptions return to 0.
 - Mount the consumer again, switch to another scenario tab, and confirm the query subscriptions are released without warnings.
+
+### Devtools
+
+The **Devtools** scenario mounts the Milestone 11 `GraphDevtoolsPanel` (`src/devtools`) against a dedicated runtime with a context node, a data node carrying both an event-invalidation rule and a refresh policy, a derived node, and a mutation - enough variety to exercise every tab.
+
+Controls:
+
+- **Change user** advances the context, invalidating the data node and its derived descendant.
+- **Book appointment** runs a mutation whose success effect publishes an event, which invalidates the appointments node through its event-invalidation rule (not through the mutation's own effects directly) - a deliberate way to demonstrate the event lane in the Graph tab.
+- **Fail next load** causes the *next* load of the appointments node to fail, for exercising the error state and the Timeline's failure highlighting.
+
+Manual validation:
+
+1. Open **Devtools** and confirm the Graph tab shows all four real nodes positioned in dependency-depth columns, plus one dashed event node in its own lane to the left with an edge into the appointments node.
+2. Click a node in the graph and confirm the panel switches to the Node tab showing that node's status, dependencies, descendants, subscriber count, and (for the appointments node) its refresh policy or invalidating event.
+3. Select **Change user** and confirm the graph's appointments and appointment-count nodes transition through loading to success with a new value, and a corresponding entry appears in the Timeline.
+4. Select **Fail next load**, then **Change user**, and confirm the failed load appears highlighted in the Timeline and the Node tab shows the error while still enumerating dependencies/descendants normally.
+5. Select **Book appointment** and confirm an `event.published` and a `node.invalidated` entry appear in the Timeline attributing the appointments reload to the event, not to a direct mutation effect.
+6. Open the Metrics tab and confirm the operation, execution, and mutation counters are nonzero and update as further actions run.
+7. Select **Export snapshot**, then **Load snapshot** and choose the file just downloaded: confirm the panel switches into "viewing offline snapshot" mode showing the same graph, node detail, timeline, and metrics as when it was exported, entirely without the live runtime.
+8. Select **Return to live** and confirm the panel resumes reflecting the live runtime, including any activity that happened while offline mode was open.
+9. Attempt to load an unrelated or corrupted file and confirm a clear inline error appears without leaving the panel stuck in a broken state.

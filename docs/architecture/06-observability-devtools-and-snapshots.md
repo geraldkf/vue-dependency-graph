@@ -4,7 +4,11 @@
 
 Milestone 10 is implemented and validated. M10A through M10G delivered diagnostic foundations, lifecycle causality, advanced diagnostics, the bounded in-memory collector and metrics, versioned safe snapshots, stable normalisation and regression coverage, and the Runtime Observability playground. Final reconciliation also completed transaction-overlap isolation, documentation cleanup, and the Transaction Isolation playground. See [the Milestone 10 observability plan](../implementation/110-milestone-10-observability-plan.md), [the transaction overlap isolation plan](../implementation/114-transaction-overlap-isolation-plan.md), and [ADR-014](../decisions/ADR-014-runtime-observability.md).
 
-The accepted direction is one optional structured diagnostic event stream with deterministic runtime-local causation, a bounded in-memory collector, metrics reduced from the same stream, and safe versioned snapshots. Devtools UI and inspector transport remain Milestone 11 work.
+The accepted direction is one optional structured diagnostic event stream with deterministic runtime-local causation, a bounded in-memory collector, metrics reduced from the same stream, and safe versioned snapshots. Milestone 11 (complete) delivered the devtools UI as an embeddable Vue component panel (`src/devtools`) - see [ADR-015](../decisions/ADR-015-devtools-inspector-protocol.md) for why that shape rather than a `@vue/devtools-api` browser-extension integration, and the per-view status notes below for what shipped against the original vision versus what's still open.
+
+## Devtools panel
+
+`GraphDevtoolsPanel` (`src/devtools/components/GraphDevtoolsPanel.vue`) is a tabbed panel a consuming app mounts against its own `runtime` and an `InMemoryGraphDiagnostics` collector. Every view is a thin renderer over a pure, framework-agnostic transform in `src/devtools/protocol/` - see ADR-015. `useGraphDevtools` wires a live runtime in; `useOfflineDevtoolsSnapshot` loads a previously exported JSON snapshot into the exact same views with no runtime attached, so a snapshot can be captured from one session and inspected or shared later.
 
 ## Why observability is part of the architecture
 
@@ -52,6 +56,8 @@ Metrics are projected from the structured diagnostic event stream so counters an
 
 ## Devtools views
 
+Status against this original vision: Graph view, Node inspector, and Timeline are delivered as described below, with two exceptions noted inline. Controls (the write/remote-control section) was **not** built - the panel that shipped is a read-only inspector plus export/import, not a remote-control console. Extending it with write controls remains open future work, not something ADR-015 rejected; it just wasn't in Milestone 11's scope.
+
 ### Graph view
 
 - Nodes and dependency edges
@@ -64,8 +70,8 @@ Metrics are projected from the structured diagnostic event stream so counters an
 
 - Current value with configurable redaction
 - Dependencies and descendants
-- Last execution
-- Last invalidation reason
+- ~~Last execution~~ - not surfaced as a distinct field; cross-reference the Timeline, filtered to the selected node, instead
+- ~~Last invalidation reason~~ - same as above; the Timeline's `node.invalidated` entries carry this, the inspector doesn't duplicate it
 - Error
 - Refresh and retry policies
 - Metrics
@@ -77,17 +83,17 @@ Metrics are projected from the structured diagnostic event stream so counters an
 - Transactions
 - Events
 - Mutations
-- Poll cycles
+- Poll cycles (via `refresh-policy.*` events, which cover both interval refresh and poll-until sessions)
 
 ### Controls
 
-Development-only controls may:
+Not delivered in Milestone 11. Development-only controls may still be added later:
 
 - Invalidate a node
 - Refresh a node
 - Publish a synthetic event
 - Simulate failure or delay through the playground adapter
-- Export a snapshot
+- Export a snapshot (this one *is* delivered, as `GraphDevtoolsPanel`'s "Export snapshot" button)
 
 ## Snapshot diagnostics
 

@@ -33,6 +33,7 @@ import QueryGroupsScenario from "./scenarios/QueryGroupsScenario.vue";
 import PollingProgressScenario from "./scenarios/PollingProgressScenario.vue";
 import OptimisticAppointmentBookingScenario from "./scenarios/OptimisticAppointmentBookingScenario.vue";
 import RuntimeObservabilityScenario from "./scenarios/RuntimeObservabilityScenario.vue";
+import DevtoolsScenario from "./scenarios/DevtoolsScenario.vue";
 
 interface PlaygroundScenario {
   readonly id: string;
@@ -105,6 +106,11 @@ const scenarios = [
     id: "runtime-observability",
     label: "Runtime Observability",
     component: RuntimeObservabilityScenario,
+  },
+  {
+    id: "devtools",
+    label: "Devtools",
+    component: DevtoolsScenario,
   },
 ] as const satisfies readonly PlaygroundScenario[];
 

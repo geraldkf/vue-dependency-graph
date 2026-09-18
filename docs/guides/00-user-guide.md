@@ -239,14 +239,19 @@ export const AppointmentBooked = defineEvent<{
 
 ```ts
 // graph/nodes.ts (compliance module - never imports the appointments module)
+import type { EventInvalidationContext } from "vue-dependency-graph/core";
+
 export const CapabilityStatus = defineDataNode({
   key: "capabilityStatus",
   dependencies: [CurrentUserId] as const,
   initialValue: null,
   invalidatedBy: [{
     event: AppointmentBooked,
-    when: ({ payload, get }) => payload.userId === get(CurrentUserId),
-  }],
+    when: ({ payload, get }: EventInvalidationContext<
+      typeof AppointmentBooked,
+      readonly [typeof CurrentUserId]
+    >) => payload.userId === get(CurrentUserId),
+  }] as const,
   load: ({ get }) => api.getCapabilityStatus(get(CurrentUserId)),
 });
 ```
@@ -257,6 +262,8 @@ runtime.publish(AppointmentBooked, { userId, appointmentId });
 ```
 
 The predicate (`when`) is synchronous and side-effect free, and is checked against committed dependency values, not against the event payload alone - here, only a booking for the *currently selected* user invalidates `CapabilityStatus`. A publication that matches nothing is silent; there's no error for "nobody was listening."
+
+Note the explicit `EventInvalidationContext<...>` annotation on `when`'s parameters - TypeScript can't reliably infer `payload`'s and `get`'s types from context here, so leaving it off produces confusing type errors elsewhere in the object rather than a clear one on the callback itself. Every `when` predicate in this codebase (and its own tests) types it explicitly for exactly this reason.
 
 This is in-memory, single-runtime delivery only - it does not cross tabs, does not hit a server, and doesn't guarantee replay. If you need server-driven invalidation, have your transport layer validate the incoming message and call `runtime.publish(...)` itself.
 
@@ -479,6 +486,20 @@ const snapshot = runtime.createDiagnosticSnapshot();
 ```
 
 Node values are omitted from snapshots by default - opt a specific node in explicitly if you need its value included, or provide a redactor, rather than turning this off globally.
+
+For an interactive view instead of raw events and snapshots, mount the devtools panel against the same runtime and collector:
+
+```vue
+<script setup lang="ts">
+import { GraphDevtoolsPanel } from "vue-dependency-graph/devtools";
+</script>
+
+<template>
+  <GraphDevtoolsPanel :runtime="runtime" :diagnostics="diagnostics" />
+</template>
+```
+
+It shows the dependency graph, a per-node inspector, the same timeline as `diagnostics.getEvents()` filtered and labeled, and metrics - plus export/import for taking a snapshot out of one session and loading it back later with no live runtime attached. See [`docs/api/01-public-api.md`](../api/01-public-api.md#devtools) for the full reference.
 
 ## 16. Testing your graph
 
