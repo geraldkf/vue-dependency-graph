@@ -17,6 +17,7 @@ const CATEGORY_BY_PREFIX: readonly (readonly [string, InspectorTimelineCategory]
   ["event.", "event"],
   ["transaction.", "transaction"],
   ["refresh-policy.", "refresh-policy"],
+  ["node.value-released", "release"],
   ["mutation.", "mutation"],
 ];
 

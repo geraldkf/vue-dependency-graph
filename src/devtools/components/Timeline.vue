@@ -22,6 +22,7 @@ const ALL_CATEGORIES: readonly InspectorTimelineCategory[] = [
   "event",
   "transaction",
   "refresh-policy",
+  "release",
   "mutation",
 ];
 

@@ -1,5 +1,6 @@
 import { GraphValidationError } from "./errors";
 import { assertValidRefreshPolicy } from "../refresh-policies/policy";
+import { assertValidReleasePolicy } from "../release-policies/policy";
 import {
   registerEventInvalidationIndex,
   type EventInvalidationCandidate,
@@ -98,6 +99,32 @@ const validateRefreshPolicy = (node: AnyNodeDefinition): void => {
     throw new GraphValidationError(
       "INVALID_REFRESH_POLICY",
       `Node "${node.key}" cannot declare a refresh policy because it is not a data node.`
+    );
+  }
+};
+
+const validateReleasePolicy = (node: AnyNodeDefinition): void => {
+  if (isDataNode(node)) {
+    if (node.release === undefined) return;
+    try {
+      assertValidReleasePolicy(node.release, node.key);
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      throw new GraphValidationError(
+        "INVALID_RELEASE_POLICY",
+        `Node "${node.key}" has an invalid release policy: ${reason}`
+      );
+    }
+    return;
+  }
+
+  // Same defensive reasoning as `validateRefreshPolicy` above: non-data
+  // nodes have no `release` field in the type, but untyped input can
+  // still carry one.
+  if ("release" in node) {
+    throw new GraphValidationError(
+      "INVALID_RELEASE_POLICY",
+      `Node "${node.key}" cannot declare a release policy because it is not a data node.`
     );
   }
 };
@@ -215,6 +242,7 @@ export const createGraph = (options: CreateGraphOptions): Graph => {
       );
     }
     validateRefreshPolicy(node);
+    validateReleasePolicy(node);
     nodesByKey.set(node.key, node);
   }
 

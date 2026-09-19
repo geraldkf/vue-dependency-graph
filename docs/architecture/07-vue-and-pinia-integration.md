@@ -41,7 +41,7 @@ Explicit runtime ownership allows an application with an existing Pinia installa
 
 ## Browser refresh-policy environment
 
-The optional `createBrowserRefreshPolicyEnvironment(...)` adapter belongs to the Vue entry point. It combines document visibility and online state without placing browser dependencies in core. Applications may pass it when constructing either a directly owned or Pinia-owned runtime.
+The optional `createBrowserTimerEnvironment(...)` adapter belongs to the Vue entry point. It combines document visibility and online state without placing browser dependencies in core, and backs both refresh policies and release policies (see `docs/decisions/ADR-016-value-release-policies.md`). Applications may pass it when constructing either a directly owned or Pinia-owned runtime.
 
 ## Pinia ownership
 

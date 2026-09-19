@@ -1,5 +1,6 @@
 import { GraphValidationError } from "./errors";
 import { assertValidRefreshPolicy } from "../refresh-policies/policy";
+import { assertValidReleasePolicy } from "../release-policies/policy";
 import type {
   ContextNodeDefinition,
   ContextNodeOptions,
@@ -66,6 +67,9 @@ export const defineDataNode = <
   if (options.refresh !== undefined) {
     assertValidRefreshPolicy(options.refresh, options.key);
   }
+  if (options.release !== undefined) {
+    assertValidReleasePolicy(options.release, options.key);
+  }
   const definition = {
     key: options.key,
     kind: "data" as const,
@@ -75,6 +79,7 @@ export const defineDataNode = <
     invalidatedBy,
     diagnostics: freezeDiagnostics(options.diagnostics),
     refresh: options.refresh,
+    release: options.release,
     initialValue: options.initialValue,
     load: options.load,
   };

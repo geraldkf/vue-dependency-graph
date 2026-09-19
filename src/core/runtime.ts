@@ -45,9 +45,10 @@ import type { AnyEventDefinition, EventPayload } from "./events/types";
 import { createRuntimeEventMatcher } from "./events/event-matcher";
 import type { AnyQueryDefinition } from "./queries/types";
 import { getQueryNodes, getQueryRefreshableNodes } from "./queries/query";
-import { createDefaultRefreshPolicyEnvironment } from "./refresh-policies/environment";
 import { createRuntimeRefreshPolicyController } from "./refresh-policies/policy-controller";
-import type { RefreshPolicyEnvironment } from "./refresh-policies/types";
+import { createRuntimeReleasePolicyController } from "./release-policies/policy-controller";
+import { createDefaultTimerEnvironment } from "./timer-environment";
+import type { TimerEnvironment } from "./timer-environment";
 import { createRuntimeMutationController } from "./mutations/mutation-controller";
 import type { MutationDefinition, MutationOptions } from "./mutations/types";
 import { createRuntimeDiagnosticEmitter } from "./diagnostics/diagnostic-emitter";
@@ -69,10 +70,22 @@ export interface GraphRuntimeOptions {
    */
   readonly maxConcurrentLoads?: number;
   /**
-   * Clock and timer services used by runtime refresh policies. Tests may
-   * inject a deterministic environment. Defaults to platform timers.
+   * Clock and timer services used by refresh policies and release
+   * policies. Tests may inject a deterministic environment. Defaults to
+   * platform timers.
    */
-  readonly refreshPolicyEnvironment?: RefreshPolicyEnvironment;
+  readonly timerEnvironment?: TimerEnvironment;
+  /**
+   * Default idle duration, in milliseconds, before a data node's value is
+   * automatically released (reset to its never-loaded shape) once it has
+   * no subscribers - direct or required. A node's own `release` policy,
+   * when declared, always takes precedence over this default, including
+   * `retain()`, which opts a node out even when this default is set.
+   * Omitted entirely, no automatic release happens for any node unless it
+   * declares its own `release: releaseAfter(...)`. See
+   * `docs/decisions/ADR-016-value-release-policies.md`.
+   */
+  readonly releaseAfterMs?: number;
   /**
    * Optional structured runtime diagnostics. Diagnostics are observational,
    * synchronous, failure-isolated, and disabled when omitted.
@@ -439,11 +452,12 @@ export const createGraphRuntime = (
     schedule: scheduler.schedule,
   });
 
+  const timerEnvironment: TimerEnvironment =
+    options?.timerEnvironment ?? createDefaultTimerEnvironment();
+
   const refreshPolicies = createRuntimeRefreshPolicyController({
     graph,
-    environment:
-      options?.refreshPolicyEnvironment ??
-      createDefaultRefreshPolicyEnvironment(),
+    environment: timerEnvironment,
     getMutableState,
     hasSubscribers: subscriptions.hasSubscribers,
     refreshPolicyNode: (node) => {
@@ -493,6 +507,24 @@ export const createGraphRuntime = (
     },
   });
   onChange(refreshPolicies.reconcile);
+
+  const releasePolicies = createRuntimeReleasePolicyController({
+    graph,
+    environment: timerEnvironment,
+    getMutableState,
+    hasSubscribers: subscriptions.hasSubscribers,
+    defaultDurationMs: options?.releaseAfterMs,
+    notify: emitNotify,
+    onDiagnostic: (nodeKey, idleMs) => {
+      diagnostics.emit({
+        type: "node.value-released",
+        operationId: diagnostics.createOperationId(),
+        nodeKey,
+        idleMs,
+      });
+    },
+  });
+  onChange(releasePolicies.reconcile);
   diagnostics.emitRuntimeCreated(graph.getNodes().map((node) => node.key));
 
   return Object.freeze({

@@ -344,11 +344,11 @@ Milestone 8B activates `staleAfter(...)` for subscribed data nodes. A runtime sc
 
 ```ts
 const runtime = createGraphRuntime(graph, {
-  refreshPolicyEnvironment,
+  timerEnvironment,
 });
 ```
 
-`refreshPolicyEnvironment` is optional and primarily supports deterministic clocks in tests. The default uses platform timers. `whenSettled()` remains scheduler-specific and does not wait for future policy timers.
+`timerEnvironment` is optional and primarily supports deterministic clocks in tests - the same environment also backs release policies (see "Release policies" below), so tests only need to fake one clock for both. The default uses platform timers. `whenSettled()` remains scheduler-specific and does not wait for future policy timers.
 
 ### Fixed interval while subscribed
 
@@ -397,11 +397,36 @@ The Vue entry point provides an optional browser adapter:
 
 ```ts
 const runtime = createGraphRuntime(graph, {
-  refreshPolicyEnvironment: createBrowserRefreshPolicyEnvironment(),
+  timerEnvironment: createBrowserTimerEnvironment(),
 });
 ```
 
 It pauses policy timers while the document is hidden or the browser is offline. Resume restores one remaining delay without replaying missed ticks. Poll timeout excludes paused duration.
+
+## Release policies
+
+Milestone 12 adds `release` metadata for data nodes, interpreted by a runtime-local release-policy controller built on the same `timerEnvironment` refresh policies use (see above):
+
+```ts
+import { releaseAfter, retain } from "vue-dependency-graph/core";
+
+const Tasks = defineDataNode({
+  key: "tasks",
+  initialValue: [] as Task[],
+  load: ({ signal }) => api.getTasks(signal),
+  release: releaseAfter({ durationMs: 60_000 }),
+});
+```
+
+```ts
+const runtime = createGraphRuntime(graph, { releaseAfterMs: 5 * 60_000 });
+```
+
+Resolution order per node: its own `release` if declared, else the runtime's `releaseAfterMs`, else no automatic release. `retain()` opts a node out even when the runtime has a default. Context and derived nodes cannot declare a release policy - `createGraph` rejects that (`GraphValidationError` with code `INVALID_RELEASE_POLICY`), the same way it already rejects a stray `refresh` on a non-data node.
+
+The controller starts a node's timer the moment it has no subscribers at all - direct or required (`hasSubscribers`, not the scheduler's own `hasDirectSubscribers`) - and only once it currently holds a successful value. Resubscribing before the timer fires cancels it with no other effect. When the timer fires, the node resets to its never-executed shape (`data` back to `initialValue`, no successful value, `status: "idle"`, `freshness: "stale"`) and its `generation` is bumped, so a later resubscribe goes through the same fresh-execution path as a node that has simply never run.
+
+A release emits a `node.value-released` diagnostic event (`{ operationId, nodeKey, idleMs }`), visible in the devtools Timeline under its own "release" category. See [ADR-016](../decisions/ADR-016-value-release-policies.md) for the full design, including the alternatives considered and why this is timer-based rather than, for example, a count-bounded LRU buffer.
 
 ## Mutation definitions and execution
 

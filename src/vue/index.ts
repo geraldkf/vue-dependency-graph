@@ -19,5 +19,5 @@ export type {
   UseQueryResult,
 } from "./use-query";
 
-export { createBrowserRefreshPolicyEnvironment } from "./browser-refresh-policy-environment";
-export type { BrowserRefreshPolicyEnvironmentOptions } from "./browser-refresh-policy-environment";
+export { createBrowserTimerEnvironment } from "./browser-timer-environment";
+export type { BrowserTimerEnvironmentOptions } from "./browser-timer-environment";

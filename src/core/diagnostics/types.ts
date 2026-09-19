@@ -40,6 +40,7 @@ export type GraphDiagnosticEventType =
   | "refresh-policy.failed"
   | "refresh-policy.timed-out"
   | "refresh-policy.stopped"
+  | "node.value-released"
   | "mutation.started"
   | "mutation.optimistic-committed"
   | "mutation.remote-started"
@@ -160,33 +161,7 @@ export interface GraphNodeExecutionDiagnosticEvent
     | "node.load.discarded"
     | "node.derive.started"
     | "node.derive.succeeded"
-    | "node.derive.failed"
-  | "event.published"
-  | "event.matched"
-  | "transaction.started"
-  | "transaction.committed"
-  | "transaction.rolled-back"
-  | "transaction.conflicted"
-  | "refresh-policy.scheduled"
-  | "refresh-policy.started"
-  | "refresh-policy.retry-scheduled"
-  | "refresh-policy.paused"
-  | "refresh-policy.resumed"
-  | "refresh-policy.completed"
-  | "refresh-policy.failed"
-  | "refresh-policy.timed-out"
-  | "refresh-policy.stopped"
-  | "mutation.started"
-  | "mutation.optimistic-committed"
-  | "mutation.remote-started"
-  | "mutation.remote-succeeded"
-  | "mutation.remote-failed"
-  | "mutation.success-committed"
-  | "mutation.rolled-back"
-  | "mutation.rollback-conflicted"
-  | "mutation.outcome-unknown"
-  | "mutation.reconciliation-failed"
-  | "mutation.completed";
+    | "node.derive.failed";
   readonly operationId: string;
   readonly nodeKey: string;
   readonly nodeKind: "context" | "data" | "derived";
@@ -242,6 +217,13 @@ export interface GraphRefreshPolicyDiagnosticEvent extends GraphDiagnosticEventB
   readonly error?: GraphDiagnosticError;
 }
 
+export interface GraphNodeValueReleasedDiagnosticEvent extends GraphDiagnosticEventBase {
+  readonly type: "node.value-released";
+  readonly operationId: string;
+  readonly nodeKey: string;
+  readonly idleMs: number;
+}
+
 export interface GraphMutationDiagnosticEvent extends GraphDiagnosticEventBase {
   readonly type:
     | "mutation.started"
@@ -274,6 +256,7 @@ export type GraphDiagnosticEvent =
   | GraphEventDiagnosticEvent
   | GraphTransactionDiagnosticEvent
   | GraphRefreshPolicyDiagnosticEvent
+  | GraphNodeValueReleasedDiagnosticEvent
   | GraphMutationDiagnosticEvent;
 
 export interface GraphDiagnosticSink {

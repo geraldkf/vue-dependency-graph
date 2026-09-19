@@ -15,16 +15,17 @@ This guide walks through the library end to end, building up one running example
 7. [Understanding failure](#7-understanding-failure)
 8. [Cross-domain invalidation with events](#8-cross-domain-invalidation-with-events)
 9. [Keeping data fresh: refresh policies and polling](#9-keeping-data-fresh-refresh-policies-and-polling)
-10. [Query groups](#10-query-groups)
-11. [Mutations](#11-mutations)
-12. [Transactions](#12-transactions)
-13. [Limiting concurrency](#13-limiting-concurrency)
-14. [Pinia integration](#14-pinia-integration)
-15. [Diagnostics and debugging](#15-diagnostics-and-debugging)
-16. [Testing your graph](#16-testing-your-graph)
-17. [Common patterns](#17-common-patterns)
-18. [Troubleshooting](#18-troubleshooting)
-19. [Where to go next](#19-where-to-go-next)
+10. [Releasing idle data](#10-releasing-idle-data)
+11. [Query groups](#11-query-groups)
+12. [Mutations](#12-mutations)
+13. [Transactions](#13-transactions)
+14. [Limiting concurrency](#14-limiting-concurrency)
+15. [Pinia integration](#15-pinia-integration)
+16. [Diagnostics and debugging](#16-diagnostics-and-debugging)
+17. [Testing your graph](#17-testing-your-graph)
+18. [Common patterns](#18-common-patterns)
+19. [Troubleshooting](#19-troubleshooting)
+20. [Where to go next](#20-where-to-go-next)
 
 ---
 
@@ -306,7 +307,44 @@ A node has at most one policy. Context and derived nodes cannot declare one - `c
 
 `pollUntil` reads progress the same way any other data node does - through `data`, on every intermediate response, not through a separate callback. If your progress endpoint returns `{ state: "running", percent: 40 }`, render `percent` straight from `useNode(ExportJobStatus).data` as it updates on each poll.
 
-## 10. Query groups
+## 10. Releasing idle data
+
+A node's value stays in memory for as long as the runtime exists - by default, forever, even after every subscriber has gone away. For most graphs that's fine: a fixed, small set of nodes isn't worth worrying about. For a node that can hold something genuinely large (a big list, a large blob), you can have the runtime release it automatically once nothing needs it any more:
+
+```ts
+import { releaseAfter, retain } from "vue-dependency-graph/core";
+
+export const Tasks = defineDataNode({
+  key: "tasks",
+  dependencies: [CurrentUserId] as const,
+  initialValue: [] as Task[],
+  load: ({ get, signal }) => api.getTasks(get(CurrentUserId), signal),
+  release: releaseAfter({ durationMs: 60_000 }),
+});
+```
+
+Or set one default for every data node in the graph, and opt specific nodes out:
+
+```ts
+const runtime = createGraphRuntime(graph, { releaseAfterMs: 5 * 60_000 });
+
+export const ReferenceCatalogue = defineDataNode({
+  key: "referenceCatalogue",
+  initialValue: [],
+  load: () => api.getCatalogue(),
+  release: retain(), // never released automatically, even though the runtime has a default
+});
+```
+
+Resolution order: a node's own `release` always wins over the runtime's `releaseAfterMs` default, including `retain()` explicitly opting a node out. A node with neither falls back to the runtime default; a runtime with no default and nodes with no policy of their own behaves exactly as if this feature didn't exist.
+
+The timer starts the moment a node has *no* subscribers at all - not just no direct `useNode` caller, but no other node depending on it either. A node kept alive only because something else still needs it as a dependency is not released; releasing it would just force that other node to reload it immediately. Resubscribing before the timer fires cancels it - the existing value is reused exactly as if nothing had happened, no reload needed.
+
+When the timer fires, the node resets to exactly the shape it had before it ever loaded - `data` back to `initialValue`, no successful value, `status: "idle"` - so a later subscribe triggers a genuinely fresh `load()`, not a stale cached value. Context and derived nodes can't declare a release policy at all: a context value is caller-provided input, not cache, and releasing it would silently discard state you set rather than just cost a reload.
+
+A release shows up in diagnostics as a `node.value-released` event, and in the devtools Timeline under its own "release" filter - useful for confirming large data actually gets reclaimed on a long-running page rather than just trusting the configuration. See [ADR-016](../decisions/ADR-016-value-release-policies.md) for the full design reasoning, including why this is timer-based rather than, say, an LRU-style bounded count.
+
+## 11. Query groups
 
 When a screen needs several related nodes together - and you don't want to repeat that list of nodes at every call site - group them once:
 
@@ -342,7 +380,7 @@ await runtime.refreshQuery(TaskBoardPage); // context aliases excluded - use set
 
 Each aliased entry under `page.nodes` exposes the same computed refs `useNode` would give you individually. A query definition doesn't create new runtime state - it's a typed, named grouping of the same underlying nodes `useNodes` would subscribe to anyway, declared once and reused everywhere the page needs that combination.
 
-## 11. Mutations
+## 12. Mutations
 
 Reads go through data nodes. Writes - commands with a server round-trip that should update the cache on success - go through mutations. A mutation is not a node: it doesn't participate in dependency execution, isn't deduplicated, and doesn't consume `maxConcurrentLoads`.
 
@@ -389,7 +427,7 @@ await runtime.mutate(CreateTask, { title }, {
 
 `classifyFailure` matters: only classify `"rejected"` when you have real evidence the server didn't commit the command (a validation response, an explicit business rejection). Anything ambiguous - a timeout, a dropped connection, a malformed response - must be `"unknown"`, which keeps the optimistic value visible as unconfirmed rather than risking a false rollback of a command that may have actually succeeded. See [the mutation adoption guide](./04-mutation-adoption.md) for the full error-handling reference (`GraphMutationConflictError`, `GraphMutationOutcomeUnknownError`, `GraphMutationRollbackConflictError`, `GraphMutationReconciliationError`, `GraphMutationStateError`).
 
-## 12. Transactions
+## 13. Transactions
 
 A transaction batches several `setContext`/`publish` calls so observers only ever see the fully-committed result, never an intermediate state:
 
@@ -407,7 +445,7 @@ This is local atomicity only - it batches *this runtime's* state, not a backend 
 
 Plain `runtime.setContext(...)` calls made elsewhere while a transaction is open are unaffected by it - they commit immediately, independent of whatever the transaction eventually does. Two transactions that stage the same context concurrently resolve by first-commit-wins: the second to commit gets `GraphTransactionConflictError`, and its staged work is discarded, not partially applied.
 
-## 13. Limiting concurrency
+## 14. Limiting concurrency
 
 By default there's no cap on how many data-node loads can be in flight. If a context change invalidates a lot of subscribed nodes at once, that can mean a burst of dozens of simultaneous requests. Cap it per runtime:
 
@@ -417,7 +455,7 @@ const runtime = createGraphRuntime(graph, { maxConcurrentLoads: 6 });
 
 This only gates `load()` calls (derived nodes are synchronous and never queue). It applies across explicit execution, scheduler work, prefetch, and refresh alike - one shared budget, not one per call site. A queued load that gets aborted (its subscriber went away, or it was superseded) leaves the queue without ever calling `load()`.
 
-## 14. Pinia integration
+## 15. Pinia integration
 
 If your app already has Pinia installed, own the runtime inside a store rather than installing a separate plugin:
 
@@ -462,7 +500,7 @@ const { data } = useNode(Tasks);
 
 An explicit `{ runtime }` option always takes precedence over the injected one, so the two approaches can coexist if you need to point one specific component at a different runtime (a test double, for instance).
 
-## 15. Diagnostics and debugging
+## 16. Diagnostics and debugging
 
 For "why did this load, and what caused it," turn on structured diagnostics at runtime construction:
 
@@ -501,7 +539,7 @@ import { GraphDevtoolsPanel } from "vue-dependency-graph/devtools";
 
 It shows the dependency graph, a per-node inspector, the same timeline as `diagnostics.getEvents()` filtered and labeled, and metrics - plus export/import for taking a snapshot out of one session and loading it back later with no live runtime attached. See [`docs/api/01-public-api.md`](../api/01-public-api.md#devtools) for the full reference.
 
-## 16. Testing your graph
+## 17. Testing your graph
 
 Keep tests independent of real timers and real network calls. For loaders, use deferred promises you control the resolution of, not real `fetch`:
 
@@ -531,10 +569,10 @@ it("shows the newly created task after a successful mutation", async () => {
 });
 ```
 
-For refresh policies and polling, real timers make tests slow and flaky. Inject a deterministic environment instead, via `GraphRuntimeOptions.refreshPolicyEnvironment` - the shape is `RefreshPolicyEnvironment` from `refresh-policies/types.ts`; `refresh-policies/environment.ts`'s `createDefaultRefreshPolicyEnvironment()` shows exactly which functions to fake (`now`, `setTimeout`, `clearTimeout`, `random`, `isPaused`, `onPauseChange`):
+For refresh policies, release policies, and polling, real timers make tests slow and flaky. Inject a deterministic environment instead, via `GraphRuntimeOptions.timerEnvironment` - the same environment backs both refresh and release policies, so one fake clock covers both. The shape is `TimerEnvironment` from `vue-dependency-graph/core`; `createDefaultTimerEnvironment()` shows exactly which functions to fake (`now`, `setTimeout`, `clearTimeout`, `random`, `isPaused`, `onPauseChange`):
 
 ```ts
-function createFakeRefreshPolicyEnvironment() {
+function createFakeTimerEnvironment() {
   let currentTime = 0;
   const timers = new Map<number, { dueAt: number; callback: () => void }>();
   let nextHandle = 1;
@@ -565,8 +603,8 @@ function createFakeRefreshPolicyEnvironment() {
 }
 
 it("reloads once the data is stale", async () => {
-  const { environment, advance } = createFakeRefreshPolicyEnvironment();
-  const runtime = createGraphRuntime(graph, { refreshPolicyEnvironment: environment });
+  const { environment, advance } = createFakeTimerEnvironment();
+  const runtime = createGraphRuntime(graph, { timerEnvironment: environment });
 
   const subscription = runtime.subscribeNodes([Tasks]);
   await runtime.whenSettled();
@@ -582,7 +620,7 @@ it("reloads once the data is stale", async () => {
 
 For Vue components, use real `createGraph`/`createGraphRuntime` instances (not mocks) with Vue Testing Library, and pass the runtime explicitly rather than relying on global plugin installation - it keeps each test's runtime isolated from every other test's.
 
-## 17. Common patterns
+## 18. Common patterns
 
 **Route-level prefetching.** Call `runtime.prefetch([...])` in a route guard or loader before navigation, so the destination component's `useNode` calls find warm data instead of triggering a fresh load on mount.
 
@@ -590,9 +628,9 @@ For Vue components, use real `createGraph`/`createGraphRuntime` instances (not m
 
 **Derived aggregate state across several nodes.** Prefer one derived node over recomputing the same combination inline in every component that needs it - it gets its own status/error/freshness tracking for free, and other nodes can depend on it too.
 
-**Don't reinterpret `initialValue` as loaded data.** A data node's `initialValue` exists so the node has *something* to render before the first load completes - it is not a cache-primed value. In particular, don't build an optimistic mutation update on top of a node that has never successfully loaded; the guide in [§11](#11-mutations) and the [mutation adoption guide](./04-mutation-adoption.md) call this out explicitly.
+**Don't reinterpret `initialValue` as loaded data.** A data node's `initialValue` exists so the node has *something* to render before the first load completes - it is not a cache-primed value. In particular, don't build an optimistic mutation update on top of a node that has never successfully loaded; the guide in [§12](#12-mutations) and the [mutation adoption guide](./04-mutation-adoption.md) call this out explicitly.
 
-## 18. Troubleshooting
+## 19. Troubleshooting
 
 **"My component never shows data."** Check that something is actually subscribed - `useNode`/`useNodes`/`useQuery` inside an active component scope. A node with no subscriber and no explicit `execute`/`prefetch`/`refresh` call simply never runs; that's by design (see [ADR-004](../decisions/ADR-004-subscription-driven-loading.md)), not a bug.
 
@@ -602,9 +640,11 @@ For Vue components, use real `createGraph`/`createGraphRuntime` instances (not m
 
 **"My refresh policy never fires."** Policies only run while the node has a subscriber. If nothing is currently mounted with `useNode`/`useNodes`/`useQuery` on that node, there's no timer running - that's intentional, not a missed edge case.
 
+**"A node reloaded even though a component using it is still mounted."** If that node has a `release` policy (its own, or the runtime's `releaseAfterMs` default), check whether it's still subscribed only *indirectly* - through another node that depends on it, with nothing subscribing to it directly and nothing subscribing to anything that needs it either. Release only fires when a node has no subscribers at all, direct or required, so a reload after release means it genuinely had none for the configured duration - not that the direct/required distinction stopped applying.
+
 **"An optimistic mutation update disappeared without an error."** Check whether newer graph work (a context change, another mutation, a refresh) touched the same node before your mutation settled. A known rejection that arrives after newer state changed rejects with `GraphMutationRollbackConflictError` specifically so this case is visible rather than silently overwriting the newer data - see the [mutation adoption guide](./04-mutation-adoption.md).
 
-## 19. Where to go next
+## 20. Where to go next
 
 - [`docs/api/01-public-api.md`](../api/01-public-api.md) - complete reference for every public function and option.
 - [`docs/architecture/`](../architecture/) - how the pieces fit together and why, in depth.

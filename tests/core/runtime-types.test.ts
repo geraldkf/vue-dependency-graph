@@ -5,7 +5,7 @@ import {
   defineDataNode,
   defineDerivedNode,
   type GraphRuntimeOptions,
-  type RefreshPolicyEnvironment,
+  type TimerEnvironment,
 } from "../../src/core";
 
 const count = defineContextNode({ key: "count", initialValue: 1 });
@@ -37,7 +37,7 @@ runtime.setContext(derived, 2);
 
 void runtime.execute([data, derived] as const);
 
-const refreshPolicyEnvironment: RefreshPolicyEnvironment = {
+const timerEnvironment: TimerEnvironment = {
   now: () => 0,
   setTimeout: () => 1,
   clearTimeout: () => undefined,
@@ -48,7 +48,7 @@ const refreshPolicyEnvironment: RefreshPolicyEnvironment = {
 
 const options: GraphRuntimeOptions = {
   maxConcurrentLoads: 2,
-  refreshPolicyEnvironment,
+  timerEnvironment,
 };
 const limitedRuntime = createGraphRuntime(
   createGraph({ nodes: [derived, data, count] }),

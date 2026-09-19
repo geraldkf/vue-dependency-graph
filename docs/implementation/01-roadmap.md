@@ -438,10 +438,12 @@ Exit criteria: framework behaviour can be understood without console logging.
 
 ## Milestone 12: Cache lifecycle and advanced lazy behaviour
 
-- [ ] Garbage collection for unused data
-- [ ] Direct-subscription-only semantics if still required
+- [x] Garbage collection for unused data
+- [x] Direct-subscription-only semantics if still required
 - [ ] Memory pressure tests
 - [ ] Reference-data caching examples
+
+Status: partially complete. Timer-based `release`/`releaseAfter(...)` node policies with a runtime-wide `releaseAfterMs` default are implemented and tested, resolving "Garbage collection for unused data" and "Direct-subscription-only semantics if still required" together - see [ADR-016](../decisions/ADR-016-value-release-policies.md) for the full design, alternatives considered, and reasoning. "Memory pressure tests" and "Reference-data caching examples" remain open; ADR-016 does not address either.
 
 Exit criteria: long-running applications do not retain unused graph data indefinitely.
 

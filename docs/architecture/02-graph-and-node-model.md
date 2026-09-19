@@ -73,6 +73,10 @@ Data-node definitions may carry one immutable refresh policy created by `staleAf
 
 Context and derived nodes cannot declare refresh policies. Graph creation defensively validates policy metadata but does not evaluate polling predicates or create runtime activity.
 
+## Release policy metadata
+
+Data-node definitions may carry one immutable release policy created by `releaseAfter(...)`, or opt out of the runtime's default with `retain()` (Milestone 12, complete - see [ADR-016](../decisions/ADR-016-value-release-policies.md)). Like refresh policies, this is graph metadata only - a runtime's release-policy controller owns the timer that decides when an idle node's value actually gets reset (`docs/architecture/03-scheduler-transactions-and-concurrency.md`). Context and derived nodes cannot declare a release policy: a context value is caller-provided input, not cache, and derived nodes are cheap enough to recompute that releasing them wasn't part of this milestone's scope.
+
 ## Forward references
 
 A dependency resolver supports definitions that require forward references:

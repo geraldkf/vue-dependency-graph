@@ -189,6 +189,16 @@ Policy retries remain inside the refresh-policy controller and delegate every at
 
 Pause clears timers while retaining one remaining delay and timer purpose. Resume restores at most one timeout. Active loads continue during pause, and recurring policy timers remain outside scheduler settlement.
 
+## Release-policy ownership
+
+Implemented, Milestone 12 - see [ADR-016](../decisions/ADR-016-value-release-policies.md).
+
+A sibling release-policy controller owns one timer per eligible data node, started the moment that node's subscriber count - direct plus required, the same total `hasSubscribers` check invalidation and the scheduler's settlement logic already use, not the scheduler's own `hasDirectSubscribers` filter - drops to zero while the node still has a successful value. Resubscribing before the timer fires cancels it with no other effect; the existing value is reused exactly as if nothing had happened.
+
+When the timer fires, the controller resets the node to its never-executed shape and bumps its generation through the same state-transition path `execution.ts` uses for every other reset, rather than a bespoke code path - a resubscribe afterward looks, to the execution machinery, identical to a node that has simply never run yet. The refresh-policy and release-policy controllers share one injected timer environment (`TimerEnvironment`) rather than two near-identical clocks.
+
+A node with an active refresh policy needs no special-casing here: refresh policies already stop entirely once a node's last subscriber leaves (this section, above), so a release timer never starts while a refresh policy is still doing anything to conflict with.
+
 ## Transaction sessions
 
 ```ts

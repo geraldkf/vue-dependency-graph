@@ -5,6 +5,7 @@ import {
   createInMemoryGraphDiagnostics,
   defineContextNode,
   defineDataNode,
+  type GraphDiagnosticEvent,
 } from "../../../src/core";
 import { computeTimeline } from "../../../src/devtools/protocol/timeline";
 
@@ -47,5 +48,27 @@ describe("computeTimeline", () => {
 
   it("returns an empty timeline for an empty event list", () => {
     expect(computeTimeline([])).toEqual([]);
+  });
+
+  it("maps node.value-released to its own release category", () => {
+    // Constructed directly rather than through a real release-policy fire
+    // (covered end-to-end in tests/core/release-policy.spec.ts) - this
+    // test is specifically about the category mapping, not the release
+    // mechanics themselves.
+    const event: GraphDiagnosticEvent = {
+      schemaVersion: 1,
+      sequence: 1,
+      timestamp: 0,
+      runtimeId: "r1",
+      type: "node.value-released",
+      operationId: "op1",
+      nodeKey: "count",
+      idleMs: 1_000,
+    };
+
+    const [entry] = computeTimeline([event]);
+
+    expect(entry).toMatchObject({ category: "release", nodeKey: "count", isFailure: false });
+    expect(entry?.label).toBe("Node Value Released - count");
   });
 });

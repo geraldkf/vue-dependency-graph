@@ -5,7 +5,7 @@ import {
   defineContextNode,
   defineDataNode,
   refreshInterval,
-  type RefreshPolicyEnvironment,
+  type TimerEnvironment,
 } from "../../src/core";
 import { deferred, waitForCondition } from "./test-helpers";
 
@@ -19,7 +19,7 @@ const createTestEnvironment = () => {
   let now = 0;
   let nextId = 1;
   const timers = new Map<number, ScheduledTimer>();
-  const environment: RefreshPolicyEnvironment = {
+  const environment: TimerEnvironment = {
     now: () => now,
     setTimeout: (callback, delayMs) => {
       const id = nextId++;
@@ -68,7 +68,7 @@ describe("fixed interval refresh policy", () => {
       refresh: refreshInterval({ intervalMs: 100 }),
     });
     const runtime = createGraphRuntime(createGraph({ nodes: [node] }), {
-      refreshPolicyEnvironment: clock.environment,
+      timerEnvironment: clock.environment,
     });
 
     const subscription = runtime.subscribeNodes([node]);
@@ -122,7 +122,7 @@ describe("fixed interval refresh policy", () => {
       refresh: refreshInterval({ intervalMs: 100 }),
     });
     const runtime = createGraphRuntime(createGraph({ nodes: [node] }), {
-      refreshPolicyEnvironment: clock.environment,
+      timerEnvironment: clock.environment,
     });
 
     const subscription = runtime.subscribeNodes([node]);
@@ -158,7 +158,7 @@ describe("fixed interval refresh policy", () => {
       refresh: refreshInterval({ intervalMs: 100 }),
     });
     const runtime = createGraphRuntime(createGraph({ nodes: [node] }), {
-      refreshPolicyEnvironment: clock.environment,
+      timerEnvironment: clock.environment,
     });
 
     const first = runtime.subscribeNodes([node]);
@@ -192,7 +192,7 @@ describe("fixed interval refresh policy", () => {
       refresh: refreshInterval({ intervalMs: 100 }),
     });
     const runtime = createGraphRuntime(createGraph({ nodes: [context, node] }), {
-      refreshPolicyEnvironment: clock.environment,
+      timerEnvironment: clock.environment,
     });
 
     const subscription = runtime.subscribeNodes([node]);
@@ -222,10 +222,10 @@ describe("fixed interval refresh policy", () => {
     });
     const graph = createGraph({ nodes: [node] });
     const firstRuntime = createGraphRuntime(graph, {
-      refreshPolicyEnvironment: firstClock.environment,
+      timerEnvironment: firstClock.environment,
     });
     const secondRuntime = createGraphRuntime(graph, {
-      refreshPolicyEnvironment: secondClock.environment,
+      timerEnvironment: secondClock.environment,
     });
 
     const first = firstRuntime.subscribeNodes([node]);

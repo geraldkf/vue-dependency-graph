@@ -4,7 +4,7 @@ import {
   createGraphRuntime,
   defineDataNode,
   staleAfter,
-  type RefreshPolicyEnvironment,
+  type TimerEnvironment,
 } from "../../src/core";
 import { deferred, waitForCondition } from "./test-helpers";
 
@@ -18,7 +18,7 @@ const createTestEnvironment = () => {
   let now = 0;
   let nextId = 1;
   const timers = new Map<number, ScheduledTimer>();
-  const environment: RefreshPolicyEnvironment = {
+  const environment: TimerEnvironment = {
     now: () => now,
     setTimeout: (callback, delayMs) => {
       const id = nextId++;
@@ -67,7 +67,7 @@ describe("stale-after refresh policy", () => {
       refresh: staleAfter({ durationMs: 1_000 }),
     });
     const runtime = createGraphRuntime(createGraph({ nodes: [node] }), {
-      refreshPolicyEnvironment: clock.environment,
+      timerEnvironment: clock.environment,
     });
 
     const subscription = runtime.subscribeNodes([node]);
@@ -100,7 +100,7 @@ describe("stale-after refresh policy", () => {
       refresh: staleAfter({ durationMs: 1_000 }),
     });
     const runtime = createGraphRuntime(createGraph({ nodes: [node] }), {
-      refreshPolicyEnvironment: clock.environment,
+      timerEnvironment: clock.environment,
     });
 
     const first = runtime.subscribeNodes([node]);
@@ -126,7 +126,7 @@ describe("stale-after refresh policy", () => {
       refresh: staleAfter({ durationMs: 100 }),
     });
     const runtime = createGraphRuntime(createGraph({ nodes: [node] }), {
-      refreshPolicyEnvironment: clock.environment,
+      timerEnvironment: clock.environment,
     });
 
     const subscription = runtime.subscribeNodes([node]);
@@ -155,7 +155,7 @@ describe("stale-after refresh policy", () => {
       refresh: staleAfter({ durationMs: 100 }),
     });
     const runtime = createGraphRuntime(createGraph({ nodes: [node] }), {
-      refreshPolicyEnvironment: clock.environment,
+      timerEnvironment: clock.environment,
     });
 
     const subscription = runtime.subscribeNodes([node]);
@@ -187,7 +187,7 @@ describe("stale-after refresh policy", () => {
       refresh: staleAfter({ durationMs: 100 }),
     });
     const runtime = createGraphRuntime(createGraph({ nodes: [node] }), {
-      refreshPolicyEnvironment: clock.environment,
+      timerEnvironment: clock.environment,
     });
 
     const subscription = runtime.subscribeNodes([node]);

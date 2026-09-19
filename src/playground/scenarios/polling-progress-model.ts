@@ -6,7 +6,7 @@ import {
   type GraphRuntime,
   type NodeRuntimeState,
   type NodeSubscription,
-  type RefreshPolicyEnvironment,
+  type TimerEnvironment,
 } from "../../core";
 
 export type PollingProgressState =
@@ -104,7 +104,7 @@ export const createPollingProgressHarness = (): PollingProgressHarness => {
   });
   const pollingProgressGraph = createGraph({ nodes: [pollingProgressNode] });
 
-  const environment: RefreshPolicyEnvironment = {
+  const environment: TimerEnvironment = {
     now: () => now,
     setTimeout: (callback, delayMs) => {
       const id = nextTimerId;
@@ -123,7 +123,7 @@ export const createPollingProgressHarness = (): PollingProgressHarness => {
     },
   };
   const runtime = createGraphRuntime(pollingProgressGraph, {
-    refreshPolicyEnvironment: environment,
+    timerEnvironment: environment,
   });
 
   const advanceBy = (durationMs: number): void => {

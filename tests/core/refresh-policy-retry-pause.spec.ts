@@ -6,7 +6,7 @@ import {
   defineDataNode,
   pollUntil,
   refreshInterval,
-  type RefreshPolicyEnvironment,
+  type TimerEnvironment,
 } from "../../src/core";
 import { waitForCondition } from "./test-helpers";
 
@@ -23,7 +23,7 @@ const createEnvironment = (randomValues: readonly number[] = [0.5]) => {
   let randomIndex = 0;
   const timers = new Map<number, Timer>();
   const pauseListeners = new Set<(paused: boolean) => void>();
-  const environment: RefreshPolicyEnvironment = {
+  const environment: TimerEnvironment = {
     now: () => now,
     setTimeout: (callback, delayMs) => {
       const id = nextId++;
@@ -93,7 +93,7 @@ describe("refresh policy retry and pause", () => {
       }),
     });
     const runtime = createGraphRuntime(createGraph({ nodes: [node] }), {
-      refreshPolicyEnvironment: clock.environment,
+      timerEnvironment: clock.environment,
     });
 
     const subscription = runtime.subscribeNodes([node]);
@@ -131,7 +131,7 @@ describe("refresh policy retry and pause", () => {
       }),
     });
     const runtime = createGraphRuntime(createGraph({ nodes: [node] }), {
-      refreshPolicyEnvironment: clock.environment,
+      timerEnvironment: clock.environment,
     });
 
     const subscription = runtime.subscribeNodes([node]);
@@ -163,7 +163,7 @@ describe("refresh policy retry and pause", () => {
       }),
     });
     const runtime = createGraphRuntime(createGraph({ nodes: [node] }), {
-      refreshPolicyEnvironment: clock.environment,
+      timerEnvironment: clock.environment,
     });
 
     const subscription = runtime.subscribeNodes([node]);
@@ -191,7 +191,7 @@ describe("refresh policy retry and pause", () => {
       }),
     });
     const runtime = createGraphRuntime(createGraph({ nodes: [node] }), {
-      refreshPolicyEnvironment: clock.environment,
+      timerEnvironment: clock.environment,
     });
 
     const subscription = runtime.subscribeNodes([node]);
@@ -223,7 +223,7 @@ describe("refresh policy retry and pause", () => {
       refresh: refreshInterval({ intervalMs: 100 }),
     });
     const runtime = createGraphRuntime(createGraph({ nodes: [node] }), {
-      refreshPolicyEnvironment: clock.environment,
+      timerEnvironment: clock.environment,
     });
 
     const subscription = runtime.subscribeNodes([node]);
@@ -259,7 +259,7 @@ describe("refresh policy retry and pause", () => {
       }),
     });
     const runtime = createGraphRuntime(createGraph({ nodes: [node] }), {
-      refreshPolicyEnvironment: clock.environment,
+      timerEnvironment: clock.environment,
     });
 
     const subscription = runtime.subscribeNodes([node]);

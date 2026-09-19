@@ -80,17 +80,3 @@ export type RefreshPolicy<TValue> =
   | PollUntilPolicy<TValue>;
 
 export type AnyRefreshPolicy = RefreshPolicy<unknown>;
-
-export interface RefreshPolicyEnvironment {
-  readonly now: () => number;
-  readonly setTimeout: (
-    callback: () => void,
-    delayMs: number
-  ) => unknown;
-  readonly clearTimeout: (handle: unknown) => void;
-  readonly random: () => number;
-  readonly isPaused: () => boolean;
-  readonly onPauseChange: (
-    listener: (paused: boolean) => void
-  ) => () => void;
-}

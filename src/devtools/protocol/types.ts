@@ -128,6 +128,7 @@ export type InspectorTimelineCategory =
   | "event"
   | "transaction"
   | "refresh-policy"
+  | "release"
   | "mutation";
 
 export interface InspectorTimelineEntry {

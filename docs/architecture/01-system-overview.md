@@ -118,6 +118,10 @@ A controlled Vue application where developers can change latency, failures, depe
 
 Milestone 8 (complete) adds a runtime-local policy controller for data nodes carrying `staleAfter(...)`, `refreshInterval(...)`, or `pollUntil(...)` metadata. It observes committed runtime transitions, tracks successful timestamps, owns timers, applies bounded retry with backoff and jitter, and delegates due work to the existing refresh and execution capabilities. Graph definitions remain immutable and carry metadata only.
 
+## Release-policy runtime
+
+Milestone 12 (complete) adds a sibling runtime-local controller, built on the same timer infrastructure as the refresh-policy controller above, that resets an idle data node's value back to its never-loaded shape once its subscriber count has been zero for its configured `releaseAfter(...)` duration (per node, or a runtime-wide `releaseAfterMs` default). See [ADR-016](../decisions/ADR-016-value-release-policies.md) and `docs/architecture/03-scheduler-transactions-and-concurrency.md` for the mechanics.
+
 ## Why one package
 
 A single package is preferred during research and development because:

@@ -6,6 +6,7 @@ import type { GraphDiagnosticRefreshPolicySnapshot } from "../diagnostics/snapsh
   Graph,
 } from "../graph/types";
 import type { MutableNodeRuntimeState } from "../state/state";
+import type { TimerEnvironment } from "../timer-environment";
 import {
   GraphPollingConditionError,
   GraphPollingTimeoutError,
@@ -13,7 +14,6 @@ import {
 } from "./errors";
 import type {
   PollUntilPolicy,
-  RefreshPolicyEnvironment,
   RetryPolicy,
 } from "./types";
 
@@ -47,7 +47,7 @@ export interface RuntimeRefreshPolicyController {
 
 export interface RuntimeRefreshPolicyDependencies {
   readonly graph: Graph;
-  readonly environment: RefreshPolicyEnvironment;
+  readonly environment: TimerEnvironment;
   readonly getMutableState: (key: string) => MutableNodeRuntimeState;
   readonly hasSubscribers: (node: AnyNodeDefinition) => boolean;
   readonly refreshPolicyNode: (node: PolicyDataNode) => Promise<void>;

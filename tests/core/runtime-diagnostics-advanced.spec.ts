@@ -8,7 +8,7 @@ import {
   defineMutation,
   staleAfter,
   type GraphDiagnosticEvent,
-  type RefreshPolicyEnvironment,
+  type TimerEnvironment,
 } from "../../src/core";
 
 const createDiagnostics = () => {
@@ -121,7 +121,7 @@ describe("advanced runtime diagnostics", () => {
     let now = 0;
     let nextTimerId = 1;
     const timers = new Map<number, () => void>();
-    const environment: RefreshPolicyEnvironment = {
+    const environment: TimerEnvironment = {
       now: () => now,
       setTimeout: (callback) => {
         const id = nextTimerId++;
@@ -144,7 +144,7 @@ describe("advanced runtime diagnostics", () => {
     const diagnostics = createDiagnostics();
     const runtime = createGraphRuntime(createGraph({ nodes: [node] }), {
       diagnostics: diagnostics.options,
-      refreshPolicyEnvironment: environment,
+      timerEnvironment: environment,
     });
 
     const subscription = runtime.subscribeNodes([node]);
