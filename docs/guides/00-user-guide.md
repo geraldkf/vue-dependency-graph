@@ -462,12 +462,13 @@ If your app already has Pinia installed, own the runtime inside a store rather t
 ```ts
 // stores/dependency-graph.ts
 import { defineStore } from "pinia";
-import { markRaw } from "vue";
+import { markRaw, onScopeDispose } from "vue";
 import { createGraphRuntime } from "vue-dependency-graph/core";
 import { graph } from "../graph/runtime";
 
 export const useDependencyGraphStore = defineStore("dependencyGraph", () => {
   const runtime = markRaw(createGraphRuntime(graph));
+  onScopeDispose(() => runtime.dispose());
   return { runtime };
 });
 ```
@@ -483,6 +484,8 @@ const { data: tasks } = useNode(Tasks, { runtime });
 </script>
 ```
 
+`onScopeDispose(() => runtime.dispose())` stops the runtime's refresh and release timers when the store is disposed (`store.$dispose()` or `disposePinia(pinia)`). Pinia doesn't dispose itself when the app unmounts, so call `app.onUnmount(() => disposePinia(pinia))` in `main.ts` if you want that.
+
 `markRaw` matters - the runtime is a closure-based service with its own change notification, not something Vue needs to (or should) make reactive itself. Never copy node data, status, or subscription counts into separate Pinia refs; that creates a second source of truth with its own consistency rules to get right. Read graph state through `useNode`/`useNodes`/`useQuery`, always, even from inside a Pinia store's other actions if you need to read current values there.
 
 If you don't already have Pinia, use the plugin instead:
@@ -492,6 +495,8 @@ If you don't already have Pinia, use the plugin instead:
 import { createGraphRuntimePlugin } from "vue-dependency-graph/vue";
 app.use(createGraphRuntimePlugin(runtime));
 ```
+
+The plugin disposes the runtime when the app unmounts. If the runtime is shared or owned elsewhere, pass `{ disposeOnUnmount: false }` as a second argument.
 
 ```ts
 // any component, no explicit runtime option needed:

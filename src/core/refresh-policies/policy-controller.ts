@@ -43,6 +43,13 @@ interface RefreshPolicySession {
 export interface RuntimeRefreshPolicyController {
   readonly reconcile: () => void;
   readonly getDiagnosticSnapshot: () => readonly GraphDiagnosticRefreshPolicySnapshot[];
+  /**
+   * Permanently stops the controller: clears every pending timer, detaches
+   * from the timer environment's pause signal, and turns `reconcile` and any
+   * in-flight policy refresh's follow-up work into no-ops. Idempotent.
+   * `getDiagnosticSnapshot` stays safe to call afterwards.
+   */
+  readonly dispose: () => void;
 }
 
 export interface RuntimeRefreshPolicyDependencies {
@@ -119,6 +126,7 @@ export const createRuntimeRefreshPolicyController = ({
   onDiagnostic,
 }: RuntimeRefreshPolicyDependencies): RuntimeRefreshPolicyController => {
   const sessions = new Map<string, RefreshPolicySession>();
+  let disposed = false;
   let paused = environment.isPaused();
   let pausedAt = paused ? environment.now() : undefined;
   let totalPausedMs = 0;
@@ -272,7 +280,7 @@ export const createRuntimeRefreshPolicyController = ({
     node: PolicyDataNode,
     session: RefreshPolicySession
   ): void => {
-    if (paused || session.refreshing || session.terminal) return;
+    if (disposed || paused || session.refreshing || session.terminal) return;
     session.refreshing = true;
     onDiagnostic?.("started", node);
     let succeeded = false;
@@ -281,6 +289,7 @@ export const createRuntimeRefreshPolicyController = ({
         succeeded = true;
       })
       .catch(error => {
+        if (disposed) return;
         onDiagnostic?.("failed", node, {
           error: getPolicyFailure(error, node.key),
         });
@@ -317,6 +326,7 @@ export const createRuntimeRefreshPolicyController = ({
       })
       .finally(() => {
         session.refreshing = false;
+        if (disposed) return;
         session.policyRefreshSucceeded = succeeded;
         if (succeeded) {
           session.retryCount = 0;
@@ -332,6 +342,7 @@ export const createRuntimeRefreshPolicyController = ({
     delayMs: number,
     purpose: TimerPurpose
   ): void => {
+    if (disposed) return;
     session.timerPurpose = purpose;
     session.remainingDelayMs = delayMs;
     onDiagnostic?.(purpose === "retry" ? "retry-scheduled" : "scheduled", node, {
@@ -344,7 +355,7 @@ export const createRuntimeRefreshPolicyController = ({
     session.remainingDelayMs = undefined;
     session.timerDueAt = environment.now() + delayMs;
     session.timer = environment.setTimeout(() => {
-      if (session.token !== token) return;
+      if (disposed || session.token !== token) return;
       session.timer = undefined;
       session.timerDueAt = undefined;
       session.timerPurpose = undefined;
@@ -363,6 +374,7 @@ export const createRuntimeRefreshPolicyController = ({
   };
 
   reconcileNode = (node: PolicyDataNode): void => {
+    if (disposed) return;
     const state = getMutableState(node.key);
     const session = getSession(node.key);
     const policy = node.refresh;
@@ -441,8 +453,8 @@ export const createRuntimeRefreshPolicyController = ({
     for (const node of policyNodes) reconcileNode(node);
   };
 
-  environment.onPauseChange(nextPaused => {
-    if (nextPaused === paused) return;
+  const unsubscribePauseChange = environment.onPauseChange(nextPaused => {
+    if (disposed || nextPaused === paused) return;
     if (nextPaused) {
       paused = true;
       pausedAt = environment.now();
@@ -483,5 +495,12 @@ export const createRuntimeRefreshPolicyController = ({
       });
     }));
 
-  return Object.freeze({ reconcile, getDiagnosticSnapshot });
+  const dispose = (): void => {
+    if (disposed) return;
+    disposed = true;
+    unsubscribePauseChange();
+    for (const session of sessions.values()) clearTimer(session);
+  };
+
+  return Object.freeze({ reconcile, getDiagnosticSnapshot, dispose });
 };

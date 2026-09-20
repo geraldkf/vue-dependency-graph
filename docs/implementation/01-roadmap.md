@@ -447,6 +447,24 @@ Status: partially complete. Timer-based `release`/`releaseAfter(...)` node polic
 
 Exit criteria: long-running applications do not retain unused graph data indefinitely.
 
+## Runtime architecture consolidation, stages 1-4
+
+Status: Implemented; the full suite, typecheck, and boundary check pass in the contained environment. Developer offline validation pending.
+
+- [x] Stabilise the test baseline: `tests/setup.ts` raises the Testing Library async timeout (a recorded full run failed `transaction-isolation.spec.ts` under load; it passes in isolation and in later full runs)
+- [x] Memoize dependency resolution: a resolver runs once, on first read; plain arrays are copied and frozen at definition (`graph/node.ts`)
+- [x] Normalise graph topology: parents and children are precomputed, frozen node-reference collections; `getNodes()`, `getParents()`, and `getChildren()` return stable arrays (`graph/graph.ts`)
+- [x] Event matching reads topology from `graph.getParents(...)` instead of node definitions
+- [x] `runtime.dispose()`: idempotent teardown of refresh-policy and release-policy timers and the pause-signal subscription
+- [x] Wire `runtime.dispose()` into ownership: Pinia store via `onScopeDispose`, playground `main.ts` via `app.onUnmount(() => disposePinia(pinia))`, and `createGraphRuntimePlugin` via `app.onUnmount` (opt out with `disposeOnUnmount: false`)
+- [x] Correct the stale `runtime.transaction` doc comment (sessions are isolated; only the explicit handle composes)
+- [x] Stage 5, option A: golden diagnostic trace recorded against the pre-refactor runtime; public types moved to `runtime-types.ts`; policy wiring (`composition/policy-services.ts`), the graph commit pipeline (`composition/graph-commit.ts`), and scheduler diagnostics (`composition/scheduler-diagnostics.ts`) extracted; the five operation-request wrappers share one `requestOperation` helper. `runtime.ts` went from 660 to about 410 lines. Behaviour unchanged (golden trace and full suite identical)
+- [x] Stage 5, option B: `composition/graph-coordination.ts` builds execution, scheduler, subscriptions, and invalidation and owns the two late-bound back-edges; `runtime.ts` is now about 270 lines. Construction order and behaviour unchanged (golden trace and full suite identical). One small edit inside the moved code: subscriptions' own `afterUnsubscribe` reads the `const` directly instead of through the late binding (it runs after construction, so no guard is needed)
+- [ ] State-transition module: route the ~49 direct state-field writes (mutation-commit, execution, invalidation, release policy, operations, and the policy failure transition) through named transitions - not started
+- [ ] Stage 6: internal ExtensionHost for policies - undecided
+
+New tests: `tests/core/graph-coordination.spec.ts`, `tests/core/runtime-golden-trace.spec.ts`, `tests/core/graph-topology.spec.ts`, `tests/core/runtime-dispose.spec.ts`, `tests/playground/dependency-graph-store-dispose.spec.ts`; plugin disposal cases added to `tests/vue/plugin.spec.ts`.
+
 ## Milestone 13: Existing application migration trial
 
 - [ ] Compatibility assessment

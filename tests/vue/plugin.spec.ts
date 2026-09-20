@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { defineComponent, onScopeDispose } from "vue";
+import { describe, expect, it, vi } from "vitest";
+import { defineComponent, h, onScopeDispose } from "vue";
 import { render } from "@testing-library/vue";
 import {
   createGraph,
@@ -86,5 +86,75 @@ describe("Vue plugin and injection", () => {
     expect(disposed).toBe(false);
     unmount();
     expect(disposed).toBe(true);
+  });
+
+  describe("runtime disposal", () => {
+    const makeDisposableRuntime = () => {
+      const runtime = makeTestRuntime();
+      const dispose = vi.fn(() => runtime.dispose());
+      return { runtime: { ...runtime, dispose } as GraphRuntime, dispose };
+    };
+    const Empty = defineComponent({ setup: () => () => null });
+
+    it("disposes the runtime when the app unmounts", () => {
+      const { runtime, dispose } = makeDisposableRuntime();
+
+      const { unmount } = render(Empty, {
+        global: { plugins: [createGraphRuntimePlugin(runtime)] },
+      });
+      expect(dispose).not.toHaveBeenCalled();
+
+      unmount();
+      expect(dispose).toHaveBeenCalledTimes(1);
+    });
+
+    it("leaves the runtime alone when disposeOnUnmount is false", () => {
+      const { runtime, dispose } = makeDisposableRuntime();
+
+      const { unmount } = render(Empty, {
+        global: {
+          plugins: [
+            createGraphRuntimePlugin(runtime, { disposeOnUnmount: false }),
+          ],
+        },
+      });
+      unmount();
+
+      expect(dispose).not.toHaveBeenCalled();
+    });
+
+    it("does not dispose the runtime because a component inside the app unmounts", () => {
+      const { runtime, dispose } = makeDisposableRuntime();
+      const Probe = defineComponent({
+        setup() {
+          useGraphRuntime();
+          return () => null;
+        },
+      });
+      const Host = defineComponent({
+        props: { show: { type: Boolean, default: true } },
+        setup: props => () => (props.show ? h(Probe) : null),
+      });
+
+      const { rerender, unmount } = render(Host, {
+        global: { plugins: [createGraphRuntimePlugin(runtime)] },
+      });
+      rerender({ show: false });
+      expect(dispose).not.toHaveBeenCalled();
+
+      unmount();
+      expect(dispose).toHaveBeenCalledTimes(1);
+    });
+
+    it("disposes a runtime only once per unmount, and disposal stays idempotent", () => {
+      const runtime = makeTestRuntime();
+
+      const { unmount } = render(Empty, {
+        global: { plugins: [createGraphRuntimePlugin(runtime)] },
+      });
+      runtime.dispose();
+
+      expect(() => unmount()).not.toThrow();
+    });
   });
 });

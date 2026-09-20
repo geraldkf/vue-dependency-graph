@@ -199,6 +199,12 @@ When the timer fires, the controller resets the node to its never-executed shape
 
 A node with an active refresh policy needs no special-casing here: refresh policies already stop entirely once a node's last subscriber leaves (this section, above), so a release timer never starts while a refresh policy is still doing anything to conflict with.
 
+## Runtime disposal
+
+`runtime.dispose()` releases the runtime's background resources and is idempotent. It detaches the refresh-policy and release-policy `onChange` hooks, then disposes both controllers: pending timers are cleared, the refresh controller unsubscribes from the timer environment's pause signal, and a policy refresh that settles afterwards schedules no follow-up work.
+
+Disposal is deliberately narrow. It does not abort in-flight loads, reject later calls, or clear state and subscriptions; loading, `refresh`, `mutate`, and existing subscriptions keep working, and diagnostic snapshots stay available. Only the background policies stop.
+
 ## Transaction sessions
 
 ```ts

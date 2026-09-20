@@ -45,8 +45,10 @@ export const createRuntimeEventMatcher = ({
 
     for (const { event, payload } of publications) {
       for (const candidate of getEventInvalidationCandidates(graph, event)) {
+        // Topology comes from the graph, which resolved each node's
+        // dependencies once at creation; never from the node definition.
         const dependencyKeys = new Set(
-          candidate.node.dependencies.map(dependency => dependency.key)
+          graph.getParents(candidate.node).map(dependency => dependency.key)
         );
         const get = (dependency: AnyNodeDefinition): unknown => {
           if (!dependencyKeys.has(dependency.key)) {

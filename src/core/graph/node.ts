@@ -22,11 +22,35 @@ const validateKey = (key: string): void => {
   }
 };
 
-const resolveDependencies = <TDependencies extends DependencyList>(
+/**
+ * Produces the accessor behind a node's `dependencies` property.
+ *
+ * - A plain array is copied and frozen immediately, so later mutation of the
+ *   caller's array cannot change the node's topology.
+ * - A resolver function is *not* called here (that would break forward
+ *   references between definitions). It is called on first access - normally
+ *   during `createGraph` - and its result is frozen and reused for every later
+ *   access, so the resolver runs at most once per successful resolution and
+ *   every consumer sees the same array. A resolver that throws is not cached:
+ *   the failure propagates and the next access tries again.
+ */
+const createDependencyAccessor = <TDependencies extends DependencyList>(
   source: DependencySource<TDependencies> | undefined
-): TDependencies => {
-  const dependencies = typeof source === "function" ? source() : source;
-  return (dependencies ?? []) as unknown as TDependencies;
+): (() => TDependencies) => {
+  if (typeof source !== "function") {
+    const dependencies = Object.freeze([
+      ...(source ?? []),
+    ]) as unknown as TDependencies;
+    return () => dependencies;
+  }
+
+  let resolved: TDependencies | undefined;
+  return () => {
+    if (resolved === undefined) {
+      resolved = Object.freeze([...source()]) as unknown as TDependencies;
+    }
+    return resolved;
+  };
 };
 
 
@@ -64,6 +88,7 @@ export const defineDataNode = <
   validateKey(options.key);
 
   const invalidatedBy = freezeInvalidatedBy(options.invalidatedBy);
+  const getDependencies = createDependencyAccessor(options.dependencies);
   if (options.refresh !== undefined) {
     assertValidRefreshPolicy(options.refresh, options.key);
   }
@@ -74,7 +99,7 @@ export const defineDataNode = <
     key: options.key,
     kind: "data" as const,
     get dependencies(): TDependencies {
-      return Object.freeze([...resolveDependencies(options.dependencies)]) as unknown as TDependencies;
+      return getDependencies();
     },
     invalidatedBy,
     diagnostics: freezeDiagnostics(options.diagnostics),
@@ -97,11 +122,12 @@ export const defineDerivedNode = <
   validateKey(options.key);
 
   const invalidatedBy = freezeInvalidatedBy(options.invalidatedBy);
+  const getDependencies = createDependencyAccessor(options.dependencies);
   const definition = {
     key: options.key,
     kind: "derived" as const,
     get dependencies(): TDependencies {
-      return Object.freeze([...resolveDependencies(options.dependencies)]) as unknown as TDependencies;
+      return getDependencies();
     },
     invalidatedBy,
     diagnostics: freezeDiagnostics(options.diagnostics),

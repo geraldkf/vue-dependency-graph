@@ -89,7 +89,9 @@ const A = defineDerivedNode({
 });
 ```
 
-Resolvers are evaluated during graph creation. They must be synchronous, side-effect free, and return stable handles.
+Resolvers are not called when a node is defined (that would break forward references). A resolver is called on the first read of the node's `dependencies` - normally during graph creation - and its result is frozen and reused, so it runs once and every consumer sees the same array. A resolver that throws is not cached; the next read tries again. Resolvers must be synchronous, side-effect free, and return the same handles for the lifetime of the definition. A plain dependency array is copied and frozen when the node is defined.
+
+Nothing outside graph creation reads a node's `dependencies` for topology: the runtime, event matching, and diagnostics all go through `graph.getParents(...)`.
 
 ## Graph creation
 
@@ -138,7 +140,7 @@ const nodes = graph.getNodes();
 
 Unknown keys return `undefined` from `getNode`, `false` from `hasNode`, and empty collections from parent or child inspection.
 
-`getNodes` preserves registration order. Returned arrays are frozen copies and cannot mutate internal indexes.
+`getNodes` preserves registration order. Parents follow dependency declaration order and children are sorted by key. Returned collections are immutable and stable for the lifetime of the graph: repeated calls return the same frozen array, so it is safe to hold or compare them. Parents and children are always the nodes registered under those keys.
 
 ## Runtime relationship
 

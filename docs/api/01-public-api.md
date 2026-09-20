@@ -136,6 +136,8 @@ Applications may install the graph runtime plugin:
 app.use(createGraphRuntimePlugin(runtime));
 ```
 
+The plugin disposes the runtime (`runtime.dispose()`) when the app unmounts. Pass `createGraphRuntimePlugin(runtime, { disposeOnUnmount: false })` if the runtime is shared between apps or owned elsewhere.
+
 Components can then use:
 
 ```ts
@@ -180,6 +182,7 @@ export const useDependencyGraphStore = defineStore(
   "dependencyGraph",
   () => {
     const runtime = markRaw(createGraphRuntime(graph));
+    onScopeDispose(() => runtime.dispose());
     return { runtime };
   }
 );
@@ -192,7 +195,7 @@ const periods = useNode(PointPeriods, {
 });
 ```
 
-Create the runtime inside the store factory so each Pinia instance owns an independent runtime. Keep graph definitions at module scope. Do not mirror graph node state into Pinia.
+Create the runtime inside the store factory so each Pinia instance owns an independent runtime, and dispose it with `onScopeDispose` so it is released on `store.$dispose()` or `disposePinia(pinia)`. Keep graph definitions at module scope. Do not mirror graph node state into Pinia.
 
 ## Transactions
 
@@ -239,6 +242,8 @@ await runtime.refresh([SomeNode]);
 ```
 
 Those operations use committed state and dispatch notifications and scheduler work immediately.
+
+`runtime.dispose()` stops the runtime's refresh-policy and release-policy timers and detaches the refresh policy from the timer environment's pause signal. It is idempotent and does not abort in-flight loads or reject later calls. Call it when the runtime's owner is torn down.
 
 `runtime.whenSettled()` is scheduler-specific. For transaction-triggered scheduler work, await in this order:
 

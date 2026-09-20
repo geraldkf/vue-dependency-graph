@@ -33,6 +33,12 @@ export interface RuntimeReleasePolicyController {
    * regained one, or just finished a fresh load is reconsidered
    * immediately rather than on some separate poll. */
   readonly reconcile: () => void;
+  /**
+   * Permanently stops the controller: clears every pending release timer and
+   * turns `reconcile` into a no-op, so no idle value is released afterwards.
+   * Idempotent.
+   */
+  readonly dispose: () => void;
 }
 
 const isReleaseEligibleDataNode = (
@@ -64,6 +70,7 @@ export const createRuntimeReleasePolicyController = ({
   onDiagnostic,
 }: RuntimeReleasePolicyDependencies): RuntimeReleasePolicyController => {
   const sessions = new Map<string, ReleaseSession>();
+  let disposed = false;
 
   const getSession = (key: string): ReleaseSession => {
     const existing = sessions.get(key);
@@ -91,6 +98,7 @@ export const createRuntimeReleasePolicyController = ({
     scheduledAt: number
   ): void => {
     session.timer = undefined;
+    if (disposed) return;
     const state = getMutableState(node.key);
     // Defensive re-check: reconcile() should already have cancelled this
     // timer if a subscriber returned or the value changed generation in
@@ -115,6 +123,7 @@ export const createRuntimeReleasePolicyController = ({
   };
 
   const reconcileNode = (node: ReleasePolicyDataNode): void => {
+    if (disposed) return;
     const durationMs = resolveReleaseDurationMs(node, defaultDurationMs);
     const session = getSession(node.key);
 
@@ -151,5 +160,11 @@ export const createRuntimeReleasePolicyController = ({
     for (const node of eligibleNodes) reconcileNode(node);
   };
 
-  return Object.freeze({ reconcile });
+  const dispose = (): void => {
+    if (disposed) return;
+    disposed = true;
+    for (const session of sessions.values()) clearTimer(session);
+  };
+
+  return Object.freeze({ reconcile, dispose });
 };

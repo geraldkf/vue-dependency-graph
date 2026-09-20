@@ -1,5 +1,16 @@
 import { afterEach } from "vitest";
-import { cleanup } from "@testing-library/vue";
+import { cleanup, configure } from "@testing-library/vue";
+
+/**
+ * `waitFor` / `findBy*` default to a 1000 ms timeout. The full suite runs
+ * ~110 jsdom files in parallel, and under CPU contention a scenario click
+ * that resolves in microseconds can still miss that window: a recorded full
+ * run failed `transaction-isolation.spec.ts` with a phase still "open" after
+ * the timeout, while the same file passes in isolation. The waits are all
+ * condition-based (they return as soon as the assertion holds), so a longer
+ * ceiling costs nothing on a healthy run and only affects genuine failures.
+ */
+configure({ asyncUtilTimeout: 5000 });
 
 /**
  * @testing-library/vue does not register this automatically the way some

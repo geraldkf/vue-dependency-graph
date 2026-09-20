@@ -58,6 +58,17 @@ flowchart TB
 
 The diagram shows the current implemented runtime composition, including typed event indexing, publication matching, and transaction-aware event staging. Devtools remains a future consumer of public inspection contracts. Later roadmap capabilities are described in their dedicated architecture documents and are not presented here as current runtime components.
 
+## Runtime composition layout
+
+`src/core/runtime.ts` is the composition root. It creates the per-runtime shared resources (state store, observer, diagnostics emitter, scheduler-request and operation-observation trackers), constructs each controller with its own narrow dependency object, and exposes the public `GraphRuntime`. Four pieces of wiring with their own semantics live beside it in `src/core/composition/`:
+
+- `graph-coordination.ts` - the four controllers that depend on one another: execution, scheduler, subscriptions, invalidation. Construction order follows the eager edges (scheduler -> execution; subscriptions -> scheduler; invalidation -> subscriptions and scheduler). Two edges point backwards along that order - execution -> invalidation (a changed refresh result invalidates descendants) and scheduler -> subscriptions (which nodes are directly subscribed) - and are read through guarded late bindings, which throw a named error if touched before assignment. The shared scheduler-request and operation-observation trackers are inputs, not created here, so the commit pipeline and the facade use the same single instances.
+- `graph-commit.ts` - the graph commit pipeline (context changes and event publications -> event matching -> diagnostics -> invalidation -> scheduler), used for both immediate writes and transaction commits. It owns the operation-id fallback chain that attributes a commit.
+- `scheduler-diagnostics.ts` - diagnostic attribution for scheduler flushes. It owns the current flush's operation id and reads the reason and cause from the shared scheduler-request tracker.
+- `policy-services.ts` - the refresh-policy and release-policy controllers, their shared timer environment, their change hooks (refresh before release), and their combined `dispose`.
+
+The public contract types (`GraphRuntime`, `GraphRuntimeOptions`) live in `src/core/runtime-types.ts` and are re-exported from `runtime.ts`. Controllers never receive a shared "runtime context"; each takes only the capabilities it uses.
+
 The playground and devtools consume public inspection APIs. They must not reach into private core internals.
 
 ## Layer responsibilities

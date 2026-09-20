@@ -142,6 +142,8 @@ Event tests cover payload typing, declaration validation, deterministic graph in
 - Bounded event history
 - Redaction
 - Stable snapshot normalisation
+- Coordination module: `tests/core/graph-coordination.spec.ts` builds execution, scheduler, subscriptions, and invalidation without a runtime and pins the two backward edges (changed refresh result -> descendant invalidation; scheduler flushes only directly subscribed nodes), scheduler-cause attribution through the shared tracker, and abort of automatic-only work on last unsubscribe
+- Golden trace: `tests/core/runtime-golden-trace.spec.ts` snapshots the whole normalised diagnostic stream of one scenario that covers every execution reason (subscription, context invalidation, changed result, refresh policy, explicit, prefetch, refresh, query variants, dependency), transactions, mutations, and the release policy. Structural refactors of the runtime composition must leave it unchanged; a diff means event order, content, or attribution moved. Operation ids are normalised, so it pins how events group and cause each other rather than literal id values.
 
 ## Vue and Pinia integration tests
 

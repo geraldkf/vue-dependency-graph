@@ -194,7 +194,7 @@ const keyOf = (nodeOrKey: NodeOrKey): string =>
 
 const findCycle = (
   keys: readonly string[],
-  parentKeysByNode: ReadonlyMap<string, readonly string[]>
+  parentNodesByKey: ReadonlyMap<string, readonly AnyNodeDefinition[]>
 ): readonly string[] | undefined => {
   const visited = new Set<string>();
   const active = new Set<string>();
@@ -210,7 +210,11 @@ const findCycle = (
     active.add(key);
     path.push(key);
 
-    const parents = [...(parentKeysByNode.get(key) ?? [])].sort();
+    // Traversal order is by key (default code-unit sort), independent of
+    // declaration and registration order, so cycle messages stay deterministic.
+    const parents = (parentNodesByKey.get(key) ?? [])
+      .map(parent => parent.key)
+      .sort();
     for (const parent of parents) {
       const cycle = visit(parent);
       if (cycle) return cycle;
@@ -246,15 +250,20 @@ export const createGraph = (options: CreateGraphOptions): Graph => {
     nodesByKey.set(node.key, node);
   }
 
-  const parentKeysByNode = new Map<string, readonly string[]>();
-  const childKeysByNode = new Map<string, string[]>();
+  // Topology is computed once, here, from each node's resolved dependencies,
+  // and stored as node references. Parents follow declaration order; children
+  // are sorted by key. Parent and child entries always point at the node
+  // *registered* under that key (identity is key-based), even if a dependency
+  // list holds a different object with the same key.
+  const parentNodesByKey = new Map<string, readonly AnyNodeDefinition[]>();
+  const childNodesByKey = new Map<string, AnyNodeDefinition[]>();
 
   for (const node of nodes) {
-    childKeysByNode.set(node.key, []);
+    childNodesByKey.set(node.key, []);
   }
 
   for (const node of nodes) {
-    const parentKeys: string[] = [];
+    const parents: AnyNodeDefinition[] = [];
     const seenDependencies = new Set<string>();
 
     for (const dependency of node.dependencies) {
@@ -266,25 +275,30 @@ export const createGraph = (options: CreateGraphOptions): Graph => {
       }
       seenDependencies.add(dependency.key);
 
-      if (!nodesByKey.has(dependency.key)) {
+      const registeredDependency = nodesByKey.get(dependency.key);
+      if (registeredDependency === undefined) {
         throw new GraphValidationError(
           "MISSING_DEPENDENCY",
           `Node "${node.key}" references missing dependency "${dependency.key}".`
         );
       }
 
-      parentKeys.push(dependency.key);
-      childKeysByNode.get(dependency.key)?.push(node.key);
+      parents.push(registeredDependency);
+      childNodesByKey.get(dependency.key)?.push(node);
     }
 
-    parentKeysByNode.set(node.key, Object.freeze(parentKeys));
+    parentNodesByKey.set(node.key, Object.freeze(parents));
   }
 
-  for (const children of childKeysByNode.values()) {
-    children.sort((left, right) => left.localeCompare(right));
+  for (const children of childNodesByKey.values()) {
+    children.sort((left, right) => left.key.localeCompare(right.key));
+    Object.freeze(children);
   }
 
-  const cycle = findCycle(nodes.map(node => node.key), parentKeysByNode);
+  const cycle = findCycle(
+    nodes.map(node => node.key),
+    parentNodesByKey
+  );
   if (cycle) {
     throw new GraphValidationError(
       "CIRCULAR_DEPENDENCY",
@@ -292,22 +306,17 @@ export const createGraph = (options: CreateGraphOptions): Graph => {
     );
   }
 
-  const getNodesByKeys = (keys: readonly string[] | undefined): readonly AnyNodeDefinition[] =>
-    Object.freeze(
-      (keys ?? []).flatMap(key => {
-        const node = nodesByKey.get(key);
-        return node ? [node] : [];
-      })
-    );
+  const graphNodes: readonly AnyNodeDefinition[] = Object.freeze([...nodes]);
+  const noNodes: readonly AnyNodeDefinition[] = Object.freeze([]);
 
   const graph = Object.freeze({
     getNode: (key: string) => nodesByKey.get(key),
     hasNode: (key: string) => nodesByKey.has(key),
-    getParents: (nodeOrKey: NodeOrKey) =>
-      getNodesByKeys(parentKeysByNode.get(keyOf(nodeOrKey))),
-    getChildren: (nodeOrKey: NodeOrKey) =>
-      getNodesByKeys(childKeysByNode.get(keyOf(nodeOrKey))),
-    getNodes: () => Object.freeze([...nodes]),
+    getParents: (nodeOrKey: NodeOrKey): readonly AnyNodeDefinition[] =>
+      parentNodesByKey.get(keyOf(nodeOrKey)) ?? noNodes,
+    getChildren: (nodeOrKey: NodeOrKey): readonly AnyNodeDefinition[] =>
+      childNodesByKey.get(keyOf(nodeOrKey)) ?? noNodes,
+    getNodes: () => graphNodes,
   });
 
   registerEventInvalidationIndex(

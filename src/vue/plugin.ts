@@ -12,13 +12,36 @@ export const GraphRuntimeKey: InjectionKey<GraphRuntime> = Symbol(
   "graph-runtime"
 );
 
+export interface GraphRuntimePluginOptions {
+  /**
+   * Whether the runtime is disposed (`runtime.dispose()`) when the app that
+   * installed the plugin is unmounted. Defaults to `true`: installing the
+   * plugin makes the app the runtime's owner, so its background policy
+   * timers stop with it.
+   *
+   * Pass `false` when the runtime outlives this app or is owned elsewhere -
+   * for example shared between several apps, or created by a Pinia store
+   * that disposes it itself. Disposal is idempotent, so a runtime that ends
+   * up disposed twice is harmless; an owner that disposes a runtime other
+   * code still relies on is the case to avoid.
+   */
+  readonly disposeOnUnmount?: boolean;
+}
+
 /**
  * Installs a `GraphRuntime` for injection by `useGraphRuntime` (and, later,
- * `useNode`/`useNodes`) anywhere in the component tree below.
+ * `useNode`/`useNodes`) anywhere in the component tree below, and - unless
+ * `options.disposeOnUnmount` is `false` - disposes it when the app unmounts.
  */
-export const createGraphRuntimePlugin = (runtime: GraphRuntime): Plugin => ({
+export const createGraphRuntimePlugin = (
+  runtime: GraphRuntime,
+  options?: GraphRuntimePluginOptions
+): Plugin => ({
   install(app) {
     app.provide(GraphRuntimeKey, runtime);
+    if (options?.disposeOnUnmount ?? true) {
+      app.onUnmount(() => runtime.dispose());
+    }
   },
 });
 
