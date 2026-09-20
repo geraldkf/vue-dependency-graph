@@ -71,4 +71,25 @@ describe("computeTimeline", () => {
     expect(entry).toMatchObject({ category: "release", nodeKey: "count", isFailure: false });
     expect(entry?.label).toBe("Node Value Released - count");
   });
+
+  it("shows a listener failure as a failed runtime entry", () => {
+    const event: GraphDiagnosticEvent = {
+      schemaVersion: 1,
+      sequence: 1,
+      timestamp: 0,
+      runtimeId: "r1",
+      type: "runtime.listener-failed",
+      operationId: "op1",
+      error: { name: "Error", message: "listener boom" },
+    };
+
+    const [entry] = computeTimeline([event]);
+
+    expect(entry).toMatchObject({
+      category: "operation",
+      operationId: "op1",
+      isFailure: true,
+    });
+    expect(entry?.label).toBe("Runtime Listener Failed");
+  });
 });

@@ -1,7 +1,7 @@
 import type { AnyEventDefinition } from "./types";
 import { getEventInvalidationCandidates } from "./event-index";
 import type { AnyNodeDefinition, Graph } from "../graph/types";
-import type { MutableNodeRuntimeState } from "../state/state";
+import type { NodeStateRecord } from "../state/state";
 import type { EventPublication } from "../transactions/types";
 import { EventPredicateDependencyError } from "./errors";
 
@@ -24,12 +24,12 @@ export interface RuntimeEventMatcher {
 
 export interface RuntimeEventMatcherDependencies {
   readonly graph: Graph;
-  readonly getMutableState: (key: string) => MutableNodeRuntimeState;
+  readonly getNodeState: (key: string) => NodeStateRecord;
 }
 
 export const createRuntimeEventMatcher = ({
   graph,
-  getMutableState,
+  getNodeState,
 }: RuntimeEventMatcherDependencies): RuntimeEventMatcher => {
   const matchPublications = (
     publications: readonly EventPublication[],
@@ -68,7 +68,7 @@ export const createRuntimeEventMatcher = ({
             return overlayValues.get(dependency.key);
           }
 
-          const state = getMutableState(dependency.key);
+          const state = getNodeState(dependency.key);
           if (!state.hasSuccessfulValue) {
             throw new Error(
               `Dependency "${dependency.key}" has no successful value for node "${candidate.node.key}" event predicate.`

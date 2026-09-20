@@ -1,5 +1,6 @@
 export type GraphDiagnosticEventType =
   | "runtime.created"
+  | "runtime.listener-failed"
   | "operation.execute.requested"
   | "operation.prefetch.requested"
   | "operation.refresh.requested"
@@ -92,6 +93,20 @@ export interface GraphRuntimeCreatedDiagnosticEvent
   extends GraphDiagnosticEventBase {
   readonly type: "runtime.created";
   readonly nodeKeys: readonly string[];
+}
+
+/**
+ * A change listener (an `onChange` subscriber, or one of the runtime's own
+ * background policies, which listen the same way) threw while the runtime was
+ * notifying. The failure never reaches the other listeners or the code that
+ * triggered the change; this event is how it stays visible. `operationId` is
+ * present when the notification happened while an operation was being
+ * committed, and attributes the failure to it.
+ */
+export interface GraphRuntimeListenerFailedDiagnosticEvent
+  extends GraphDiagnosticEventBase {
+  readonly type: "runtime.listener-failed";
+  readonly error: GraphDiagnosticError;
 }
 
 export interface GraphOperationRequestedDiagnosticEvent
@@ -247,6 +262,7 @@ export interface GraphMutationDiagnosticEvent extends GraphDiagnosticEventBase {
 
 export type GraphDiagnosticEvent =
   | GraphRuntimeCreatedDiagnosticEvent
+  | GraphRuntimeListenerFailedDiagnosticEvent
   | GraphOperationRequestedDiagnosticEvent
   | GraphSubscriptionDiagnosticEvent
   | GraphSchedulerDiagnosticEvent

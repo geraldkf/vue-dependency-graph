@@ -1,5 +1,11 @@
 import type { RuntimeDiagnosticEmitter } from "../diagnostics/diagnostic-emitter";
 import type { GraphExecutionReason } from "../diagnostics/types";
+import {
+  abortAttempt,
+  beginAttempt,
+  failAttempt,
+  succeedAttempt,
+} from "../state/transitions";
 import type { ExecutionConcurrencyLimiter } from "./concurrency-limiter";
 import {
   GraphExecutionError,
@@ -11,7 +17,7 @@ import {
 import type {
   ActiveAttempt,
   ExecutionOrigin,
-  MutableNodeRuntimeState,
+  NodeStateRecord,
 } from "../state/state";
 import type {
   AnyNodeDefinition,
@@ -39,7 +45,7 @@ export interface RuntimeExecutionController {
 export interface RuntimeExecutionDependencies {
   readonly graph: Graph;
   readonly concurrencyLimiter: ExecutionConcurrencyLimiter;
-  readonly getMutableState: (key: string) => MutableNodeRuntimeState;
+  readonly getNodeState: (key: string) => NodeStateRecord;
   readonly getActiveAttempt: (key: string) => ActiveAttempt | undefined;
   readonly setActiveAttempt: (key: string, attempt: ActiveAttempt) => void;
   readonly deleteActiveAttempt: (key: string, token: symbol) => void;
@@ -88,7 +94,7 @@ const isDerivedNode = (
   node.kind === "derived";
 
 const hasFreshSuccessfulValue = (
-  state: MutableNodeRuntimeState
+  state: NodeStateRecord
 ): boolean =>
   state.hasSuccessfulValue &&
   state.status === "success" &&
@@ -97,7 +103,7 @@ const hasFreshSuccessfulValue = (
 export const createRuntimeExecutionController = ({
   graph,
   concurrencyLimiter,
-  getMutableState,
+  getNodeState,
   getActiveAttempt,
   setActiveAttempt,
   deleteActiveAttempt,
@@ -109,7 +115,7 @@ export const createRuntimeExecutionController = ({
   const getDependencyValue = <TNode extends AnyNodeDefinition>(
     dependency: TNode
   ): NodeValue<TNode> => {
-    const state = getMutableState(dependency.key);
+    const state = getNodeState(dependency.key);
     if (!state.hasSuccessfulValue || state.freshness !== "fresh") {
       throw new Error(
         `Dependency "${dependency.key}" does not have a successful fresh value.`
@@ -160,7 +166,7 @@ export const createRuntimeExecutionController = ({
     origin: ExecutionOrigin,
     context: ExecutionDiagnosticContext | undefined,
   ): Promise<NodeAttemptOutcome> => {
-    const state = getMutableState(node.key);
+    const state = getNodeState(node.key);
     if (hasFreshSuccessfulValue(state)) {
       emitExecution("node.execution.skipped", node, state.generation, origin, context);
       return Promise.resolve({ status: "ok" });
@@ -183,9 +189,7 @@ export const createRuntimeExecutionController = ({
     const startedAt = diagnostics.now();
     const startedType = isDataNode(node) ? "node.load.started" : "node.derive.started";
 
-    state.status = state.hasSuccessfulValue ? "refreshing" : "loading";
-    state.freshness = "stale";
-    state.error = null;
+    beginAttempt(state);
     notify();
 
     // Unchanged from before the Result-type migration: still throws
@@ -215,7 +219,7 @@ export const createRuntimeExecutionController = ({
           return;
         }
 
-        const current = getMutableState(node.key);
+        const current = getNodeState(node.key);
         const currentAttempt = getActiveAttempt(node.key);
         if (
           current.generation !== generation ||
@@ -225,11 +229,7 @@ export const createRuntimeExecutionController = ({
           throw new ObsoleteAttempt();
         }
 
-        current.data = value;
-        current.status = "success";
-        current.freshness = "fresh";
-        current.error = null;
-        current.hasSuccessfulValue = true;
+        succeedAttempt(current, value);
         notify();
         emitExecution(
           isDataNode(node) ? "node.load.succeeded" : "node.derive.succeeded",
@@ -249,7 +249,7 @@ export const createRuntimeExecutionController = ({
           onChangedRefreshResult(node, context);
         }
       } catch (thrown) {
-        const current = getMutableState(node.key);
+        const current = getNodeState(node.key);
         const currentAttempt = getActiveAttempt(node.key);
         const discarded =
           thrown instanceof ObsoleteAttempt ||
@@ -260,6 +260,18 @@ export const createRuntimeExecutionController = ({
           (controller.signal.aborted || isAbortError(thrown));
 
         if (aborted || discarded) {
+          // If nothing superseded the node while this attempt ran, it still
+          // owns the state `beginAttempt` set: put the node back to
+          // not-running instead of leaving it `loading`/`refreshing` with
+          // nothing in flight. A superseded attempt leaves the superseding
+          // transition's state alone.
+          if (
+            current.generation === generation &&
+            currentAttempt?.token === token
+          ) {
+            abortAttempt(current);
+            notify();
+          }
           emitExecution(
             aborted ? "node.load.aborted" : "node.load.discarded",
             node,
@@ -272,9 +284,7 @@ export const createRuntimeExecutionController = ({
         }
 
         const error = toError(thrown);
-        current.status = "error";
-        current.freshness = "stale";
-        current.error = error;
+        failAttempt(current, error);
         notify();
         emitExecution(
           isDataNode(node) ? "node.load.failed" : "node.derive.failed",
@@ -382,7 +392,7 @@ export const createRuntimeExecutionController = ({
                 : { causeId: nodeContext.causeId }),
               nodeKey: node.key,
               nodeKind: node.kind,
-              generation: getMutableState(node.key).generation,
+              generation: getNodeState(node.key).generation,
               origin,
               reason: nodeContext.reason,
               blockedBy,
@@ -416,7 +426,7 @@ export const createRuntimeExecutionController = ({
   };
 
   const needsExecution = (node: AnyNodeDefinition): boolean =>
-    !hasFreshSuccessfulValue(getMutableState(node.key));
+    !hasFreshSuccessfulValue(getNodeState(node.key));
 
   return Object.freeze({ execute, needsExecution });
 };

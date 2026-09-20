@@ -6,7 +6,7 @@ import type {
   Graph,
   NodeKind,
 } from "../graph/types";
-import type { MutableNodeRuntimeState } from "../state/state";
+import type { NodeStateRecord } from "../state/state";
 import type { SchedulerState } from "../scheduling/types";
 import type { NodeSubscriptionState } from "../subscriptions/types";
 
@@ -36,8 +36,8 @@ export interface GraphDiagnosticNodeDefinitionSnapshot {
 
 export interface GraphDiagnosticNodeStateSnapshot {
   readonly key: string;
-  readonly status: MutableNodeRuntimeState["status"];
-  readonly freshness: MutableNodeRuntimeState["freshness"];
+  readonly status: NodeStateRecord["status"];
+  readonly freshness: NodeStateRecord["freshness"];
   readonly generation: number;
   readonly hasSuccessfulValue: boolean;
   readonly error: GraphSerializedError | null;
@@ -95,7 +95,7 @@ export interface CreateDiagnosticSnapshotDependencies {
   readonly graph: Graph;
   readonly runtimeId: string;
   readonly now: () => number;
-  readonly getMutableState: (key: string) => MutableNodeRuntimeState;
+  readonly getNodeState: (key: string) => NodeStateRecord;
   readonly getSchedulerState: () => SchedulerState;
   readonly getSubscriptionState: (node: AnyNodeDefinition) => NodeSubscriptionState;
   readonly getRefreshPolicySnapshot: () => readonly GraphDiagnosticRefreshPolicySnapshot[];
@@ -202,7 +202,7 @@ export const createDiagnosticSnapshot = ({
   graph,
   runtimeId,
   now,
-  getMutableState,
+  getNodeState,
   getSchedulerState,
   getSubscriptionState,
   getRefreshPolicySnapshot,
@@ -245,7 +245,7 @@ export const createDiagnosticSnapshot = ({
       };
     }),
     nodes: nodes.map(node => {
-      const state = getMutableState(node.key);
+      const state = getNodeState(node.key);
       return {
         key: node.key,
         status: state.status,

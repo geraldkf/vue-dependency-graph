@@ -61,6 +61,7 @@ The repository contains one package, but source layers remain logically separate
 - `src/devtools` may import public core inspection contracts.
 - `src/playground` may consume all public project layers.
 - Cross-layer imports must use approved public or layer entry points, not arbitrary internal files.
+- Node runtime state (`status`, `freshness`, `error`, `hasSuccessfulValue`, `data`, `generation`) is written only through the transitions in `src/core/state/transitions.ts`. The compiler enforces this: `NodeStateRecord` fields are `readonly`, so a direct assignment does not compile. Add or extend a transition instead, with a test in `tests/core/state-transitions.spec.ts`. `pnpm check:boundaries` also rejects a writable mapped type outside that file and keeps an allowlist of the modules allowed to import the transitions; adding a module to the allowlist is an architectural decision, so say why in the pull request.
 
 ## Documentation
 

@@ -1,11 +1,11 @@
 import type { AnyNodeDefinition } from "../graph/types";
-import type { MutableNodeRuntimeState } from "../state/state";
+import type { NodeStateRecord } from "../state/state";
 
 export interface MutationStateSnapshot {
   readonly node: AnyNodeDefinition;
   readonly data: unknown;
-  readonly status: MutableNodeRuntimeState["status"];
-  readonly freshness: MutableNodeRuntimeState["freshness"];
+  readonly status: NodeStateRecord["status"];
+  readonly freshness: NodeStateRecord["freshness"];
   readonly error: Error | null;
   readonly generation: number;
   readonly hasSuccessfulValue: boolean;
@@ -46,12 +46,12 @@ export interface OptimisticSessionManager {
 }
 
 export interface OptimisticSessionManagerDependencies {
-  readonly getMutableState: (key: string) => MutableNodeRuntimeState;
+  readonly getNodeState: (key: string) => NodeStateRecord;
   readonly hasSubscribers: (node: AnyNodeDefinition) => boolean;
 }
 
 export const createOptimisticSessionManager = ({
-  getMutableState,
+  getNodeState,
   hasSubscribers,
 }: OptimisticSessionManagerDependencies): OptimisticSessionManager => {
   const optimisticOwners = new Map<string, symbol>();
@@ -62,7 +62,7 @@ export const createOptimisticSessionManager = ({
     const unique = new Map(nodes.map(node => [node.key, node]));
     return Object.freeze(
       [...unique.values()].map(node => {
-        const state = getMutableState(node.key);
+        const state = getNodeState(node.key);
         return Object.freeze({
           node,
           data: state.data,
@@ -113,7 +113,7 @@ export const createOptimisticSessionManager = ({
     expectedGenerations: new Map(
       session.snapshots.map(snapshot => [
         snapshot.node.key,
-        getMutableState(snapshot.node.key).generation,
+        getNodeState(snapshot.node.key).generation,
       ]),
     ),
   });
@@ -130,7 +130,7 @@ export const createOptimisticSessionManager = ({
 
     const targetKeys = new Set(session.targets.map(node => node.key));
     for (const snapshot of session.snapshots) {
-      const state = getMutableState(snapshot.node.key);
+      const state = getNodeState(snapshot.node.key);
       if (
         state.generation !== session.expectedGenerations.get(snapshot.node.key) ||
         (

@@ -32,6 +32,7 @@ The core should emit structured diagnostic events through an optional observer:
 - Node execution started, succeeded, failed, aborted, or discarded
 - Transaction started, committed, or rolled back
 - Domain event published
+- Change listener failed (`runtime.listener-failed`): listeners are isolated from one another, and this is how a failure in one, including one of the runtime's own background policies, stays visible
 - Poll scheduled or stopped
 - Mutation started, committed, or rolled back
 

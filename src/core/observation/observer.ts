@@ -5,15 +5,32 @@ export interface RuntimeObserver {
   readonly notify: () => void;
 }
 
-export const createRuntimeObserver = (): RuntimeObserver => {
+export interface RuntimeObserverOptions {
+  /**
+   * Called with the thrown value when a listener throws. The failure is
+   * always isolated - it never reaches the remaining listeners or the code
+   * that triggered the notification - and this callback is how it is
+   * reported. If the callback itself throws, that is isolated too.
+   */
+  readonly onListenerError?: (error: unknown) => void;
+}
+
+export const createRuntimeObserver = (
+  options?: RuntimeObserverOptions,
+): RuntimeObserver => {
   const listeners = new Set<RuntimeListener>();
+  const onListenerError = options?.onListenerError;
 
   const notify = (): void => {
     for (const listener of [...listeners]) {
       try {
         listener();
-      } catch {
-        // Listener failures are isolated from runtime state and other listeners.
+      } catch (error) {
+        try {
+          onListenerError?.(error);
+        } catch {
+          // Reporting is observational; it must not break isolation either.
+        }
       }
     }
   };

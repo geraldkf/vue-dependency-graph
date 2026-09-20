@@ -2,6 +2,7 @@ import type { RuntimeDiagnosticEmitter } from "../diagnostics/diagnostic-emitter
 import type { GraphDiagnosticRefreshPolicySnapshot } from "../diagnostics/snapshot";
 import type { Graph } from "../graph/types";
 import type { RuntimeListener } from "../observation/types";
+import { failAttempt } from "../state/transitions";
 import type { RuntimeOperationsController } from "../operations/operations";
 import {
   createRuntimeRefreshPolicyController,
@@ -23,7 +24,7 @@ export interface RuntimePolicyServicesDependencies {
   readonly timerEnvironment: TimerEnvironment | undefined;
   /** The runtime's `releaseAfterMs` option. */
   readonly releaseAfterMs: number | undefined;
-  readonly getMutableState: RuntimeRefreshPolicyDependencies["getMutableState"];
+  readonly getNodeState: RuntimeRefreshPolicyDependencies["getNodeState"];
   readonly hasSubscribers: RuntimeRefreshPolicyDependencies["hasSubscribers"];
   readonly refreshPolicyNode: RuntimeOperationsController["refreshPolicyNode"];
   readonly notify: RuntimeReleasePolicyDependencies["notify"];
@@ -46,7 +47,7 @@ export interface RuntimePolicyServices {
  * refresh reconciles before release on every change. Both share the one timer
  * environment. The caller emits `runtime.created` *after* this returns.
  *
- * The policies only observe (`getMutableState`, `hasSubscribers`) and act
+ * The policies only observe (`getNodeState`, `hasSubscribers`) and act
  * through the two runtime-owned verbs they are handed: `refreshPolicyNode`
  * and, for a failed policy refresh, the error transition below.
  */
@@ -55,7 +56,7 @@ export const createRuntimePolicyServices = ({
   diagnostics,
   timerEnvironment,
   releaseAfterMs,
-  getMutableState,
+  getNodeState,
   hasSubscribers,
   refreshPolicyNode,
   notify,
@@ -66,7 +67,7 @@ export const createRuntimePolicyServices = ({
   const refreshPolicies = createRuntimeRefreshPolicyController({
     graph,
     environment,
-    getMutableState,
+    getNodeState,
     hasSubscribers,
     refreshPolicyNode: (node) => {
       const operationId = diagnostics.createOperationId();
@@ -76,11 +77,9 @@ export const createRuntimePolicyServices = ({
       });
     },
     failPolicyNode: (node, generation, error) => {
-      const state = getMutableState(node.key);
+      const state = getNodeState(node.key);
       if (state.generation !== generation) return;
-      state.status = "error";
-      state.freshness = "stale";
-      state.error = error;
+      failAttempt(state, error);
       notify();
     },
     onDiagnostic: (type, node, details) => {
@@ -119,7 +118,7 @@ export const createRuntimePolicyServices = ({
   const releasePolicies = createRuntimeReleasePolicyController({
     graph,
     environment,
-    getMutableState,
+    getNodeState,
     hasSubscribers,
     defaultDurationMs: releaseAfterMs,
     notify,

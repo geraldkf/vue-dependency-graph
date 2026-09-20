@@ -1,0 +1,186 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`runtime state golden traces > aborted attempts return the node to not-running unless something superseded them 1`] = `
+{
+  "trace": [
+    "[abort while loading (cooperative loader)] cooperative: loading/stale gen=0 value=false error=- data=0",
+    "[abort while loading (cooperative loader)] cooperative: idle/stale gen=0 value=false error=- data=0",
+    "[abort while loading (loader ignores the signal)] ignoring: loading/stale gen=0 value=false error=- data=0",
+    "[abort while loading (loader ignores the signal)] ignoring: idle/stale gen=0 value=false error=- data=0",
+    "[abort while refreshing] refreshing: loading/stale gen=0 value=false error=- data=0",
+    "[abort while refreshing] refreshing: success/fresh gen=0 value=true error=- data=1",
+    "[abort while refreshing] refreshing: success/stale gen=1 value=true error=- data=1",
+    "[abort while refreshing] superseded: idle/stale gen=1 value=false error=- data=0",
+    "[abort while refreshing] ctx: success/fresh gen=1 value=true error=- data=2",
+    "[abort while refreshing] refreshing: refreshing/stale gen=1 value=true error=- data=1",
+    "[abort while refreshing] refreshing: success/stale gen=1 value=true error=- data=1",
+    "[superseded by invalidation while running] superseded: loading/stale gen=1 value=false error=- data=0",
+    "[superseded by invalidation while running] refreshing: success/stale gen=2 value=true error=- data=1",
+    "[superseded by invalidation while running] superseded: idle/stale gen=2 value=false error=- data=0",
+    "[superseded by invalidation while running] ctx: success/fresh gen=2 value=true error=- data=3",
+    "[superseded by a mutation write while refreshing] written: loading/stale gen=0 value=false error=- data=0",
+    "[superseded by a mutation write while refreshing] written: success/fresh gen=0 value=true error=- data=1",
+    "[superseded by a mutation write while refreshing] written: success/stale gen=1 value=true error=- data=1",
+    "[superseded by a mutation write while refreshing] written: refreshing/stale gen=1 value=true error=- data=1",
+    "[superseded by a mutation write while refreshing] written: success/fresh gen=2 value=true error=- data=7",
+  ],
+  "violations": [],
+}
+`;
+
+exports[`runtime state golden traces > an attempt cancelled while queued returns the node to not-running 1`] = `
+{
+  "trace": [
+    "[one running, one queued] first: loading/stale gen=0 value=false error=- data=0",
+    "[one running, one queued] queued: loading/stale gen=0 value=false error=- data=0",
+    "[unsubscribe cancels both] queued: idle/stale gen=0 value=false error=- data=0",
+    "[unsubscribe cancels both] first: idle/stale gen=0 value=false error=- data=0",
+    "[resubscribe loads normally] first: loading/stale gen=0 value=false error=- data=0",
+    "[resubscribe loads normally] queued: loading/stale gen=0 value=false error=- data=0",
+    "[resubscribe loads normally] first: success/fresh gen=0 value=true error=- data=1",
+    "[resubscribe loads normally] queued: success/fresh gen=0 value=true error=- data=2",
+  ],
+  "violations": [],
+}
+`;
+
+exports[`runtime state golden traces > failed load, then recovery 1`] = `
+{
+  "trace": [
+    "[failing load] flaky: loading/stale gen=0 value=false error=- data=0",
+    "[failing load] flaky: error/stale gen=0 value=false error=load failed data=0",
+    "[recovering load] flaky: loading/stale gen=0 value=false error=- data=0",
+    "[recovering load] flaky: success/fresh gen=0 value=true error=- data=5",
+    "[recovering load] dependent: loading/stale gen=0 value=false error=- data=undefined",
+    "[recovering load] dependent: success/fresh gen=0 value=true error=- data=6",
+  ],
+  "violations": [],
+}
+`;
+
+exports[`runtime state golden traces > failed refresh, refresh again, and invalidation while in error 1`] = `
+{
+  "trace": [
+    "[initial load] node: loading/stale gen=0 value=false error=- data=0",
+    "[initial load] node: success/fresh gen=0 value=true error=- data=1",
+    "[failing refresh] node: success/stale gen=1 value=true error=- data=1",
+    "[failing refresh] node: refreshing/stale gen=1 value=true error=- data=1",
+    "[failing refresh] node: error/stale gen=1 value=true error=refresh failed data=1",
+    "[refresh again after failure] node: success/stale gen=2 value=true error=- data=1",
+    "[refresh again after failure] node: refreshing/stale gen=2 value=true error=- data=1",
+    "[refresh again after failure] node: success/fresh gen=2 value=true error=- data=1",
+    "[failing refresh (second)] node: success/stale gen=3 value=true error=- data=1",
+    "[failing refresh (second)] node: refreshing/stale gen=3 value=true error=- data=1",
+    "[failing refresh (second)] node: error/stale gen=3 value=true error=refresh failed data=1",
+    "[context invalidation while in error] node: success/stale gen=4 value=true error=- data=1",
+    "[context invalidation while in error] ctx: success/fresh gen=1 value=true error=- data=2",
+  ],
+  "violations": [],
+}
+`;
+
+exports[`runtime state golden traces > load, context invalidation, event invalidation, transaction and abort 1`] = `
+{
+  "trace": [
+    "[subscribe] data: loading/stale gen=0 value=false error=- data=0",
+    "[subscribe] data: success/fresh gen=0 value=true error=- data=2",
+    "[subscribe] derived: loading/stale gen=0 value=false error=- data=undefined",
+    "[subscribe] derived: success/fresh gen=0 value=true error=- data=3",
+    "[setContext] data: success/stale gen=1 value=true error=- data=2",
+    "[setContext] derived: success/stale gen=1 value=true error=- data=3",
+    "[setContext] ctx: success/fresh gen=1 value=true error=- data=2",
+    "[setContext] data: refreshing/stale gen=1 value=true error=- data=2",
+    "[setContext] data: success/fresh gen=1 value=true error=- data=4",
+    "[setContext] derived: refreshing/stale gen=1 value=true error=- data=3",
+    "[setContext] derived: success/fresh gen=1 value=true error=- data=5",
+    "[publish] data: success/stale gen=2 value=true error=- data=4",
+    "[publish] derived: success/stale gen=2 value=true error=- data=5",
+    "[publish] data: refreshing/stale gen=2 value=true error=- data=4",
+    "[publish] data: success/fresh gen=2 value=true error=- data=4",
+    "[publish] derived: refreshing/stale gen=2 value=true error=- data=5",
+    "[publish] derived: success/fresh gen=2 value=true error=- data=5",
+    "[transaction] data: success/stale gen=3 value=true error=- data=4",
+    "[transaction] derived: success/stale gen=3 value=true error=- data=5",
+    "[transaction] ctx: success/fresh gen=2 value=true error=- data=3",
+    "[transaction] data: refreshing/stale gen=3 value=true error=- data=4",
+    "[transaction] data: success/fresh gen=3 value=true error=- data=6",
+    "[transaction] derived: refreshing/stale gen=3 value=true error=- data=5",
+    "[transaction] derived: success/fresh gen=3 value=true error=- data=7",
+    "[abort on unsubscribe] slow: loading/stale gen=0 value=false error=- data=0",
+    "[abort on unsubscribe] slow: idle/stale gen=0 value=false error=- data=0",
+  ],
+  "violations": [],
+}
+`;
+
+exports[`runtime state golden traces > mutations: optimistic update, success effects, preserved-stale write, unknown and rejected failures 1`] = `
+{
+  "trace": [
+    "[init] parent: loading/stale gen=0 value=false error=- data=0",
+    "[init] counter: loading/stale gen=0 value=false error=- data=0",
+    "[init] guarded: loading/stale gen=0 value=false error=- data=0",
+    "[init] parent: success/fresh gen=0 value=true error=- data=1",
+    "[init] counter: success/fresh gen=0 value=true error=- data=100",
+    "[init] guarded: success/fresh gen=0 value=true error=- data=50",
+    "[init] child: loading/stale gen=0 value=false error=- data=0",
+    "[init] child: success/fresh gen=0 value=true error=- data=10",
+    "[optimistic + success update] counter: success/fresh gen=1 value=true error=- data=101",
+    "[optimistic + success update] counter: success/fresh gen=2 value=true error=- data=111",
+    "[success: update descendant and invalidate its ancestor] parent: success/stale gen=1 value=true error=- data=1",
+    "[success: update descendant and invalidate its ancestor] child: success/stale gen=1 value=true error=- data=11",
+    "[unknown failure keeps the optimistic value and marks it stale] counter: success/fresh gen=3 value=true error=- data=1111",
+    "[unknown failure keeps the optimistic value and marks it stale] counter: success/stale gen=4 value=true error=- data=1111",
+    "[rejected failure rolls the optimistic update back] guarded: success/fresh gen=1 value=true error=- data=57",
+    "[rejected failure rolls the optimistic update back] guarded: success/fresh gen=2 value=true error=- data=50",
+  ],
+  "violations": [],
+}
+`;
+
+exports[`runtime state golden traces > refresh policy failure transition: polling timeout 1`] = `
+{
+  "trace": [
+    "[initial load] poll: loading/stale gen=0 value=false error=- data=0",
+    "[initial load] poll: success/fresh gen=0 value=true error=- data=1",
+    "[polling until timeout] poll: success/stale gen=1 value=true error=- data=1",
+    "[polling until timeout] poll: refreshing/stale gen=1 value=true error=- data=1",
+    "[polling until timeout] poll: success/fresh gen=1 value=true error=- data=2",
+    "[polling until timeout] poll: success/stale gen=2 value=true error=- data=2",
+    "[polling until timeout] poll: refreshing/stale gen=2 value=true error=- data=2",
+    "[polling until timeout] poll: success/fresh gen=2 value=true error=- data=3",
+    "[polling until timeout] poll: success/stale gen=3 value=true error=- data=3",
+    "[polling until timeout] poll: refreshing/stale gen=3 value=true error=- data=3",
+    "[polling until timeout] poll: success/fresh gen=3 value=true error=- data=4",
+    "[polling until timeout] poll: error/stale gen=3 value=true error=Polling for node "poll" timed out after 1200ms. data=4",
+  ],
+  "violations": [],
+}
+`;
+
+exports[`runtime state golden traces > refresh policy failure transition: retries exhausted 1`] = `
+{
+  "trace": [
+    "[initial load] interval: loading/stale gen=0 value=false error=- data=0",
+    "[initial load] interval: success/fresh gen=0 value=true error=- data=1",
+    "[policy attempt fails] interval: success/stale gen=1 value=true error=- data=1",
+    "[policy attempt fails] interval: refreshing/stale gen=1 value=true error=- data=1",
+    "[policy attempt fails] interval: error/stale gen=1 value=true error=interval failed data=1",
+    "[retry fails and retries are exhausted] interval: success/stale gen=2 value=true error=- data=1",
+    "[retry fails and retries are exhausted] interval: refreshing/stale gen=2 value=true error=- data=1",
+    "[retry fails and retries are exhausted] interval: error/stale gen=2 value=true error=interval failed data=1",
+    "[retry fails and retries are exhausted] interval: error/stale gen=2 value=true error=Refresh policy for node "interval" exhausted 2 attempt(s). data=1",
+  ],
+  "violations": [],
+}
+`;
+
+exports[`runtime state golden traces > release policy releases an idle value 1`] = `
+{
+  "trace": [
+    "[load] released: loading/stale gen=0 value=false error=- data=-1",
+    "[load] released: success/fresh gen=0 value=true error=- data=9",
+    "[unsubscribe and release] released: idle/stale gen=1 value=false error=- data=-1",
+  ],
+  "violations": [],
+}
+`;

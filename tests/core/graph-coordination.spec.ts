@@ -12,6 +12,7 @@ import { createOperationObservationTracker } from "../../src/core/diagnostics/op
 import { createRuntimeObserver } from "../../src/core/observation/observer";
 import { createSchedulerRequestTracker } from "../../src/core/scheduling/request-tracker";
 import { createRuntimeStateStore } from "../../src/core/state/state";
+import { invalidate } from "../../src/core/state/transitions";
 import { waitForCondition } from "./test-helpers";
 
 /**
@@ -30,7 +31,7 @@ const build = (nodes: readonly AnyNodeDefinition[]) => {
   const coordination = createGraphCoordination({
     graph,
     diagnostics,
-    getMutableState: state.getMutableState,
+    getNodeState: state.getNodeState,
     getActiveAttempt: state.getActiveAttempt,
     setActiveAttempt: state.setActiveAttempt,
     deleteActiveAttempt: state.deleteActiveAttempt,
@@ -68,7 +69,7 @@ describe("graph coordination", () => {
     coordination.subscriptions.subscribeNodes([node]);
     await coordination.scheduler.whenSettled();
 
-    expect(state.getMutableState("a")).toMatchObject({
+    expect(state.getNodeState("a")).toMatchObject({
       status: "success",
       data: 7,
     });
@@ -82,8 +83,8 @@ describe("graph coordination", () => {
     coordination.subscriptions.subscribeNodes([subscribed]);
     await coordination.scheduler.whenSettled();
 
-    expect(state.getMutableState("subscribed").status).toBe("success");
-    expect(state.getMutableState("unsubscribed").status).toBe("idle");
+    expect(state.getNodeState("subscribed").status).toBe("success");
+    expect(state.getNodeState("unsubscribed").status).toBe("idle");
   });
 
   it("execution -> invalidation edge: a changed refresh result invalidates descendants", async () => {
@@ -97,17 +98,15 @@ describe("graph coordination", () => {
     });
     const { coordination, state } = build([source, child]);
     await coordination.execution.execute([child], "explicit");
-    expect(state.getMutableState("child").freshness).toBe("fresh");
+    expect(state.getNodeState("child").freshness).toBe("fresh");
 
     // Mark the source stale the way a refresh does, then reload it with a new value.
-    const sourceState = state.getMutableState("source");
-    sourceState.generation += 1;
-    sourceState.freshness = "stale";
+    invalidate(state.getNodeState("source"));
     value = 2;
     await coordination.execution.execute([source], "refresh");
 
-    expect(state.getMutableState("source").data).toBe(2);
-    expect(state.getMutableState("child").freshness).toBe("stale");
+    expect(state.getNodeState("source").data).toBe(2);
+    expect(state.getNodeState("child").freshness).toBe("stale");
   });
 
   it("does not invalidate descendants when a refresh returns the same value", async () => {
@@ -120,13 +119,11 @@ describe("graph coordination", () => {
     });
     const { coordination, state } = build([source, child]);
     await coordination.execution.execute([child], "explicit");
-    const sourceState = state.getMutableState("source");
-    sourceState.generation += 1;
-    sourceState.freshness = "stale";
+    invalidate(state.getNodeState("source"));
 
     await coordination.execution.execute([source], "refresh");
 
-    expect(state.getMutableState("child").freshness).toBe("fresh");
+    expect(state.getNodeState("child").freshness).toBe("fresh");
   });
 
   it("attributes the scheduler flush to the subscription that requested it", async () => {

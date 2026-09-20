@@ -12,13 +12,19 @@ import type {
 } from "../graph/types";
 import type { NodeAttemptOutcome } from "../execution/types";
 
-export interface MutableNodeRuntimeState {
-  data: unknown;
-  status: NodeStatus;
-  freshness: NodeFreshness;
-  error: Error | null;
-  generation: number;
-  hasSuccessfulValue: boolean;
+/**
+ * A node's runtime state as every module outside `state/transitions.ts` sees
+ * it: the fields are read-only, so the compiler rejects any direct write.
+ * State changes only through the transitions in `state/transitions.ts`, which
+ * hold the one writable view of this record.
+ */
+export interface NodeStateRecord {
+  readonly data: unknown;
+  readonly status: NodeStatus;
+  readonly freshness: NodeFreshness;
+  readonly error: Error | null;
+  readonly generation: number;
+  readonly hasSuccessfulValue: boolean;
 }
 
 export type ExecutionOrigin =
@@ -37,9 +43,9 @@ export interface ActiveAttempt {
 }
 
 export interface RuntimeStateStore {
-  readonly getMutableState: (
+  readonly getNodeState: (
     key: string
-  ) => MutableNodeRuntimeState;
+  ) => NodeStateRecord;
 
   readonly getSnapshot: <TNode extends AnyNodeDefinition>(
     node: TNode
@@ -78,7 +84,7 @@ const isDataNode = (
 
 const createInitialState = (
   node: AnyNodeDefinition
-): MutableNodeRuntimeState => {
+): NodeStateRecord => {
   if (isContextNode(node)) {
     return {
       data: node.initialValue,
@@ -103,7 +109,7 @@ const createInitialState = (
 };
 
 const snapshotState = <TData>(
-  state: MutableNodeRuntimeState
+  state: NodeStateRecord
 ): NodeRuntimeState<TData> =>
   Object.freeze({
     data: state.data as TData,
@@ -118,7 +124,7 @@ export const createRuntimeStateStore = (
   graph: Graph
 ): RuntimeStateStore => {
   const states =
-    new Map<string, MutableNodeRuntimeState>();
+    new Map<string, NodeStateRecord>();
 
   const activeAttempts =
     new Map<string, ActiveAttempt>();
@@ -127,9 +133,9 @@ export const createRuntimeStateStore = (
     states.set(node.key, createInitialState(node));
   }
 
-  const getMutableState = (
+  const getNodeState = (
     key: string
-  ): MutableNodeRuntimeState => {
+  ): NodeStateRecord => {
     const state = states.get(key);
 
     if (!state) {
@@ -147,7 +153,7 @@ export const createRuntimeStateStore = (
     node: TNode
   ): NodeRuntimeState<RuntimeNodeData<TNode>> =>
     snapshotState<RuntimeNodeData<TNode>>(
-      getMutableState(node.key)
+      getNodeState(node.key)
     );
 
   const getActiveAttempt = (
@@ -176,7 +182,7 @@ export const createRuntimeStateStore = (
     activeAttempts.entries();
 
   return Object.freeze({
-    getMutableState,
+    getNodeState,
     getSnapshot,
     getActiveAttempt,
     setActiveAttempt,

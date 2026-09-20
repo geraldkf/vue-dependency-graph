@@ -96,6 +96,7 @@ export type {
   GraphExecutionReason,
   GraphMutationDiagnosticEvent,
   GraphNodeValueReleasedDiagnosticEvent,
+  GraphRuntimeListenerFailedDiagnosticEvent,
   GraphRefreshPolicyDiagnosticEvent,
   GraphDiagnosticSink,
   GraphDiagnosticsEnvironment,

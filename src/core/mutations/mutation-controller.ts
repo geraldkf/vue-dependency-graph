@@ -1,7 +1,7 @@
 import type { EventMatchOptions } from "../events/event-matcher";
 import type { AnyNodeDefinition } from "../graph/types";
 import type { CombinedInvalidationPlan } from "../invalidation/invalidation";
-import type { ActiveAttempt, MutableNodeRuntimeState } from "../state/state";
+import type { ActiveAttempt, NodeStateRecord } from "../state/state";
 import type { EventPublication } from "../transactions/types";
 import { GraphMutationConflictError } from "./errors";
 import type { MutationDefinition, MutationOptions } from "./types";
@@ -39,7 +39,7 @@ export interface RuntimeMutationControllerDependencies {
     node: AnyNodeDefinition,
     purpose: string,
   ) => AnyNodeDefinition;
-  readonly getMutableState: (key: string) => MutableNodeRuntimeState;
+  readonly getNodeState: (key: string) => NodeStateRecord;
   readonly getActiveAttempt: (key: string) => ActiveAttempt | undefined;
   readonly hasSubscribers: (node: AnyNodeDefinition) => boolean;
   readonly matchPublications: (
@@ -62,7 +62,7 @@ export interface RuntimeMutationControllerDependencies {
  */
 export const createRuntimeMutationController = ({
   resolveRegisteredNode,
-  getMutableState,
+  getNodeState,
   getActiveAttempt,
   hasSubscribers,
   matchPublications,
@@ -72,16 +72,16 @@ export const createRuntimeMutationController = ({
 }: RuntimeMutationControllerDependencies): RuntimeMutationController => {
   const updatePlanner = createMutationUpdatePlanner({
     resolveRegisteredNode,
-    getMutableState,
+    getNodeState,
   });
 
   const optimisticSessions = createOptimisticSessionManager({
-    getMutableState,
+    getNodeState,
     hasSubscribers,
   });
 
   const mutationCommitter = createMutationCommitter({
-    getMutableState,
+    getNodeState,
     getActiveAttempt,
     prepareCombinedInvalidation,
     releaseOptimisticSession: optimisticSessions.release,

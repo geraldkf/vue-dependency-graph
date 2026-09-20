@@ -92,6 +92,8 @@ stopObserving();
 
 A node subscription contributes direct ownership for its targets and required ownership for their ancestors. Registration schedules work in a microtask rather than invoking loaders synchronously. Cleanup functions are idempotent.
 
+A listener that throws never breaks the runtime: the failure is isolated from the other listeners and from the code that triggered the change. When diagnostics are enabled it is reported as a `runtime.listener-failed` event (see below); with diagnostics disabled it is not reported anywhere.
+
 Inspect lifecycle and scheduler state:
 
 ```ts
@@ -613,6 +615,8 @@ M10A emits the foundation events:
 - `operation.refresh.requested`;
 - `operation.query-prefetch.requested`;
 - `operation.query-refresh.requested`.
+
+`runtime.listener-failed` is emitted when a change listener throws while the runtime is notifying - an application's `onChange` subscriber, or one of the runtime's own background policies, which listen the same way (a refresh policy that cannot arm its timer, for example). It carries `error: { name, message }` and, when the notification happened while an operation was being committed, that operation's `operationId`. The failure itself stays isolated: other listeners still run and runtime state is unaffected. The devtools Timeline shows it as a failed runtime entry.
 
 Operation-request events contain immutable requested node keys and a deterministic runtime-local operation ID. Query operation events also contain the query key. These events record caller intent only. M10B adds execution, scheduling, subscription, invalidation, reuse, skip, queue, and outcome events that complete the causal trace.
 

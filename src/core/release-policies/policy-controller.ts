@@ -1,5 +1,6 @@
 import type { AnyNodeDefinition, DataNodeDefinition, Graph } from "../graph/types";
-import type { MutableNodeRuntimeState } from "../state/state";
+import type { NodeStateRecord } from "../state/state";
+import { releaseValue } from "../state/transitions";
 import type { TimerEnvironment } from "../timer-environment";
 
 type ReleasePolicyDataNode = DataNodeDefinition<
@@ -16,7 +17,7 @@ interface ReleaseSession {
 export interface RuntimeReleasePolicyDependencies {
   readonly graph: Graph;
   readonly environment: TimerEnvironment;
-  readonly getMutableState: (key: string) => MutableNodeRuntimeState;
+  readonly getNodeState: (key: string) => NodeStateRecord;
   readonly hasSubscribers: (node: AnyNodeDefinition) => boolean;
   /** The runtime's `releaseAfterMs` default. A node's own `release` policy,
    * when declared, always takes precedence over this - including
@@ -63,7 +64,7 @@ const resolveReleaseDurationMs = (
 export const createRuntimeReleasePolicyController = ({
   graph,
   environment,
-  getMutableState,
+  getNodeState,
   hasSubscribers,
   defaultDurationMs,
   notify,
@@ -99,7 +100,7 @@ export const createRuntimeReleasePolicyController = ({
   ): void => {
     session.timer = undefined;
     if (disposed) return;
-    const state = getMutableState(node.key);
+    const state = getNodeState(node.key);
     // Defensive re-check: reconcile() should already have cancelled this
     // timer if a subscriber returned or the value changed generation in
     // the meantime, but the check is cheap and removes any dependency on
@@ -112,12 +113,7 @@ export const createRuntimeReleasePolicyController = ({
       return;
     }
 
-    state.data = node.initialValue;
-    state.hasSuccessfulValue = false;
-    state.status = "idle";
-    state.freshness = "stale";
-    state.error = null;
-    state.generation += 1;
+    releaseValue(state, node.initialValue);
     notify();
     onDiagnostic?.(node.key, environment.now() - scheduledAt);
   };
@@ -132,7 +128,7 @@ export const createRuntimeReleasePolicyController = ({
       return;
     }
 
-    const state = getMutableState(node.key);
+    const state = getNodeState(node.key);
     if (hasSubscribers(node) || !state.hasSuccessfulValue) {
       clearTimer(session);
       return;

@@ -5,7 +5,7 @@ import type { GraphDiagnosticRefreshPolicySnapshot } from "../diagnostics/snapsh
   DataNodeDefinition,
   Graph,
 } from "../graph/types";
-import type { MutableNodeRuntimeState } from "../state/state";
+import type { NodeStateRecord } from "../state/state";
 import type { TimerEnvironment } from "../timer-environment";
 import {
   GraphPollingConditionError,
@@ -55,7 +55,7 @@ export interface RuntimeRefreshPolicyController {
 export interface RuntimeRefreshPolicyDependencies {
   readonly graph: Graph;
   readonly environment: TimerEnvironment;
-  readonly getMutableState: (key: string) => MutableNodeRuntimeState;
+  readonly getNodeState: (key: string) => NodeStateRecord;
   readonly hasSubscribers: (node: AnyNodeDefinition) => boolean;
   readonly refreshPolicyNode: (node: PolicyDataNode) => Promise<void>;
   readonly failPolicyNode: (
@@ -119,7 +119,7 @@ const calculateRetryDelay = (
 export const createRuntimeRefreshPolicyController = ({
   graph,
   environment,
-  getMutableState,
+  getNodeState,
   hasSubscribers,
   refreshPolicyNode,
   failPolicyNode,
@@ -221,7 +221,7 @@ export const createRuntimeRefreshPolicyController = ({
   const evaluatePollingResult = (
     node: PolicyDataNode,
     policy: PollUntilPolicy<unknown>,
-    state: MutableNodeRuntimeState,
+    state: NodeStateRecord,
     session: RefreshPolicySession
   ): boolean => {
     if (session.evaluatedGeneration === state.generation) {
@@ -313,7 +313,7 @@ export const createRuntimeRefreshPolicyController = ({
         }
 
         completeSession(session);
-        const state = getMutableState(node.key);
+        const state = getNodeState(node.key);
         failPolicyNode(
           node,
           state.generation,
@@ -360,7 +360,7 @@ export const createRuntimeRefreshPolicyController = ({
       session.timerDueAt = undefined;
       session.timerPurpose = undefined;
 
-      const current = getMutableState(node.key);
+      const current = getNodeState(node.key);
       const canRefresh =
         hasSubscribers(node) &&
         !paused &&
@@ -375,7 +375,7 @@ export const createRuntimeRefreshPolicyController = ({
 
   reconcileNode = (node: PolicyDataNode): void => {
     if (disposed) return;
-    const state = getMutableState(node.key);
+    const state = getNodeState(node.key);
     const session = getSession(node.key);
     const policy = node.refresh;
 

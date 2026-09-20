@@ -2,13 +2,14 @@ import type { RefreshableNodeDefinition } from "./types";
 import type { ExecutionDiagnosticContext } from "../execution/execution";
 import type {
   ActiveAttempt,
-  MutableNodeRuntimeState,
+  NodeStateRecord,
 } from "../state/state";
 import type {
   AnyNodeDefinition,
   DataNodeDefinition,
 } from "../graph/types";
 import type { ExecutionOrigin } from "../state/state";
+import { invalidate } from "../state/transitions";
 
 export interface RuntimeOperationsController {
   readonly prefetch: (
@@ -26,9 +27,9 @@ export interface RuntimeOperationsController {
 }
 
 export interface RuntimeOperationsDependencies {
-  readonly getMutableState: (
+  readonly getNodeState: (
     key: string
-  ) => MutableNodeRuntimeState;
+  ) => NodeStateRecord;
   readonly getActiveAttempt: (
     key: string
   ) => ActiveAttempt | undefined;
@@ -55,7 +56,7 @@ const isRefreshableNode = (
   node.kind === "data" || node.kind === "derived";
 
 export const createRuntimeOperationsController = ({
-  getMutableState,
+  getNodeState,
   getActiveAttempt,
   resolveRegisteredNode,
   execute,
@@ -102,7 +103,7 @@ export const createRuntimeOperationsController = ({
     }
 
     for (const target of targets) {
-      const state = getMutableState(target.key);
+      const state = getNodeState(target.key);
       const active = getActiveAttempt(target.key);
       if (
         active?.origins.has("refresh") ||
@@ -111,9 +112,7 @@ export const createRuntimeOperationsController = ({
         active.origins.add(origin);
         continue;
       }
-      state.generation += 1;
-      state.freshness = "stale";
-      state.status = state.hasSuccessfulValue ? "success" : "idle";
+      invalidate(state);
       active?.controller.abort();
     }
     notify();

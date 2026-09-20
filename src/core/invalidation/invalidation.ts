@@ -1,7 +1,8 @@
 import type {
   ActiveAttempt,
-  MutableNodeRuntimeState,
+  NodeStateRecord,
 } from "../state/state";
+import { invalidate, writeValue } from "../state/transitions";
 import type {
   AnyNodeDefinition,
   ContextNodeDefinition,
@@ -53,9 +54,9 @@ export interface RuntimeInvalidationController {
 
 export interface RuntimeInvalidationDependencies {
   readonly graph: Graph;
-  readonly getMutableState: (
+  readonly getNodeState: (
     key: string
-  ) => MutableNodeRuntimeState;
+  ) => NodeStateRecord;
   readonly getActiveAttempt: (
     key: string
   ) => ActiveAttempt | undefined;
@@ -87,7 +88,7 @@ const isContextNode = (
 
 export const createRuntimeInvalidationController = ({
   graph,
-  getMutableState,
+  getNodeState,
   getActiveAttempt,
   hasSubscribers,
   resolveRegisteredNode,
@@ -132,11 +133,8 @@ export const createRuntimeInvalidationController = ({
     let subscribedDescendantChanged = false;
 
     for (const descendant of descendants) {
-      const state = getMutableState(descendant.key);
-      state.generation += 1;
-      state.freshness = "stale";
-      state.status = state.hasSuccessfulValue ? "success" : "idle";
-      state.error = null;
+      const state = getNodeState(descendant.key);
+      invalidate(state);
 
       if (hasSubscribers(descendant)) {
         subscribedDescendantChanged = true;
@@ -226,20 +224,14 @@ export const createRuntimeInvalidationController = ({
     dispatch: InvalidationDispatch = { notify, schedule }
   ): void => {
     const effectiveChanges = changes.filter(({ node, value }) =>
-      !Object.is(getMutableState(node.key).data, value)
+      !Object.is(getNodeState(node.key).data, value)
     );
     if (effectiveChanges.length === 0 && invalidationRoots.length === 0) {
       return;
     }
 
     for (const { node, value } of effectiveChanges) {
-      const contextState = getMutableState(node.key);
-      contextState.data = value;
-      contextState.status = "success";
-      contextState.freshness = "fresh";
-      contextState.error = null;
-      contextState.generation += 1;
-      contextState.hasSuccessfulValue = true;
+      writeValue(getNodeState(node.key), value, "fresh");
     }
 
     const affected = new Map<string, AnyNodeDefinition>();

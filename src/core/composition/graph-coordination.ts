@@ -26,7 +26,7 @@ import { createSchedulerDiagnostics } from "./scheduler-diagnostics";
 export interface GraphCoordinationDependencies {
   readonly graph: Graph;
   readonly diagnostics: RuntimeDiagnosticEmitter;
-  readonly getMutableState: RuntimeStateStore["getMutableState"];
+  readonly getNodeState: RuntimeStateStore["getNodeState"];
   readonly getActiveAttempt: RuntimeStateStore["getActiveAttempt"];
   readonly setActiveAttempt: RuntimeStateStore["setActiveAttempt"];
   readonly deleteActiveAttempt: RuntimeStateStore["deleteActiveAttempt"];
@@ -89,7 +89,7 @@ const isAutomaticOnlyAttempt = (attempt: ActiveAttempt): boolean =>
 export const createGraphCoordination = ({
   graph,
   diagnostics,
-  getMutableState,
+  getNodeState,
   getActiveAttempt,
   setActiveAttempt,
   deleteActiveAttempt,
@@ -115,7 +115,7 @@ export const createGraphCoordination = ({
     concurrencyLimiter: createExecutionConcurrencyLimiter(
       maxConcurrentLoads ?? Infinity,
     ),
-    getMutableState,
+    getNodeState,
     getActiveAttempt,
     setActiveAttempt,
     deleteActiveAttempt,
@@ -194,7 +194,7 @@ export const createGraphCoordination = ({
 
   const invalidation = createRuntimeInvalidationController({
     graph,
-    getMutableState,
+    getNodeState,
     getActiveAttempt,
     hasSubscribers: subscriptions.hasSubscribers,
     resolveRegisteredNode: requireRegisteredNode,

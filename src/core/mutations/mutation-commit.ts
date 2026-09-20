@@ -1,6 +1,7 @@
 import type { AnyNodeDefinition } from "../graph/types";
 import type { CombinedInvalidationPlan } from "../invalidation/invalidation";
-import type { ActiveAttempt, MutableNodeRuntimeState } from "../state/state";
+import type { ActiveAttempt, NodeStateRecord } from "../state/state";
+import { restoreSnapshot, writeValue } from "../state/transitions";
 import type { OptimisticSession } from "./optimistic-session";
 import type { PreparedMutationUpdate } from "./mutation-update-planner";
 
@@ -23,7 +24,7 @@ export interface MutationCommitter {
 }
 
 export interface MutationCommitterDependencies {
-  readonly getMutableState: (key: string) => MutableNodeRuntimeState;
+  readonly getNodeState: (key: string) => NodeStateRecord;
   readonly getActiveAttempt: (key: string) => ActiveAttempt | undefined;
   readonly prepareCombinedInvalidation: (
     changedResultRoots: readonly AnyNodeDefinition[],
@@ -38,7 +39,7 @@ export interface MutationCommitterDependencies {
 }
 
 export const createMutationCommitter = ({
-  getMutableState,
+  getNodeState,
   getActiveAttempt,
   prepareCombinedInvalidation,
   releaseOptimisticSession,
@@ -50,11 +51,7 @@ export const createMutationCommitter = ({
     invalidation: CombinedInvalidationPlan,
   ): void => {
     for (const { state, value } of updates) {
-      state.data = value;
-      state.status = "success";
-      state.freshness = "fresh";
-      state.error = null;
-      state.generation += 1;
+      writeValue(state, value, "fresh");
     }
     invalidation.commit();
     for (const { node } of updates) {
@@ -75,13 +72,11 @@ export const createMutationCommitter = ({
     );
 
     for (const { node, state, value } of effectiveUpdates) {
-      state.data = value;
-      state.status = "success";
-      state.freshness = invalidation.affectedPreservedKeys.has(node.key)
-        ? "stale"
-        : "fresh";
-      state.error = null;
-      state.generation += 1;
+      writeValue(
+        state,
+        value,
+        invalidation.affectedPreservedKeys.has(node.key) ? "stale" : "fresh",
+      );
     }
     invalidation.commit();
     for (const { node } of effectiveUpdates) {
@@ -100,13 +95,7 @@ export const createMutationCommitter = ({
     shouldSchedule: boolean,
   ): void => {
     for (const snapshot of session.snapshots) {
-      const state = getMutableState(snapshot.node.key);
-      state.data = snapshot.data;
-      state.status = snapshot.status;
-      state.freshness = snapshot.freshness;
-      state.error = snapshot.error;
-      state.generation += 1;
-      state.hasSuccessfulValue = snapshot.hasSuccessfulValue;
+      restoreSnapshot(getNodeState(snapshot.node.key), snapshot);
     }
     for (const snapshot of session.snapshots) {
       getActiveAttempt(snapshot.node.key)?.controller.abort();

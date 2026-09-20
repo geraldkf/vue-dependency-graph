@@ -4,7 +4,7 @@ import type {
   DependencyList,
   EventInvalidationList,
 } from "../graph/types";
-import type { MutableNodeRuntimeState } from "../state/state";
+import type { NodeStateRecord } from "../state/state";
 import { GraphMutationStateError } from "./errors";
 import type { MutationUpdateEffects } from "./types";
 import {
@@ -19,7 +19,7 @@ export interface MutationUpdateDraft {
 
 export interface PreparedMutationUpdate {
   readonly node: AnyNodeDefinition;
-  readonly state: MutableNodeRuntimeState;
+  readonly state: NodeStateRecord;
   readonly value: unknown;
   readonly changed: boolean;
 }
@@ -39,7 +39,7 @@ export interface MutationUpdatePlannerDependencies {
     node: AnyNodeDefinition,
     purpose: string,
   ) => AnyNodeDefinition;
-  readonly getMutableState: (key: string) => MutableNodeRuntimeState;
+  readonly getNodeState: (key: string) => NodeStateRecord;
 }
 
 const isPromiseLike = (value: unknown): value is PromiseLike<unknown> =>
@@ -50,7 +50,7 @@ const isPromiseLike = (value: unknown): value is PromiseLike<unknown> =>
 
 export const createMutationUpdatePlanner = ({
   resolveRegisteredNode,
-  getMutableState,
+  getNodeState,
 }: MutationUpdatePlannerDependencies): MutationUpdatePlanner => {
   const collect = (
     work: (effects: MutationUpdateEffects) => void,
@@ -114,7 +114,7 @@ export const createMutationUpdatePlanner = ({
     drafts: readonly MutationUpdateDraft[],
   ): readonly PreparedMutationUpdate[] => {
     const validated = drafts.map(({ node, updater }) => {
-      const state = getMutableState(node.key);
+      const state = getNodeState(node.key);
       if (!state.hasSuccessfulValue) {
         throw new GraphMutationStateError(
           node.key,

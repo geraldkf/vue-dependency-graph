@@ -16,6 +16,7 @@ import type { GraphExecutionReason } from "./diagnostics/types";
 import { createRuntimeEventMatcher } from "./events/event-matcher";
 import type { AnyEventDefinition, EventPayload } from "./events/types";
 import type { ExecutionDiagnosticContext } from "./execution/execution";
+import { toError } from "./execution/types";
 import type {
   AnyNodeDefinition,
   ContextNodeDefinition,
@@ -48,14 +49,31 @@ export const createGraphRuntime = (
 ): GraphRuntime => {
   const diagnostics = createRuntimeDiagnosticEmitter(options?.diagnostics);
   const {
-    getMutableState,
+    getNodeState,
     getSnapshot,
     getActiveAttempt,
     setActiveAttempt,
     deleteActiveAttempt,
     getActiveAttempts,
   } = createRuntimeStateStore(graph);
-  const { notify: emitNotify, onChange } = createRuntimeObserver();
+  // Tracks the operation id/reason of the graph-change currently being
+  // committed, so invalidation callbacks several layers down can attribute
+  // their diagnostics to it without threading it through every signature
+  // in between. Correctly nests (and restores) via `runObserved`.
+  const operationObservation = createOperationObservationTracker();
+  const { notify: emitNotify, onChange } = createRuntimeObserver({
+    // A throwing listener (an app's `onChange`, or one of the runtime's own
+    // policies, which listen the same way) is isolated from the rest; this
+    // keeps it visible. Attributed to the operation being committed, if any.
+    onListenerError: (error) => {
+      const operationId = operationObservation.current()?.operationId;
+      diagnostics.emit({
+        type: "runtime.listener-failed",
+        ...(operationId ? { operationId } : {}),
+        error: diagnostics.toError(toError(error)),
+      });
+    },
+  });
   const requireRegisteredNode = (
     node: AnyNodeDefinition,
     purpose: string,
@@ -73,17 +91,11 @@ export const createGraphRuntime = (
   // the run, then read back when the flush actually executes.
   const schedulerRequest = createSchedulerRequestTracker("subscription");
 
-  // Tracks the operation id/reason of the graph-change currently being
-  // committed, so invalidation callbacks several layers down can attribute
-  // their diagnostics to it without threading it through every signature
-  // in between. Correctly nests (and restores) via `runObserved`.
-  const operationObservation = createOperationObservationTracker();
-
   const { execution, scheduler, subscriptions, invalidation } =
     createGraphCoordination({
       graph,
       diagnostics,
-      getMutableState,
+      getNodeState,
       getActiveAttempt,
       setActiveAttempt,
       deleteActiveAttempt,
@@ -118,7 +130,7 @@ export const createGraphRuntime = (
 
   const events = createRuntimeEventMatcher({
     graph,
-    getMutableState,
+    getNodeState,
   });
 
   const graphCommit = createGraphCommitCoordinator({
@@ -133,13 +145,13 @@ export const createGraphRuntime = (
 
   const transactions = createRuntimeTransactionCoordinator({
     resolveContextNode: invalidation.resolveContextNode,
-    getContextGeneration: (node) => getMutableState(node.key).generation,
+    getContextGeneration: (node) => getNodeState(node.key).generation,
     commitImmediate: graphCommit.commitImmediate,
     commitTransaction: graphCommit.commitTransaction,
   });
 
   const operations = createRuntimeOperationsController({
-    getMutableState,
+    getNodeState,
     getActiveAttempt,
     resolveRegisteredNode: requireRegisteredNode,
     execute: (targets, origin, diagnosticContext) =>
@@ -149,7 +161,7 @@ export const createGraphRuntime = (
 
   const mutations = createRuntimeMutationController({
     resolveRegisteredNode: requireRegisteredNode,
-    getMutableState,
+    getNodeState,
     getActiveAttempt,
     hasSubscribers: subscriptions.hasSubscribers,
     matchPublications: events.matchPublications,
@@ -164,7 +176,7 @@ export const createGraphRuntime = (
     diagnostics,
     timerEnvironment: options?.timerEnvironment,
     releaseAfterMs: options?.releaseAfterMs,
-    getMutableState,
+    getNodeState,
     hasSubscribers: subscriptions.hasSubscribers,
     refreshPolicyNode: operations.refreshPolicyNode,
     notify: emitNotify,
@@ -245,7 +257,7 @@ export const createGraphRuntime = (
       graph,
       runtimeId: diagnostics.runtimeId,
       now: diagnostics.now,
-      getMutableState,
+      getNodeState,
       getSchedulerState: scheduler.getSchedulerState,
       getSubscriptionState: subscriptions.getSubscriptionState,
       getRefreshPolicySnapshot: policies.getRefreshPolicyDiagnosticSnapshot,
