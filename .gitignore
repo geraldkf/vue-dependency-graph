@@ -7,3 +7,4 @@ coverage/
 .env
 .env.*
 !.env.example
+unit-test-output.log

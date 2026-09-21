@@ -149,6 +149,16 @@ Event tests cover payload typing, declaration validation, deterministic graph in
 - Coordination module: `tests/core/graph-coordination.spec.ts` builds execution, scheduler, subscriptions, and invalidation without a runtime and pins the two backward edges (changed refresh result -> descendant invalidation; scheduler flushes only directly subscribed nodes), scheduler-cause attribution through the shared tracker, and abort of automatic-only work on last unsubscribe
 - Golden trace: `tests/core/runtime-golden-trace.spec.ts` snapshots the whole normalised diagnostic stream of one scenario that covers every execution reason (subscription, context invalidation, changed result, refresh policy, explicit, prefetch, refresh, query variants, dependency), transactions, mutations, and the release policy. Structural refactors of the runtime composition must leave it unchanged; a diff means event order, content, or attribution moved. Operation ids are normalised, so it pins how events group and cause each other rather than literal id values.
 
+## Retention and cleanup tests
+
+`tests/retention` checks that the runtime lets go of what it is finished with. Vitest workers start with `--expose-gc` (see `vitest.config.ts`) and the helpers fail if `gc` is missing rather than skipping.
+
+- **Garbage collection** (`garbage-collection.spec.ts`): holds only a `WeakRef` to a value the runtime saw, lets the runtime move on, forces collection, and expects the value gone. Covers values freed by a release policy, values replaced by a refresh or a recomputation (with and without diagnostics), event payloads, the late result of an aborted or superseded attempt, optimistic, rolled-back and replaced mutation values, discarded and replaced transaction values, and a whole runtime once it is disposed - through the browser timer environment, a Vue app unmount, and a Pinia instance disposal. Values the runtime is meant to keep (the current value) are asserted as retained, and a harness check proves collection is neither too eager nor too lazy. Undisposed browser-environment runtimes stay reachable from document listeners, which is asserted as the reason owners must dispose.
+- **Structural cleanup** (`runtime-cleanup.spec.ts`): after a thousand subscribe, change, and unsubscribe cycles the runtime has no subscriptions, timers, or running work; unsubscribing is idempotent; policy timers are cleared and re-armed correctly and never accumulate; change listeners are really removed; the browser environment's listeners are balanced across creation and disposal; diagnostics stay within capacity; Vue components release their subscriptions across many mounts.
+- **Attempt cleanup** (`attempt-cleanup.spec.ts`): the active attempt table empties after success, failure, abort, supersession, and cancellation while queued; concurrency slots are not lost; a loader that ignores its abort signal and never settles cannot stall the runtime (ADR-018), leaves one terminal event, and never causes an unhandled rejection.
+
+Every check in these suites was confirmed to fail when the cleanup it covers is removed or a leak is deliberately injected.
+
 ## Vue and Pinia integration tests
 
 Use Vitest 3.0.7, Vue Testing Library, and real deterministic graph runtimes.

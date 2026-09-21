@@ -21,6 +21,7 @@ Decision records capture choices that materially affect correctness, compatibili
 - ADR-015: Devtools as an embeddable component over a protocol layer
 - ADR-016: Automatic value release through timer-based release policies
 - ADR-017: Runtime extension host deferred
+- ADR-018: Aborting an attempt ends it, even if the loader ignores the signal
 
 Every number above now has a file. ADR-009 and ADR-010 are short pointers rather than full records: by the time polling and observability were actually designed, each had grown well beyond its original ADR-002 bullet, so the full decision is recorded once, in ADR-012 and ADR-014 respectively, rather than duplicated.
 

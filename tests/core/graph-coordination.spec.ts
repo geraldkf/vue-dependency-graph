@@ -1,18 +1,7 @@
 import { describe, expect, it } from "vitest";
-import {
-  createGraph,
-  createInMemoryGraphDiagnostics,
-  defineDataNode,
-  type AnyNodeDefinition,
-  type GraphDiagnosticEvent,
-} from "../../src/core";
-import { createGraphCoordination } from "../../src/core/composition/graph-coordination";
-import { createRuntimeDiagnosticEmitter } from "../../src/core/diagnostics/diagnostic-emitter";
-import { createOperationObservationTracker } from "../../src/core/diagnostics/operation-observation";
-import { createRuntimeObserver } from "../../src/core/observation/observer";
-import { createSchedulerRequestTracker } from "../../src/core/scheduling/request-tracker";
-import { createRuntimeStateStore } from "../../src/core/state/state";
+import { defineDataNode } from "../../src/core";
 import { invalidate } from "../../src/core/state/transitions";
+import { buildCoordination } from "./coordination-harness";
 import { waitForCondition } from "./test-helpers";
 
 /**
@@ -20,38 +9,7 @@ import { waitForCondition } from "./test-helpers";
  * subscriptions and invalidation controllers and the two edges that point
  * backwards along their construction order - without a full runtime.
  */
-const build = (nodes: readonly AnyNodeDefinition[]) => {
-  const graph = createGraph({ nodes });
-  const collector = createInMemoryGraphDiagnostics({ capacity: 500 });
-  const diagnostics = createRuntimeDiagnosticEmitter({ sink: collector });
-  const state = createRuntimeStateStore(graph);
-  const observer = createRuntimeObserver();
-  const schedulerRequest = createSchedulerRequestTracker("subscription");
-  const operationObservation = createOperationObservationTracker();
-  const coordination = createGraphCoordination({
-    graph,
-    diagnostics,
-    getNodeState: state.getNodeState,
-    getActiveAttempt: state.getActiveAttempt,
-    setActiveAttempt: state.setActiveAttempt,
-    deleteActiveAttempt: state.deleteActiveAttempt,
-    getActiveAttempts: state.getActiveAttempts,
-    notify: observer.notify,
-    requireRegisteredNode: (node, purpose) => {
-      const registered = graph.getNode(node.key);
-      if (!registered) throw new Error(`"${node.key}" not registered for ${purpose}`);
-      return registered;
-    },
-    schedulerRequest,
-    operationObservation,
-    maxConcurrentLoads: undefined,
-  });
-  return {
-    coordination,
-    state,
-    events: (): readonly GraphDiagnosticEvent[] => collector.getEvents(),
-  };
-};
+const build = buildCoordination;
 
 describe("graph coordination", () => {
   it("constructs without running any callback or emitting any event", () => {

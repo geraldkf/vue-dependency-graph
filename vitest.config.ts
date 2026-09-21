@@ -11,6 +11,10 @@ export default defineConfig({
   },
   test: {
     environment: "jsdom",
+    // The retention tests (tests/retention) check that values become
+    // garbage-collectable, which needs `globalThis.gc`.
+    pool: "forks",
+    poolOptions: { forks: { execArgv: ["--expose-gc"] } },
     include: ["tests/**/*.spec.ts"],
     setupFiles: ["./tests/setup.ts"],
   },

@@ -95,6 +95,10 @@ A result commits only when the current generation and active token still match. 
 
 Affected active work is aborted using attempt-scoped controllers. Abort and superseded results are not recorded as business errors.
 
+Aborting ends the attempt; it does not wait for the loader. When the signal aborts, the attempt settles at once as aborted (or discarded, if it was superseded): it leaves the active attempt table, releases its concurrency slot, returns its node to `idle` (or `success` with its value) if it still owns the node's state, and lets the scheduler flush awaiting it complete. Whatever a loader that ignores the signal eventually produces is ignored, and a failure after abandonment is not an unhandled rejection. The runtime cannot stop such a request, only stop waiting for it, so real concurrency can briefly exceed `maxConcurrentLoads` for loaders that ignore their signal. See [ADR-018](../decisions/ADR-018-abort-ends-the-attempt.md).
+
+One flush runs at a time, so a load that is still needed and is merely slow holds the flush until it finishes: a node subscribed while a slow load is in flight starts loading only when that flush completes.
+
 ## Branch-scoped failures
 
 A directly failed node records an error. Descendants that require it are blocked and do not execute. Independent branches continue.

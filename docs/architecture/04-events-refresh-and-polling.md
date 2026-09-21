@@ -4,7 +4,7 @@
 
 ## Domain events
 
-Status: Milestone 6 implementation and maintained documentation are complete, with final combined automated and manual validation pending. Typed events support graph indexing, conditional matching, immediate publication, transaction-aware publication, and the cross-domain playground. See `docs/implementation/52-milestone-6-implementation-summary.md`.
+Status: Milestone 6 implementation and maintained documentation are complete, and final combined automated and manual validation passed (project owner-reported). Typed events support graph indexing, conditional matching, immediate publication, transaction-aware publication, and the cross-domain playground. See `docs/implementation/52-milestone-6-implementation-summary.md`.
 
 Cross-store integration should use typed events rather than direct store imports.
 

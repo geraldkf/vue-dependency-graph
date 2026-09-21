@@ -100,6 +100,55 @@ const hasFreshSuccessfulValue = (
   state.status === "success" &&
   state.freshness === "fresh";
 
+const createLoadAbortedError = (): Error => {
+  const error = new Error("Load aborted.");
+  error.name = "AbortError";
+  return error;
+};
+
+/**
+ * Settles with the loader's result, or - as soon as `signal` aborts - with an
+ * `AbortError`, whichever comes first.
+ *
+ * An attempt must not stay alive just because its loader ignores the abort
+ * signal: the attempt would keep its concurrency slot, its place in the active
+ * attempt table, and the scheduler flush that is awaiting it, so one stalled
+ * request that never checks its signal would stop every later flush in the
+ * runtime. Cooperative loaders are unaffected (they reject on abort anyway).
+ * For a loader that ignores the signal the runtime stops *waiting*; it cannot
+ * stop the underlying work, whose eventual result or failure is ignored.
+ */
+const settleOrAbort = <T>(
+  signal: AbortSignal,
+  start: () => Promise<T> | T,
+): Promise<T> =>
+  new Promise<T>((resolve, reject) => {
+    const onAbort = (): void => reject(createLoadAbortedError());
+    signal.addEventListener("abort", onAbort, { once: true });
+    if (signal.aborted) onAbort();
+
+    let pending: Promise<T>;
+    try {
+      pending = Promise.resolve(start());
+    } catch (error) {
+      signal.removeEventListener("abort", onAbort);
+      reject(error);
+      return;
+    }
+    // Both handlers are attached, so a loader that fails after the attempt
+    // was abandoned never becomes an unhandled rejection.
+    pending.then(
+      value => {
+        signal.removeEventListener("abort", onAbort);
+        resolve(value);
+      },
+      error => {
+        signal.removeEventListener("abort", onAbort);
+        reject(error);
+      },
+    );
+  });
+
 export const createRuntimeExecutionController = ({
   graph,
   concurrencyLimiter,
@@ -205,10 +254,12 @@ export const createRuntimeExecutionController = ({
           );
           emitExecution(startedType, node, generation, origin, context);
           try {
-            value = await node.load({
-              get: getDependencyValue,
-              signal: controller.signal,
-            });
+            value = await settleOrAbort(controller.signal, () =>
+              node.load({
+                get: getDependencyValue,
+                signal: controller.signal,
+              }),
+            );
           } finally {
             concurrencyLimiter.release();
           }

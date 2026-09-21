@@ -99,7 +99,7 @@ export const VisibleTasks = defineDerivedNode({
 
 A few things worth noticing already:
 
-- `Tasks.load` receives `get`, which only accepts handles declared in `dependencies` and returns their *value* type, and `signal`, an `AbortSignal` the runtime manages for you - pass it straight to `fetch` or your API client so an obsolete load is actually cancelled, not just ignored.
+- `Tasks.load` receives `get`, which only accepts handles declared in `dependencies` and returns their *value* type, and `signal`, an `AbortSignal` the runtime manages for you - pass it straight to `fetch` or your API client so an obsolete load is actually cancelled, not just ignored. If your loader ignores the signal, the runtime still stops waiting for an obsolete load (its result is discarded and it does not hold up other loads), but the request itself keeps running.
 - `CurrentUserId` starts `undefined`. That's a real, valid value - `Tasks.load` will run with `get(CurrentUserId)` returning `undefined` the moment something subscribes, unless you guard against that in `api.getTasks` or in the node itself. There's no built-in "wait until defined" - if you need that, make the dependency explicit in your loader logic.
 - `VisibleTasks` never calls `api`. Anything asynchronous belongs in a data node so it shares the one loading/error/cancellation model; a derived node is pure and synchronous.
 

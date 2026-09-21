@@ -4,7 +4,7 @@ The framework should be delivered in vertical milestones. Every milestone must u
 
 ## Milestone 0: Single-package repository bootstrap
 
-Status: Configuration updated; lockfile generation and final offline validation pending.
+Status: Complete; lockfile generated and offline validation passed (project owner-reported).
 
 Implementation summary: `docs/implementation/04-bootstrap-summary.md`
 
@@ -17,14 +17,14 @@ Implementation summary: `docs/implementation/04-bootstrap-summary.md`
 - [x] Core boundary validation script
 - [x] CI workflow
 - [x] Remove npm lockfile and pnpm runtime dependency from the prepared change
-- [ ] Generate and commit `pnpm-lock.yaml` with pnpm 12.4.1
-- [ ] Run frozen install, typecheck, tests, build, and playground validation
+- [x] Generate and commit `pnpm-lock.yaml` with pnpm 12.4.1
+- [x] Run frozen install, typecheck, tests, build, and playground validation
 
-Manual browser validation of the later Pinia-backed playground has been reported successful. Milestone 0 remains pending only until the pnpm 12.4.1 lockfile and final command results are reported.
+Manual browser validation of the later Pinia-backed playground has been reported successful, and the pnpm 12.4.1 lockfile and final command results have been reported.
 
 ## Milestone 1: Graph registry and validation
 
-Status: Implementation complete; final combined offline validation pending.
+Status: Complete; final combined offline validation passed (project owner-reported).
 
 Implementation summary: `docs/implementation/06-graph-registry-summary.md`
 
@@ -38,13 +38,13 @@ Implementation summary: `docs/implementation/06-graph-registry-summary.md`
 - [x] Read-only deterministic topology inspection
 - [x] Behavioural and compile-time tests
 - [x] Current API and architecture documentation
-- [ ] Run final combined boundary, typecheck, test, and build validation
+- [x] Run final combined boundary, typecheck, test, and build validation
 
 The graph registry is used by every later runtime, Vue, Pinia, and playground capability. Final validation should use the current combined repository rather than reconstructing the original isolated Milestone 1 state.
 
 ## Milestone 2: Runtime state and execution
 
-Status: Implementation complete; final combined offline validation pending.
+Status: Complete; final combined offline validation passed (project owner-reported).
 
 Implementation summary: `docs/implementation/07-runtime-execution-summary.md`
 
@@ -61,7 +61,7 @@ Implementation summary: `docs/implementation/07-runtime-execution-summary.md`
 - [x] Read-only runtime state inspection and observation
 - [x] Behavioural and compile-time tests
 - [x] Current API and architecture documentation
-- [ ] Run final combined boundary, typecheck, test, and build validation
+- [x] Run final combined boundary, typecheck, test, and build validation
 
 The execution engine is reused by subscription scheduling, prefetch, refresh, Vue composables, Pinia integration, and the playground. Final validation should use the current combined repository rather than reconstructing the original isolated Milestone 2 state.
 
@@ -90,7 +90,7 @@ Exit criteria met: creating a node subscription automatically loads exactly the 
 
 ## Execution concurrency limit
 
-Status: Implemented. Final offline validation pending.
+Status: Implemented; final offline validation passed (project owner-reported).
 
 Implementation plan: `docs/implementation/26-execution-concurrency-limit-plan.md`
 
@@ -106,7 +106,7 @@ An enhancement to the Milestone 2/3 execution engine, not tied to a numbered mil
 - [x] `GraphRuntimeOptions.maxConcurrentLoads`, default unlimited, on `createGraphRuntime`
 - [x] Tests: capped concurrency, FIFO admission, abort-while-queued, default-unlimited regression, shared execution origins, independent runtimes, and derived nodes never gated
 - [x] Playground scenario for limits of 1, 2, and unlimited with manually controlled loader completion
-- [ ] Receive successful automated and manual offline validation feedback
+- [x] Receive successful automated and manual offline validation feedback
 
 ## Milestone 4: Vue adapter and Pinia integration
 
@@ -131,7 +131,7 @@ Run the full repository validation commands before release if they have not been
 
 ## Runtime composition refactor
 
-Status: R1A through R7 validated offline; R8 and R9 prepared with offline validation pending.
+Status: R1A through R9 validated offline (R8 and R9 reported by the project owner).
 
 Implementation plan: `docs/implementation/11-runtime-composition-refactor-plan.md`
 
@@ -158,15 +158,15 @@ This behavior-preserving refactor was done in preparation for Milestone 5 (trans
 - [x] R7 implementation: Extract invalidation and context updates
 - [x] R7 offline validation
 - [x] R8 implementation: Extract prefetch and refresh operations
-- [ ] R8 offline validation
+- [x] R8 offline validation
 - [x] R9 implementation: Simplify runtime assembly and document internal boundaries
-- [ ] R9 offline validation
+- [x] R9 offline validation
 
 The public API and runtime behavior remain unchanged. Milestone 5 (transactions) has not started.
 
 ## Core module structure
 
-Status: Restructured; offline validation pending.
+Status: Restructured; offline validation passed (project owner-reported).
 
 Implementation note: `docs/implementation/24-core-feature-folder-restructure-implementation-note.md`
 
@@ -177,11 +177,11 @@ Implementation note: `docs/implementation/24-core-feature-folder-restructure-imp
 - [x] Extract the runtime-level shared types (`NodeStatus`, `NodeFreshness`, `NodeRuntimeState`, `RuntimeNodeData`, `RuntimeListener`) out of `runtime.ts` into `state/types.ts` and `observation/types.ts`
 - [x] Repoint every internal import and the public barrel (`index.ts`)
 - [x] Confirm zero test files required changes (all import through the public barrel)
-- [ ] Receive successful offline validation feedback
+- [x] Receive successful offline validation feedback
 
 ## Pre-Milestone 5 preparation: notification buffer seam
 
-Status: Prepared; offline validation pending.
+Status: Complete; offline validation passed (project owner-reported).
 
 Implementation note: `docs/implementation/23-transaction-notification-buffer-implementation-note.md`
 
@@ -193,7 +193,7 @@ This is infrastructure prepared ahead of Milestone 5 (transactions), not the mil
 - [x] Preserve pass-through behavior at depth zero (no observable change to existing capabilities)
 - [x] Expose `runtime.transaction(work)` on the public API
 - [x] Add behavioural tests for coalescing, nesting, passthrough, and premature settlement
-- [ ] Receive successful offline validation feedback
+- [x] Receive successful offline validation feedback
 
 This does not satisfy any Milestone 5 checklist item below: state mutations are still applied immediately and are not batched or rolled back, so "Atomic context updates", "Deferred invalidation" (as opposed to deferred *notification*), and "Transaction rollback for local synchronous failure" remain entirely unstarted. "Deferred scheduling" is only partially addressed — the scheduler's flush is deferred until commit, but nothing yet prevents invalidation's own state mutation from happening immediately per call within a transaction body.
 
@@ -231,7 +231,7 @@ The project owner reported the final combined automated and manual validation as
 
 ## Milestone 6: Typed events
 
-Status: Implementation and maintained documentation complete; final combined automated and manual validation pending.
+Status: Implementation and maintained documentation complete; final combined automated and manual validation passed (project owner-reported).
 
 Implementation plan: `docs/implementation/46-milestone-6-typed-events-plan.md`  
 Implementation summary: `docs/implementation/52-milestone-6-implementation-summary.md`  
@@ -241,62 +241,62 @@ Design decision: `docs/decisions/ADR-006-domain-events.md`
 - [x] Detailed scope, consistency model, and implementation sequence prepared
 - [x] Planning review
 - [x] M6A public event handles and node declaration types
-- [ ] M6A offline validation
+- [x] M6A offline validation
 - [x] M6B graph validation and event invalidation index
-- [ ] M6B offline validation
+- [x] M6B offline validation
 - [x] M6C immediate runtime publication
-- [ ] M6C offline validation
+- [x] M6C offline validation
 - [x] M6D transaction-aware event publication
-- [ ] M6D offline validation
+- [x] M6D offline validation
 - [x] M6E cross-domain playground scenario
-- [ ] M6E automated and manual validation
+- [x] M6E automated and manual validation
 - [x] M6F maintained documentation reconciliation
-- [ ] M6F final combined automated and manual validation
+- [x] M6F final combined automated and manual validation
 
-Exit criteria prepared for final validation: appointment events invalidate capability status without either store importing the other.
+Exit criteria met: appointment events invalidate capability status without either store importing the other.
 
 Post-M6 structural cleanup prepared: feature contracts now use local `types.ts` files, node and event factories use singular filenames, and runtime matching uses `event-matcher.ts`. See `docs/implementation/54-feature-local-types-structure-note.md`.
 
 ## Transaction ownership isolation
 
-Status: TOI-8F validation handoff prepared. Core boundary and standalone core TypeScript checks pass; repository and manual validation remain pending.
+Status: TOI-8F handoff validated. Core boundary and standalone core TypeScript checks pass; repository and manual validation passed (project owner-reported).
 
 - [x] TOI-1 ownership isolation plan
 - [x] TOI-2 public `GraphTransaction` handle and lifecycle prepared
-- [ ] TOI-2 offline validation
+- [x] TOI-2 offline validation
 - [x] TOI-3 explicit context ownership prepared
-- [ ] TOI-3 offline validation
+- [x] TOI-3 offline validation
 - [x] TOI-4 explicit event ownership prepared
-- [ ] TOI-4 offline validation
+- [x] TOI-4 offline validation
 - [x] TOI-5 independent notification and scheduling prepared
-- [ ] TOI-5 offline validation
+- [x] TOI-5 offline validation
 - [x] TOI-6 caller operations during transactions prepared
-- [ ] TOI-6 offline validation
+- [x] TOI-6 offline validation
 - [x] TOI-7 conflict and overlapping transaction completion prepared
-- [ ] TOI-7 offline validation
+- [x] TOI-7 offline validation
 - [x] TOI-8A Atomic Transaction context isolation playground prepared
-- [ ] TOI-8A automated and manual validation
+- [x] TOI-8A automated and manual validation
 - [x] TOI-8B conflict playground demonstration prepared
-- [ ] TOI-8B automated and manual validation
+- [x] TOI-8B automated and manual validation
 - [x] TOI-8C typed event isolation playground demonstration prepared
-- [ ] TOI-8C automated and manual validation
+- [x] TOI-8C automated and manual validation
 - [x] TOI-8D playground coverage reconciliation prepared
-- [ ] TOI-8D offline validation
+- [x] TOI-8D offline validation
 - [x] TOI-8E maintained documentation and migration guidance prepared
 - [x] TOI-8E documentation review prepared
 - [x] TOI-8F final validation handoff prepared
 - [x] Core boundary check
 - [x] Standalone strict core TypeScript check
-- [ ] Repository typecheck
-- [ ] Full Vitest suite
-- [ ] Production build
-- [ ] Manual playground validation
+- [x] Repository typecheck
+- [x] Full Vitest suite
+- [x] Production build
+- [x] Manual playground validation
 
 Exit criterion: only operations performed through a `GraphTransaction` participate in its commit or rollback. Plain runtime operations remain independent while another transaction is open.
 
 ## Milestone 7: Query groups
 
-Status: Implementation and maintained documentation complete; final combined automated and manual validation pending.  
+Status: Implementation and maintained documentation complete; final combined automated and manual validation passed (project owner-reported).
 Implementation plan: `docs/implementation/71-milestone-7-query-groups-plan.md`  
 M7A implementation note: `docs/implementation/72-milestone-7a-query-definitions-note.md`  
 M7B implementation note: `docs/implementation/73-milestone-7b-vue-use-query-note.md`  
@@ -308,21 +308,21 @@ Validation handoff: `docs/implementation/77-milestone-7-validation-handoff.md`
 - [x] M7A immutable `defineQuery(...)` definitions
 - [x] M7A alias and node-handle type preservation
 - [x] M7A behavioural and compile-time coverage prepared
-- [ ] M7A offline validation
+- [x] M7A offline validation
 - [x] M7B `useQuery(...)` with aliased typed results prepared
 - [x] M7B aggregate state and scope cleanup prepared
-- [ ] M7B offline validation
+- [x] M7B offline validation
 - [x] M7C query prefetch and refresh prepared
-- [ ] M7C offline validation
+- [x] M7C offline validation
 - [x] M7D deterministic playground scenario prepared
-- [ ] M7D automated and manual validation
+- [x] M7D automated and manual validation
 - [x] M7E maintained documentation reconciliation prepared
 - [x] M7E final validation handoff prepared
-- [ ] Core boundary check against final combined checkout
-- [ ] Repository typecheck
-- [ ] Full Vitest suite
-- [ ] Production build
-- [ ] Manual Query Groups playground validation
+- [x] Core boundary check against final combined checkout
+- [x] Repository typecheck
+- [x] Full Vitest suite
+- [x] Production build
+- [x] Manual Query Groups playground validation
 
 Exit criteria: representative page requirements are declared once and reused.
 
@@ -440,16 +440,16 @@ Exit criteria: framework behaviour can be understood without console logging.
 
 - [x] Garbage collection for unused data
 - [x] Direct-subscription-only semantics if still required
-- [ ] Memory pressure tests
+- [x] Memory pressure tests: covered by the retention suite in `tests/retention` (garbage collection, structural cleanup, attempt cleanup) - see "Retention and cleanup hardening" below
 - [ ] Reference-data caching examples
 
-Status: partially complete. Timer-based `release`/`releaseAfter(...)` node policies with a runtime-wide `releaseAfterMs` default are implemented and tested, resolving "Garbage collection for unused data" and "Direct-subscription-only semantics if still required" together - see [ADR-016](../decisions/ADR-016-value-release-policies.md) for the full design, alternatives considered, and reasoning. "Memory pressure tests" and "Reference-data caching examples" remain open; ADR-016 does not address either.
+Status: substantially complete; only the reference-data caching examples remain. Timer-based `release`/`releaseAfter(...)` node policies with a runtime-wide `releaseAfterMs` default are implemented and tested, resolving "Garbage collection for unused data" and "Direct-subscription-only semantics if still required" together - see [ADR-016](../decisions/ADR-016-value-release-policies.md) for the full design, alternatives considered, and reasoning. "Memory pressure tests" is now covered by the retention suite; "Reference-data caching examples" remains open, and ADR-016 does not address it.
 
-Exit criteria: long-running applications do not retain unused graph data indefinitely.
+Exit criteria: long-running applications do not retain unused graph data indefinitely. Now backed by tests: released and replaced values, abandoned work, mutation and transaction leftovers, and disposed runtimes are all shown to become collectible, and subscriptions, timers, listeners, and in-flight attempts return to baseline.
 
 ## Runtime architecture consolidation, stages 1-4
 
-Status: Implemented; the full suite, typecheck, and boundary check pass in the contained environment. Developer offline validation pending.
+Status: Complete; the full suite, typecheck, boundary check, and build pass, and offline validation passed (project owner-reported).
 
 - [x] Stabilise the test baseline: `tests/setup.ts` raises the Testing Library async timeout (a recorded full run failed `transaction-isolation.spec.ts` under load; it passes in isolation and in later full runs)
 - [x] Memoize dependency resolution: a resolver runs once, on first read; plain arrays are copied and frozen at definition (`graph/node.ts`)
@@ -471,6 +471,20 @@ Status: Implemented; the full suite, typecheck, and boundary check pass in the c
 - [x] Listener and policy failures are no longer silent: `RuntimeObserver` takes `onListenerError` and the runtime emits `runtime.listener-failed` (attributed to the operation being committed when there is one; visible in the devtools Timeline as a failed runtime entry). Isolation is unchanged; with diagnostics disabled nothing is reported
 
 New tests: `tests/core/runtime-listener-failures.spec.ts` (plus listener-failure cases in `tests/core/runtime-observer.spec.ts` and `tests/devtools/protocol/timeline.spec.ts`), `tests/core/state-types.test.ts`, `tests/core/state-transitions.spec.ts`, `tests/core/runtime-state-trace.spec.ts`, `tests/core/graph-coordination.spec.ts`, `tests/core/runtime-golden-trace.spec.ts`, `tests/core/graph-topology.spec.ts`, `tests/core/runtime-dispose.spec.ts`, `tests/playground/dependency-graph-store-dispose.spec.ts`; plugin disposal cases added to `tests/vue/plugin.spec.ts`.
+
+## Retention and cleanup hardening
+
+Status: Implemented; the full suite, typecheck, boundary check, and builds pass in the contained environment. Developer offline validation pending. Earlier work was validated offline by the project owner; this section is new.
+
+- [x] Retention test suite (`tests/retention`): 15 garbage-collection checks with `WeakRef` and forced collection, 11 structural-cleanup checks, and 12 attempt-cleanup checks. Workers start with `--expose-gc` (`vitest.config.ts`); the helpers fail loudly without it. Each check was confirmed to fail when the cleanup it covers is removed or a leak is injected (four injected leaks, four broken registries, three broken attempt paths)
+- [x] Result: no memory leak found. Released values, replaced values, event payloads, late results of abandoned work, mutation and transaction leftovers, and disposed runtimes are all collectible; diagnostics stay bounded; subscriptions, timers, and listeners return to baseline
+- [x] Cleanup gap found and fixed: a loader that ignores its abort signal and never settles stopped the whole scheduler once unsubscribed, because the abandoned attempt kept its concurrency slot, its active-attempt entry, and the flush awaiting it. Aborting now ends the attempt without waiting for the loader - [ADR-018](../decisions/ADR-018-abort-ends-the-attempt.md). Trade-offs recorded there: for loaders that ignore their signal, real concurrency can briefly exceed `maxConcurrentLoads`, and concurrent loads finishing in the same tick may complete in a different order. The diagnostic golden trace and one state-trace snapshot were re-recorded; the diffs are one event and two lines moving position, nothing added or removed
+- [x] Documented, tested consequence: a runtime using the browser timer environment registers three global listeners that only `dispose()` removes, so an undisposed runtime stays reachable from the document. The Vue plugin and the documented Pinia store pattern dispose it
+- [x] Housekeeping: earlier offline-validation checkboxes and statuses marked passed on the project owner's report; stale `unit-test-output.log` deleted and ignored
+- [ ] Observation, not changed: the scheduler runs one flush at a time and a flush waits for every load it started, so a node subscribed while a slow load is in flight starts loading only when that load finishes (measured: a fast node subscribed at +34 ms started at +205 ms behind a 200 ms load). This is the documented design (architecture 03) but a real latency characteristic to weigh in the migration trial
+- [ ] Observation, not changed: the metrics field `queuedLoads` is cumulative (loads that were ever queued), not the current queue depth; `activeLoads` is the current gauge
+
+New tests: `tests/retention/garbage-collection.spec.ts`, `tests/retention/runtime-cleanup.spec.ts`, `tests/retention/attempt-cleanup.spec.ts` (helpers `gc-helpers.ts`, and `tests/core/coordination-harness.ts` shared with `graph-coordination.spec.ts`).
 
 ## Milestone 13: Existing application migration trial
 

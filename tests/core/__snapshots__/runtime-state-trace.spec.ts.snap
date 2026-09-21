@@ -33,8 +33,8 @@ exports[`runtime state golden traces > an attempt cancelled while queued returns
   "trace": [
     "[one running, one queued] first: loading/stale gen=0 value=false error=- data=0",
     "[one running, one queued] queued: loading/stale gen=0 value=false error=- data=0",
-    "[unsubscribe cancels both] queued: idle/stale gen=0 value=false error=- data=0",
     "[unsubscribe cancels both] first: idle/stale gen=0 value=false error=- data=0",
+    "[unsubscribe cancels both] queued: idle/stale gen=0 value=false error=- data=0",
     "[resubscribe loads normally] first: loading/stale gen=0 value=false error=- data=0",
     "[resubscribe loads normally] queued: loading/stale gen=0 value=false error=- data=0",
     "[resubscribe loads normally] first: success/fresh gen=0 value=true error=- data=1",
