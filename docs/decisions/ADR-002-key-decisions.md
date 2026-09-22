@@ -2,58 +2,37 @@
 
 ## Status
 
-Historical. Every decision below has since been split into its own record, except "Derived nodes are synchronous initially," which never had a number reserved for it and remains here.
+Historical. The original decisions have been replaced by focused decision records, except for the synchronous derived-node rule retained below.
 
-## Decisions
+## Context
 
-### Typed handles
+The initial framework design grouped several foundational choices into one record. As the runtime was implemented, each material decision gained enough context, consequences, and alternatives to justify its own ADR.
 
-Public consumer APIs use typed node and event handles. String keys remain for identity and diagnostics.
+Keeping duplicate summaries here would create two sources of truth and allow the original wording to drift from the maintained decisions.
 
-Split into its own record: see `ADR-003-typed-handles.md`.
+## Decision
 
-### Subscription-driven execution
+Use the focused ADRs as the authoritative records:
 
-Registration does not load data. Consumer subscription, prefetch, refresh, or an active refresh policy schedules execution.
+- Typed node handles: [ADR-003](./ADR-003-typed-handles.md)
+- Subscription-driven loading: [ADR-004](./ADR-004-subscription-driven-loading.md)
+- Atomic graph transactions: [ADR-005](./ADR-005-atomic-graph-transactions.md)
+- Typed domain events: [ADR-006](./ADR-006-domain-events.md)
+- Separate status and freshness: [ADR-007](./ADR-007-status-freshness-separation.md)
+- Branch-scoped failures: [ADR-008](./ADR-008-branch-scoped-failures.md)
+- Refresh policies and polling: [ADR-012](./ADR-012-refresh-policies-and-polling.md)
+- Runtime observability and diagnostic snapshots: [ADR-014](./ADR-014-runtime-observability.md)
 
-Split into its own record: see `ADR-004-subscription-driven-loading.md`.
+ADR-009 and ADR-010 remain reserved numbers. Their original polling and diagnostics scopes were consolidated into ADR-012 and ADR-014 before separate decisions were written.
 
-### Freshness is distinct from execution status
+### Derived nodes remain synchronous
 
-A node can retain stale data while refreshing or after a refresh error.
+A derived node calculates synchronously from successful dependency values. Asynchronous work belongs in a data node so it uses the runtime's standard loading, cancellation, concurrency, failure, refresh, and diagnostic behaviour.
 
-Split into its own record: see `ADR-007-status-freshness-separation.md`.
+Async derived nodes remain deferred until a concrete use case demonstrates that a separate execution model is necessary.
 
-### Transactions provide local atomicity
+## Consequences
 
-A graph transaction batches local context, event, mutation, and invalidation changes. It does not promise backend transactional rollback.
-
-Split into its own record once the implementation approach was decided: see `ADR-005-atomic-graph-transactions.md`.
-
-### Domain events avoid direct store coupling
-
-Domains publish typed business events. Other graph nodes declare event-based invalidation.
-
-Split into its own record once the implementation approach was decided: see `ADR-006-domain-events.md`.
-
-### Partial failure is branch scoped
-
-A failed node blocks dependent descendants but does not stop unrelated branches.
-
-Split into its own record: see `ADR-008-branch-scoped-failures.md`.
-
-### Derived nodes are synchronous initially
-
-Async work uses data nodes to retain one execution and error model.
-
-### Polling is subscription aware
-
-Polling stops when subscription disappears unless explicitly configured otherwise.
-
-Superseded, without a separate write-up of this bullet alone, by the fuller `ADR-012-refresh-policies-and-polling.md`; see `ADR-009-polling-refresh-policy.md` for the pointer.
-
-### Snapshots are diagnostic first
-
-Snapshot restore as cache persistence is deferred.
-
-Superseded, without a separate write-up of this bullet alone, by the fuller `ADR-014-runtime-observability.md`; see `ADR-010-diagnostics-in-core.md` for the pointer.
+- This record is historical navigation rather than an independent source of current behaviour.
+- The linked ADRs can evolve without requiring duplicated summaries here.
+- Derived-node behaviour remains explicit even though it does not have a separate ADR number.

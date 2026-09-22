@@ -2,122 +2,99 @@
 
 ## Status
 
-Accepted and implemented in Milestone 9. Full combined-checkout validation remains pending.
+Accepted, implemented, and validated.
 
 ## Context
 
-Before Milestone 9, the graph runtime could load, refresh, invalidate, transact local context changes, and publish typed invalidation events, but did not own remote command execution or the local cache effects that follow a command.
+The graph runtime owns server-backed read state, but applications also issue remote commands whose outcomes may need to update, invalidate, or reconcile that state.
 
-Application code therefore has no common way to coordinate:
+Graph transactions do not solve this problem. They stage local context and event changes until commit and cannot roll back a backend operation. Optimistic commands require the opposite visibility model: expose a local projection immediately, then confirm, reconcile, or recover it after the remote request settles.
 
-- an optimistic cache update before a request settles;
-- direct reconciliation from a successful response;
-- invalidation and typed event publication after success;
-- restoration after a known rejection;
-- safe behaviour when a transport failure leaves the remote outcome unknown;
-- races with refresh, invalidation, or another optimistic command.
-
-Graph transactions are not a solution to this problem. They hide local writes until commit and provide no backend rollback. Optimistic mutations require the opposite visibility model: apply a local projection immediately, then confirm, reconcile, or restore it after remote work settles.
+The mutation model must distinguish a confirmed rejection from an ambiguous transport outcome and must never restore an old snapshot over newer graph work.
 
 ## Decision
 
-Add immutable typed mutation definitions and `GraphRuntime.mutate(...)`.
+Add immutable typed mutation definitions and caller-owned `runtime.mutate(...)` operations.
 
-A mutation definition owns a stable key and a typed remote execute function. One mutate call owns one remote attempt and optional local effect callbacks.
+A mutation definition contains a stable key and a typed remote `execute` function. Each call represents one independent remote attempt. Mutation requests are not graph nodes, are not deduplicated, and do not consume the data-loader `maxConcurrentLoads` budget.
 
-Local effects use narrow typed capabilities:
+### Confirmed-success effects
 
-- direct update of data nodes that already have a successful value;
-- invalidation of data or derived nodes;
-- typed event publication after confirmed success.
+After remote success, a synchronous `onSuccess` callback may prepare a local graph commit that:
 
-Optimistic effect callbacks are planned before they mutate runtime state. Their target handles, successful-value requirements, duplicate writes, and ownership conflicts are validated first. The runtime then captures complete rollback snapshots and applies all optimistic values atomically.
+- updates data nodes that already contain a successful value;
+- explicitly invalidates data or derived nodes;
+- publishes typed events.
 
-Only one unresolved optimistic mutation may own a given data node. A conflicting mutation is rejected before its request starts. Disjoint optimistic mutations and non-optimistic mutations may proceed concurrently.
+The runtime prepares and validates the complete effect draft before changing graph state. Direct updates, explicit invalidation, event invalidation, and their descendants are combined into one local commit. Each affected node advances generation at most once, observers receive one coherent notification, and subscribed stale work requests at most one scheduler pass.
 
-Optimistic failures are classified as `rejected` or `unknown`:
+Update callbacks are pure replacement functions. They must not mutate graph-owned values in place. Development and test builds guard plain arrays and objects to detect such writes before commit.
 
-- `rejected` means the application knows the remote command did not commit. Eligible snapshots are restored atomically.
-- `unknown` means the command may have committed. The runtime does not restore optimistic values. It marks affected state stale and requests authoritative reconciliation.
+Event predicates evaluate before mutation-owned state changes commit. They may read final direct data updates through the prepared overlay, but they may not read a derived dependency affected by the same mutation draft because that value has not recomputed yet.
 
-An omitted classifier defaults to `unknown` for optimistic work.
+### Optimistic effects
 
-Rollback is guarded by mutation ownership and node generation. If newer graph work changed a target after the optimistic write, the old snapshot is not restored over that work. The mutation rejects with a rollback-conflict error and leaves the node available for normal reconciliation.
+An optional synchronous `optimistic` callback may update successful data nodes before remote execution begins.
 
-Confirmed success applies direct updates, explicit invalidation, and typed event effects through one local commit. Event publication does not occur for optimistic apply, known rejection, unknown outcome, or rollback.
+The runtime validates the complete optimistic draft, captures the target and affected-descendant snapshots, acquires private ownership of the effective target nodes, and applies the projection atomically. Only one unresolved optimistic mutation may own a data node. A conflicting same-node mutation is rejected before its remote request starts; disjoint mutations remain independent.
 
-Mutation execution does not keep a graph transaction or notification buffer open while awaiting the remote request. Mutation requests do not consume `maxConcurrentLoads`, which remains specific to data-node loaders.
+Optimistic invalidation participates in normal graph scheduling immediately. Subscribed derived descendants may recompute and subscribed data descendants may reload while the remote command is still pending.
+
+### Remote outcomes
+
+Optimistic failure handling distinguishes two application-classified outcomes:
+
+- `rejected`: the application has reliable evidence that the server did not commit the command;
+- `unknown`: the command may have committed, such as after a timeout, disconnect, abort, malformed response, or classifier failure.
+
+A missing classifier defaults to `unknown`.
+
+For a known rejection, the runtime restores the captured logical snapshots only when the optimistic session still owns every target and no captured node contains newer graph work. Restoration is itself a new committed transition, so generations advance rather than returning to previous values. If newer work is detected, no snapshot is restored; current state is retained as stale for authoritative reconciliation.
+
+For an unknown outcome, optimistic values are not rolled back. The affected graph remains available but stale, subscribed nodes reconcile through the scheduler, and the caller receives an error that preserves the original remote cause.
+
+If the remote command succeeds but optimistic success reconciliation fails, rollback is also unsafe. The runtime retains the optimistic projection as stale, releases ownership, schedules authoritative recovery, and reports that the remote operation succeeded but local reconciliation did not.
+
+### Transaction interaction
+
+A mutation remains independent while a graph transaction is open. It reads committed graph state and is not committed or rolled back with that transaction.
+
+Do not hold a graph transaction open around remote mutation work. Confirmed mutation effects already use one synchronous local graph commit, while the remote command requires its own outcome and recovery semantics.
 
 ## Consequences
 
-- Consumers receive a typed, reusable remote-command primitive without turning mutations into graph nodes.
-- Optimistic UI is possible while preserving the existing graph as the single cache owner.
-- Known rejection and ambiguous transport failure have deliberately different behaviour.
-- The framework avoids unsafe last-writer-wins rollback.
-- The first release cannot layer two optimistic mutations over the same data node.
-- Optimistic ownership is acquired before remote execution. A conflicting same-node request does not start.
-- Known rejection restores complete target and affected-descendant snapshots only when private ownership and all expected generations still match.
-- Rollback restores logical snapshot fields but advances every restored generation; generation values never move backwards.
-- Safe rollback requests one scheduler pass when it restores stale subscribed state; fresh or unsubscribed restored state does not schedule.
-- Optimistic invalidation schedules subscribed data descendants immediately; mutation requests remain outside the data-load limiter.
-- A changed data descendant settled before known rejection prevents snapshot rollback and is reported as a rollback conflict.
-- Rollback conflicts preserve newer values, mark affected state stale, schedule authoritative reconciliation, and report immutable sorted conflict keys with the original rejection as cause.
-- Unknown outcomes retain optimistic values, mark the affected subgraph stale, schedule subscribed reconciliation, and preserve the remote error as the cause of `GraphMutationOutcomeUnknownError`.
-- Direct updates cannot create a first successful value from a node's placeholder initial value.
-- Mutation update functions are pure replacement functions; development and test builds reject writes through recursively protected plain arrays and objects.
-- Application code must classify API-specific known rejection when it wants automatic rollback.
-- Remote success followed by local reconciliation failure remains possible and must be reported honestly. No client library can roll back a committed server command automatically.
-- For optimistic work, remote success followed by local reconciliation failure retains optimistic state as stale, releases ownership, schedules authoritative recovery, and reports `GraphMutationReconciliationError`.
-- Confirmed success updates, explicit invalidation, and typed event effects share one local commit. Event predicates evaluate against final direct-update values before any graph mutation.
-- Mutation event predicates cannot read a derived dependency affected by the same success draft; unaffected derived values and direct data overlays remain supported.
-- A directly updated value is retained as stale when the same node is invalidated, enabling immediate display followed by authoritative reload.
-- Mutation retries, idempotency keys, offline queues, and global command concurrency remain application or later-milestone concerns.
-- Mutation implementation may extract a narrow invalidation planner or safer active-attempt iteration only when required by a concrete commit or rollback path.
-- The runtime state store remains a storage capability and does not become the owner of stale-state, subscription, or cancellation policy.
-- Existing refresh-policy, transaction-buffer, execution, and Vue adapter structures are not prerequisites for mutation work and remain unchanged unless a mutation test exposes a concrete integration need.
+- Remote commands have typed input and result contracts without becoming graph nodes.
+- Confirmed server responses can reconcile cached values immediately or invalidate authoritative data.
+- Optimistic UI is supported without unsafe last-writer-wins rollback.
+- Known rejection and ambiguous remote outcome deliberately produce different recovery behaviour.
+- Newer context, event, refresh, polling, execution, or mutation work is never overwritten by an obsolete optimistic snapshot.
+- Same-node optimistic overlap is rejected rather than introducing layered optimistic patches and ordering rules.
+- Mutation retry, idempotency keys, offline queues, and global command concurrency remain application or future concerns.
+
+Detailed usage guidance, public error handling, idempotency considerations, and examples belong in the [Mutation Adoption Guide](../guides/04-mutation-adoption.md).
 
 ## Alternatives considered
 
 ### Use graph transactions around remote requests
 
-Rejected. It would keep local notification and scheduling state open across network latency, still could not roll back the server, and conflicts with the established explicit transaction ownership model.
+Rejected. A graph transaction cannot roll back the server, and holding one open across network latency would introduce incorrect ownership and settlement expectations.
 
 ### Roll back every thrown request error
 
-Rejected. Timeouts, disconnects, and aborts can occur after server commit. Automatic rollback would falsely present the command as not having happened.
+Rejected. A timeout or disconnect may occur after the server committed the command. Automatic rollback would present a potentially false local result.
 
 ### Never roll back automatically
 
-Rejected. Known validation and business rejections can safely restore optimistic state, and automatic snapshot restoration is the milestone's primary user value.
+Rejected. Explicit validation or business rejection can prove that the server did not commit, allowing a guarded snapshot restoration.
 
-### Allow overlapping optimistic layers
+### Allow overlapping optimistic layers on one node
 
-Deferred. Correct layer composition requires ordering rules for success, rejection, refresh, invalidation, and event effects. Per-node ownership is smaller and safer for the first release.
+Deferred. Correct composition requires ordering rules across success, rejection, refresh, invalidation, and event effects. Per-node ownership is smaller and safer.
 
-### Put reconciliation callbacks on mutation definitions
+### Put graph reconciliation on shared mutation definitions
 
-Not selected for the first API. Shared mutation contracts should not need to import page-specific graph nodes. Per-call effects keep the remote command reusable across application surfaces. An application wrapper may standardise repeated effects.
+Rejected for the initial API. Shared remote command contracts should not need to import page-specific graph nodes. Per-call effects keep command definitions reusable.
 
-### Update context and derived nodes directly
+### Update context or derived nodes directly
 
-Rejected. Context changes already have explicit APIs and derived values must remain functions of dependencies. Direct mutation writes are limited to successful data-node cache values.
-
-### Add a Vue mutation composable immediately
-
-Deferred. The core capability should be proven first. A composable is justified only if the playground and application trial reveal repeatable reactive lifecycle needs.
-
-### Add transaction IDs or explicit transaction rollback as mutation infrastructure
-
-Rejected for Milestone 9. Transaction identifiers belong with structured diagnostics, where generation, stability, and snapshot normalization can be designed together. Optimistic rollback has different semantics from transaction discard and must remain guarded by mutation ownership, snapshots, generations, and remote-outcome classification.
-
-### Refactor adjacent runtime capabilities before mutation implementation
-
-Rejected as a prerequisite. Similar assignments or large files do not by themselves justify changing established capability ownership. Small cleanup may be included only when the active mutation slice already touches the code and the change preserves focused behavioural coverage.
-
-## Detailed plan
-
-See `docs/implementation/87-milestone-9-mutation-framework-plan.md`.
-
-## Transaction isolation reconciliation
-
-The current transaction contract is defined by ADR-005. Top-level transactions are independent sessions, explicit nested work uses `transaction.transaction(...)`, committed work dispatches notification and scheduling directly, and `runtime.whenSettled()` remains scheduler-specific. Any earlier wording in this ADR about ambient groups or notification buffering is historical.
+Rejected. Context changes use their existing APIs, and derived values remain functions of their dependencies. Direct mutation updates are limited to successful data-node values.

@@ -31,7 +31,7 @@ interface StagedContextChange extends ContextChange {
  * All staged state for one `runtime.transaction(...)` call, owned by that
  * call alone. Replaces the previous module-level `stagedContexts` /
  * `stagedEvents` shared across every open transaction on
- * the runtime -- see ADR-005 "Amendment: isolated transaction sessions".
+ * the runtime -- see ADR-005 "Session ownership and composition".
  * Two calls to `runtime.transaction(...)` never share a session unless one
  * explicitly reuses a handle it was already given.
  */
@@ -70,7 +70,7 @@ export interface RuntimeTransactionCoordinatorDependencies {
  * join. Composing further work into an already-open transaction is only
  * possible by explicitly reusing the `GraphTransaction` handle that call
  * already received (see `docs/decisions/ADR-005-atomic-graph-
- * transactions.md`, "Amendment: isolated transaction sessions", and
+ * transactions.md`, "Session ownership and composition", and
  * `docs/implementation/114-transaction-overlap-isolation-plan.md`).
  */
 export const createRuntimeTransactionCoordinator = ({

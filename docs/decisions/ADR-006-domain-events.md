@@ -2,7 +2,7 @@
 
 ## Status
 
-Implemented for Milestone 6. Event contracts, graph indexing, immediate publication, transaction-aware publication, and the cross-domain playground are implemented. Final combined automated and manual validation is pending.
+Accepted, implemented, and validated.
 
 ## Context
 

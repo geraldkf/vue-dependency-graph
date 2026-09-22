@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted and implemented. Full offline validation is pending after the final integration-test update.
+Accepted, implemented, and validated.
 
 ## Context
 

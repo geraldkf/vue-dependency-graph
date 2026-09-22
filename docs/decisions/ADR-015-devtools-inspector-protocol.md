@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted and implemented. Milestone 11 is complete.
+Accepted, implemented, and validated.
 
 ## Context
 

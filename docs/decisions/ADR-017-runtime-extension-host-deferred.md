@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted. Records a decision *not* to build something yet, with the conditions under which to revisit it.
+Accepted. Implementation is intentionally deferred pending a revisit trigger.
 
 ## Context
 

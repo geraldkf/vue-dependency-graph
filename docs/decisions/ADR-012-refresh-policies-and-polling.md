@@ -1,8 +1,8 @@
 ## ADR-012: Subscription-Aware Refresh Policies and Polling
 
-### Status
+## Status
 
-Accepted and implemented in Milestone 8. Full automated validation and the Polling Progress manual browser paths passed.
+Accepted, implemented, and validated.
 
 ### Context
 
@@ -24,7 +24,7 @@ Policy work runs only while the node has subscription ownership. It delegates lo
 
 Poll timeout is based on active elapsed time and excludes paused duration. Terminal polling and retry errors preserve the latest successful data and use the existing stale/error state model.
 
-The core does not import browser APIs. Optional Vue/browser integration provides environment signals for document visibility and network availability.
+The core does not import browser APIs. Optional Vue/browser integration provides environment signals for document visibility and network availability. The same injected timer environment now also backs value-release policies, as recorded in [ADR-016](./ADR-016-value-release-policies.md); refresh and release remain separate controllers with separate policy semantics.
 
 ### Consequences
 
@@ -63,6 +63,3 @@ Rejected. A fixed interval may intentionally remain active for the lifetime of a
 
 Deferred. Composition requires precedence rules for timers, retries, pause state, and terminal outcomes. One policy covers the current milestone use cases with a smaller public contract.
 
-### Detailed plan
-
-See `docs/implementation/78-milestone-8-refresh-polling-plan.md`.

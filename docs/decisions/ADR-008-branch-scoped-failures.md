@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted and implemented.
+Accepted, implemented, and validated.
 
 ## Context
 
@@ -17,7 +17,7 @@ Failure is evaluated per dependency branch, not globally for the call:
 - A node whose own load or derive throws (and is not superseded or aborted) records a `failed` entry with its error.
 - A node that required a failed (or itself-blocked) ancestor does not execute and records a distinct `blocked` entry naming which ancestor(s) blocked it.
 - A node with no dependency on the failure executes and settles normally, independent of the rest of the call.
-- Once every executable branch of the call has settled, the caller's promise rejects with one `GraphExecutionError` aggregating every `failed` and `blocked` entry from that call. Per-node runtime state (status, error, blockedBy) remains independently readable regardless of how the aggregate call settled.
+- Once every executable branch of the call has settled, the caller's promise rejects with one `GraphExecutionError` aggregating every `failed` and `blocked` entry from that call. Per-node runtime state remains independently readable regardless of how the aggregate call settled. `GraphExecutionError` distinguishes nodes that failed directly from requested nodes that were blocked by failed dependencies.
 
 Obsolete and aborted attempts (superseded by a newer generation, or cancelled because no subscriber needs them any more) are not business failures under this model and are not recorded as `failed` or `blocked` entries at all.
 

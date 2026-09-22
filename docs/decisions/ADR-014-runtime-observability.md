@@ -1,8 +1,8 @@
 ## ADR-014: Runtime Observability Through a Structured Event Stream
 
-### Status
+## Status
 
-Accepted and implemented. Milestone 10 is complete and validated.
+Accepted, implemented, and validated.
 
 ### Context
 

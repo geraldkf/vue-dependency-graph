@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted and implemented.
+Accepted, implemented, and validated.
 
 ## Context
 
@@ -14,7 +14,7 @@ A string-keyed consumer API loses the node's value type at every call site. A lo
 
 A node definition returned by `defineContextNode(...)`, `defineDataNode(...)`, or `defineDerivedNode(...)` is itself the typed handle consumers pass around. Public APIs that reference a node - `get(...)` inside a loader or derivation, `dependencies: [...]`, `useNode(...)`, `runtime.execute([...])`, `runtime.setContext(...)` - accept these handles, not bare strings. `NodeValue<typeof Handle>` resolves to the node's actual value type through the handle's type parameters, so a consumer never supplies or narrows a type by hand.
 
-The stable string key carried by each handle remains the identity used for topology, indexing, diagnostics, validation messages, and (later) serialisation. It is not removed - it is demoted from the primary consumer-facing API surface to an internal and diagnostic concern.
+The stable string key carried by each handle remains the identity used for topology, indexing, diagnostics, validation messages, and serialisation. Graph creation registers one canonical definition for each key. Runtime APIs resolve supported equivalent handles through that key, but they always operate on the canonical registered definition and its runtime state. APIs whose semantics depend on definition-owned behaviour, such as manual refresh invoking a node loader, require the canonical registered handle rather than accepting a separately constructed lookalike.
 
 ## Consequences
 
@@ -22,7 +22,7 @@ The stable string key carried by each handle remains the identity used for topol
 - Renaming a node's variable is a normal, compiler-assisted refactor. Renaming a node's *key* is a separate, deliberate action (it affects diagnostics, topology, and any external reference to that key) and does not happen accidentally as a side effect of a handle rename.
 - There is no central key-to-type registry to maintain by hand; the type lives on the handle itself.
 - Consumers must import and hold a reference to the handle rather than a plain string, which is slightly more ceremony than `"targets"` but is the direct cost of the type safety above.
-- Two independently constructed node definitions that happen to share a key are still distinct handles at the type level; graph validation (not the type system) is what catches a duplicate-key collision at `createGraph(...)` time.
+- Two independently constructed definitions that share a key remain distinct objects at the type level. Graph validation rejects registering both, and runtime operations never substitute an unregistered definition's loader, derivation, policy, or metadata for the canonical registered definition.
 
 ## Alternatives considered
 

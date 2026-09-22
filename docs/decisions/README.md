@@ -4,16 +4,16 @@ Decision records capture choices that materially affect correctness, compatibili
 
 ## Index
 
-- ADR-001: Standalone framework and layered monorepo
-- ADR-002: Framework-agnostic core, and remaining initial decisions not split into their own records
+- ADR-001: Standalone framework with logical source layers
+- ADR-002: Historical index of the initial key decisions
 - ADR-003: Typed handles over string-only consumer APIs
 - ADR-004: Subscription-driven loading
 - ADR-005: Atomic graph transactions
 - ADR-006: Domain events over direct cross-store dependencies
 - ADR-007: Separate execution status from freshness
 - ADR-008: Branch-scoped failure handling
-- ADR-009: Polling as a refresh policy - superseded by ADR-012
-- ADR-010: Diagnostics designed into the core - superseded by ADR-014
+- ADR-009: Reserved scope consolidated into ADR-012; no separate decision record
+- ADR-010: Reserved scope consolidated into ADR-014; no separate decision record
 - ADR-011: Execution concurrency limit
 - ADR-012: Subscription-aware refresh policies and polling
 - ADR-013: Typed mutations with guarded optimistic rollback
@@ -24,7 +24,7 @@ Decision records capture choices that materially affect correctness, compatibili
 - ADR-018: Aborting an attempt ends it, even if the loader ignores the signal
 - ADR-019: Scheduler flushes overlap instead of queuing behind one another
 
-Every number above now has a file. ADR-009 and ADR-010 are short pointers rather than full records: by the time polling and observability were actually designed, each had grown well beyond its original ADR-002 bullet, so the full decision is recorded once, in ADR-012 and ADR-014 respectively, rather than duplicated.
+ADR-009 and ADR-010 are reserved numbers without separate files. By the time polling and observability were designed, each had grown beyond its original ADR-002 scope. Their decisions are recorded once in ADR-012 and ADR-014 respectively rather than duplicated.
 
 ## Template
 

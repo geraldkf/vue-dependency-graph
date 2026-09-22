@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted for initial design.
+Accepted, implemented, and validated.
 
 ## Context
 

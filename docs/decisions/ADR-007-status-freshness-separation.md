@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted and implemented.
+Accepted, implemented, and validated.
 
 ## Context
 
@@ -19,6 +19,8 @@ Node runtime state tracks three independent facts rather than one enum:
 - `hasSuccessfulValue` (with the associated `data`): whether a successful value exists at all, independent of whether it is currently fresh.
 
 These are updated together but are not collapsed into each other. Invalidation marks a node stale without deleting its data. A re-execution that already has a successful value uses `refreshing` rather than `loading`, and on failure retains the previous successful data, records the error, and leaves the node stale rather than clearing the value. Context nodes begin successful and fresh; data nodes begin with their initial value but no successful execution; derived nodes begin `undefined` with no successful derivation.
+
+All writes to node runtime state go through named transitions in `src/core/state/transitions.ts`. Each transition updates the complete set of fields required for its meaning, and compile-time and boundary checks prevent ordinary core modules from assigning those fields directly. Behavioural state-transition tests verify that every transition preserves the valid combinations described by this decision.
 
 ## Consequences
 
