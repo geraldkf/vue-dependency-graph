@@ -2,6 +2,7 @@ import type { RuntimeDiagnosticEmitter } from "../diagnostics/diagnostic-emitter
 import type { ExecutionDiagnosticContext } from "../execution/execution";
 import type { AnyNodeDefinition } from "../graph/types";
 import type { SchedulerRequestTracker } from "../scheduling/request-tracker";
+import type { SchedulerFlush } from "../scheduling/scheduler";
 
 export interface SchedulerDiagnosticsDependencies {
   readonly diagnostics: RuntimeDiagnosticEmitter;
@@ -9,30 +10,32 @@ export interface SchedulerDiagnosticsDependencies {
 }
 
 export interface SchedulerDiagnostics {
-  /** Attribution for the flush the scheduler is about to execute. */
-  readonly getExecutionContext: () => ExecutionDiagnosticContext;
   readonly onRequested: () => void;
-  readonly onStarted: (targets: readonly AnyNodeDefinition[]) => void;
-  readonly onCompleted: (error: Error | null) => void;
+  readonly beginFlush: (
+    targets: readonly AnyNodeDefinition[],
+  ) => SchedulerFlush<ExecutionDiagnosticContext>;
 }
 
 /**
  * Diagnostic attribution for scheduler flushes.
  *
- * Owns the current flush's operation id, which is created when a flush is
- * requested and then stamped on the flush's `started`, execution, and
- * `completed`/`failed` events. The reason and cause come from the shared
- * `schedulerRequest` tracker (written by whoever asked for the flush) and are
- * read - never cleared - until the flush completes, when the tracker is reset.
+ * Flushes can overlap, so attribution is captured once per flush, in
+ * `beginFlush`, and held in that flush's own closure - never in a field
+ * shared between flushes. `pendingOperationId` is the one piece of state
+ * this module keeps outside a flush, and it only bridges `onRequested`
+ * (schedule time) to the `beginFlush` of the *next* flush to start; nothing
+ * else reads it, so it needs no forward-reference guard.
  *
- * The operation id is state local to this adapter on purpose: nothing else
- * reads it, so it needs no forward-reference guard and is not shared.
+ * The reason and cause come from the shared `schedulerRequest` tracker,
+ * written by whoever asked for the flush. `beginFlush` reads it and resets it
+ * immediately, so a later, unrelated `schedule()` call starts from a clean
+ * tracker rather than inheriting this flush's reason.
  */
 export const createSchedulerDiagnostics = ({
   diagnostics,
   schedulerRequest,
 }: SchedulerDiagnosticsDependencies): SchedulerDiagnostics => {
-  let operationId = "";
+  let pendingOperationId = "";
 
   const withCause = (
     causeId: string | undefined,
@@ -40,46 +43,47 @@ export const createSchedulerDiagnostics = ({
     causeId === undefined ? {} : { causeId };
 
   const diagnostic: SchedulerDiagnostics = {
-    getExecutionContext: () => {
-      const pending = schedulerRequest.peek();
-      return {
-        operationId,
-        ...withCause(pending.causeId),
-        reason: pending.reason,
-      };
-    },
     onRequested: () => {
-      operationId = diagnostics.createOperationId();
+      pendingOperationId = diagnostics.createOperationId();
       const pending = schedulerRequest.peek();
       diagnostics.emit({
         type: "scheduler.requested",
-        operationId,
+        operationId: pendingOperationId,
         ...withCause(pending.causeId),
         reason: pending.reason,
         nodeKeys: [],
       });
     },
-    onStarted: (targets) => {
-      const pending = schedulerRequest.peek();
+    beginFlush: (targets) => {
+      const attribution = schedulerRequest.peek();
+      schedulerRequest.reset();
+      const operationId = pendingOperationId;
+
       diagnostics.emit({
         type: "scheduler.started",
         operationId,
-        ...withCause(pending.causeId),
-        reason: pending.reason,
+        ...withCause(attribution.causeId),
+        reason: attribution.reason,
         nodeKeys: targets.map((node) => node.key),
       });
-    },
-    onCompleted: (error) => {
-      const pending = schedulerRequest.peek();
-      diagnostics.emit({
-        type: error ? "scheduler.failed" : "scheduler.completed",
-        operationId,
-        ...withCause(pending.causeId),
-        reason: pending.reason,
-        nodeKeys: [],
-        ...(error ? { error: diagnostics.toError(error) } : {}),
-      });
-      schedulerRequest.reset();
+
+      return {
+        context: {
+          operationId,
+          ...withCause(attribution.causeId),
+          reason: attribution.reason,
+        },
+        complete: (error) => {
+          diagnostics.emit({
+            type: error ? "scheduler.failed" : "scheduler.completed",
+            operationId,
+            ...withCause(attribution.causeId),
+            reason: attribution.reason,
+            nodeKeys: [],
+            ...(error ? { error: diagnostics.toError(error) } : {}),
+          });
+        },
+      };
     },
   };
   return Object.freeze(diagnostic);

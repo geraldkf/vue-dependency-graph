@@ -149,6 +149,10 @@ Event tests cover payload typing, declaration validation, deterministic graph in
 - Coordination module: `tests/core/graph-coordination.spec.ts` builds execution, scheduler, subscriptions, and invalidation without a runtime and pins the two backward edges (changed refresh result -> descendant invalidation; scheduler flushes only directly subscribed nodes), scheduler-cause attribution through the shared tracker, and abort of automatic-only work on last unsubscribe
 - Golden trace: `tests/core/runtime-golden-trace.spec.ts` snapshots the whole normalised diagnostic stream of one scenario that covers every execution reason (subscription, context invalidation, changed result, refresh policy, explicit, prefetch, refresh, query variants, dependency), transactions, mutations, and the release policy. Structural refactors of the runtime composition must leave it unchanged; a diff means event order, content, or attribution moved. Operation ids are normalised, so it pins how events group and cause each other rather than literal id values.
 
+## Scheduler overlap tests
+
+`tests/core/scheduler-overlap.spec.ts` (34 tests) pins that scheduler flushes no longer block one another (ADR-019): independent work is never held up by a slow load; work is never started twice; invalidation, supersession, and abort races resolve correctly, for loaders that honour their abort signal and ones that ignore it; `whenSettled` and `getSchedulerState()` behave correctly across overlapping flushes, including which flush's error is reported; each flush's diagnostic attribution stays separate from every other's, including under reentrancy and storms of rapid scheduling. A companion unit test on `scheduler-diagnostics.ts` directly checks that attribution does not leak from one flush into the next. Loaders are driven by hand (no wall-clock waits), so every interleaving is exact and repeatable.
+
 ## Retention and cleanup tests
 
 `tests/retention` checks that the runtime lets go of what it is finished with. Vitest workers start with `--expose-gc` (see `vitest.config.ts`) and the helpers fail if `gc` is missing rather than skipping.

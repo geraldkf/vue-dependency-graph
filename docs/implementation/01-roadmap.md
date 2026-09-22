@@ -486,6 +486,20 @@ Status: Implemented; the full suite, typecheck, boundary check, and builds pass 
 
 New tests: `tests/retention/garbage-collection.spec.ts`, `tests/retention/runtime-cleanup.spec.ts`, `tests/retention/attempt-cleanup.spec.ts` (helpers `gc-helpers.ts`, and `tests/core/coordination-harness.ts` shared with `graph-coordination.spec.ts`).
 
+## Scheduler overlap (head-of-line blocking fix)
+
+Status: Implemented; the full suite, typecheck, boundary check, and builds pass in the contained environment. Developer offline validation pending.
+
+- [x] Root cause confirmed and measured: scheduler flushes serialized, so one slow load blocked every unrelated scheduler-driven load in the runtime for its whole duration (measured: a fast node subscribed 30 ms into a 200 ms slow load started at ~207 ms instead of ~34 ms)
+- [x] Regression tests written first (`tests/core/scheduler-overlap.spec.ts`, 34 tests, hand-driven loaders, no wall-clock waits) and confirmed to fail against the serialized scheduler, covering: independent work not held up; work never started twice; invalidation/supersession/abort races (cooperative and signal-ignoring loaders); `whenSettled` and `getSchedulerState()` across overlap; per-flush attribution under reentrancy and storms; a direct `scheduler-diagnostics.ts` unit test for attribution leakage
+- [x] Fix implemented: flushes still coalesce synchronous requests, but no longer block the next one (`scheduling/scheduler.ts`, `composition/scheduler-diagnostics.ts`, `composition/graph-coordination.ts`) - [ADR-019](../decisions/ADR-019-overlapping-scheduler-flushes.md)
+- [x] All 34 regression tests pass; full suite (665 tests) passes; mutation-checked by reverting the fix and two of its supporting mechanisms, each caught
+- [x] Golden diagnostic trace re-recorded; the diff is a re-grouping of overlapping caller-owned operations (extra reuse events, wider `nodeKeys` on one flush) - confirmed as a set-equal re-ordering, not new or lost behaviour
+- [x] Docs: architecture 03 (automatic scheduler, in-flight sharing, `whenSettled`) and the test strategy updated
+- [ ] Not built now, flagged if needed: a dirty-set for `getSubscribedTargetsNeedingWork` (measured cost: ~1.0 ms per change on a 1,000-node graph under a change storm, vs ~0.28 ms before - each overlapping flush rescans every node); an explicit debounce policy (a burst of invalidations for one node no longer coalesces "for free" when an unrelated slow load happens to be in flight, which was an accidental effect of blocking, not a documented guarantee)
+
+New tests: `tests/core/scheduler-overlap.spec.ts`.
+
 ## Milestone 13: Existing application migration trial
 
 - [ ] Compatibility assessment
