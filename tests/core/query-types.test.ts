@@ -12,7 +12,9 @@ const appointments = defineDataNode({
   load: async () => ["appointment"],
 });
 
-const appointmentsPage = defineQuery({
+// Prefixed with `_`: only exercised via `typeof _appointmentsPage` below for
+// the static QueryNodes<> type check, not read as a runtime value.
+const _appointmentsPage = defineQuery({
   key: "typed-appointments-page",
   nodes: {
     currentJobSeeker: jobSeekerId,
@@ -20,7 +22,7 @@ const appointmentsPage = defineQuery({
   },
 });
 
-type AppointmentsPageNodes = QueryNodes<typeof appointmentsPage>;
+type AppointmentsPageNodes = QueryNodes<typeof _appointmentsPage>;
 
 const currentJobSeeker: AppointmentsPageNodes["currentJobSeeker"] = jobSeekerId;
 const appointmentList: AppointmentsPageNodes["appointments"] = appointments;

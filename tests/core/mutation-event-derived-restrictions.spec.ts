@@ -7,7 +7,6 @@ import {
   defineDerivedNode,
   defineEvent,
   defineMutation,
-  GraphMutationReconciliationError,
   type EventInvalidationContext,
 } from "../../src/core";
 

@@ -3,10 +3,7 @@ import { fireEvent, render, screen } from "@testing-library/vue";
 import { createPinia } from "pinia";
 import { useDependencyGraphStore } from "../../../src/playground/dependency-graph-store";
 import ErrorAndRetryScenario from "../../../src/playground/scenarios/ErrorAndRetryScenario.vue";
-import {
-  flakyLoader,
-  flakyResource,
-} from "../../../src/playground/scenarios/error-and-retry-nodes";
+import { flakyLoader } from "../../../src/playground/scenarios/error-and-retry-nodes";
 
 describe("ErrorAndRetryScenario", () => {
   beforeEach(() => {
@@ -24,7 +21,7 @@ describe("ErrorAndRetryScenario", () => {
   it("shows an error with no data on initial load failure", async () => {
     flakyLoader.shouldFail.value = true;
     const pinia = createPinia();
-    const { runtime } = useDependencyGraphStore(pinia);
+    useDependencyGraphStore(pinia);
 
     render(ErrorAndRetryScenario, {
       global: { plugins: [pinia] },
@@ -39,7 +36,7 @@ describe("ErrorAndRetryScenario", () => {
 
   it("keeps stale data visible alongside the error when a refresh fails, triggered via the UI toggle", async () => {
     const pinia = createPinia();
-    const { runtime } = useDependencyGraphStore(pinia);
+    useDependencyGraphStore(pinia);
 
     render(ErrorAndRetryScenario, {
       global: { plugins: [pinia] },

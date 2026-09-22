@@ -7,10 +7,7 @@ import {
   optimisticAppointmentApi,
   optimisticAppointments,
 } from "../../../src/playground/scenarios/optimistic-appointment-nodes";
-import {
-  capabilityInterviewStatus,
-  capabilityStatusLoader,
-} from "../../../src/playground/scenarios/typed-events-nodes";
+import { capabilityStatusLoader } from "../../../src/playground/scenarios/typed-events-nodes";
 
 const renderScenario = () => {
   const pinia = createPinia();

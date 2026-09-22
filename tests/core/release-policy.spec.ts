@@ -3,7 +3,6 @@ import {
   createGraph,
   createGraphRuntime,
   createInMemoryGraphDiagnostics,
-  defineContextNode,
   defineDataNode,
   defineDerivedNode,
   GraphValidationError,

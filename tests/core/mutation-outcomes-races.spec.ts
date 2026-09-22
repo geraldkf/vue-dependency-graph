@@ -4,7 +4,6 @@ import {
   createGraphRuntime,
   defineDataNode,
   defineMutation,
-  GraphMutationOutcomeUnknownError,
   GraphMutationRollbackConflictError,
 } from "../../src/core";
 import { deferred, waitForCondition } from "./test-helpers";

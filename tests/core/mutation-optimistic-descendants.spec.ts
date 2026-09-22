@@ -1,11 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import {
-  createGraph,
-  createGraphRuntime,
-  defineDataNode,
-  defineMutation,
-  GraphMutationRollbackConflictError,
-} from "../../src/core";
+import { createGraph, createGraphRuntime, defineDataNode, defineMutation } from "../../src/core";
 import { deferred, waitForCondition } from "./test-helpers";
 
 const rejection = new Error("Known rejection");

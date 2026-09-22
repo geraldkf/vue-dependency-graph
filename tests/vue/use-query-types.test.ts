@@ -32,7 +32,7 @@ const refreshResult: Promise<void> = result.refresh();
 void [currentJobSeeker, appointmentList, isLoading, prefetchResult, refreshResult];
 
 // @ts-expect-error query aliases are retained exactly
-result.nodes.missing;
+void result.nodes.missing;
 
 // @ts-expect-error aliased node values retain their declared types
 const invalidAppointments: ComputedRef<number[]> = result.nodes.appointments.data;

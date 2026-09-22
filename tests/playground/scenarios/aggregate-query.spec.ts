@@ -3,12 +3,7 @@ import { fireEvent, render, screen } from "@testing-library/vue";
 import { createPinia } from "pinia";
 import { useDependencyGraphStore } from "../../../src/playground/dependency-graph-store";
 import AggregateQueryScenario from "../../../src/playground/scenarios/AggregateQueryScenario.vue";
-import {
-  metricA,
-  metricB,
-  metricC,
-  metricCLoader,
-} from "../../../src/playground/scenarios/aggregate-query-nodes";
+import { metricCLoader } from "../../../src/playground/scenarios/aggregate-query-nodes";
 
 describe("AggregateQueryScenario", () => {
   beforeEach(() => {
@@ -22,7 +17,7 @@ describe("AggregateQueryScenario", () => {
 
   it("aggregate reflects full success when every metric loads", async () => {
     const pinia = createPinia();
-    const { runtime } = useDependencyGraphStore(pinia);
+    useDependencyGraphStore(pinia);
 
     render(AggregateQueryScenario, {
       global: { plugins: [pinia] },
@@ -40,7 +35,7 @@ describe("AggregateQueryScenario", () => {
 
   it("aggregate reflects partial failure while the other metrics stay correct", async () => {
     const pinia = createPinia();
-    const { runtime } = useDependencyGraphStore(pinia);
+    useDependencyGraphStore(pinia);
 
     render(AggregateQueryScenario, {
       global: { plugins: [pinia] },
@@ -79,7 +74,7 @@ describe("AggregateQueryScenario", () => {
   it("isSuccess is false when a metric has never had a successful value", async () => {
     metricCLoader.shouldFail.value = true;
     const pinia = createPinia();
-    const { runtime } = useDependencyGraphStore(pinia);
+    useDependencyGraphStore(pinia);
 
     render(AggregateQueryScenario, {
       global: { plugins: [pinia] },

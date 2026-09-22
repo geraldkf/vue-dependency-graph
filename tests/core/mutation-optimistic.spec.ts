@@ -6,7 +6,6 @@ import {
   defineDerivedNode,
   defineMutation,
   GraphMutationConflictError,
-  GraphMutationOutcomeUnknownError,
   GraphMutationStateError,
 } from "../../src/core";
 import { deferred, waitForCondition } from "./test-helpers";

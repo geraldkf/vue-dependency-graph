@@ -25,7 +25,9 @@ const data = defineDataNode({
   },
 });
 
-const derived = defineDerivedNode({
+// Prefixed with `_`: only exercised via `typeof _derived` below for the
+// static NodeValue<> type check, not read as a runtime value.
+const _derived = defineDerivedNode({
   key: "derived",
   dependencies: [count, data] as const,
   derive: ({ get }) => {
@@ -37,7 +39,7 @@ const derived = defineDerivedNode({
 
 const contextValue: NodeValue<typeof count> = 1;
 const dataValue: NodeValue<typeof data> = "value";
-const derivedValue: NodeValue<typeof derived> = "value";
+const derivedValue: NodeValue<typeof _derived> = "value";
 void [contextValue, dataValue, derivedValue];
 
 void defineDataNode<number>({

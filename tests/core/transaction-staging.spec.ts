@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
 import { createGraph, createGraphRuntime, defineContextNode, defineDataNode } from "../../src/core";
-import { waitForCondition } from "./test-helpers";
 
 describe("transaction staging and operation boundaries", () => {
   it("without a transaction, an async-spanning update causes two loads", async () => {
@@ -139,7 +138,7 @@ describe("transaction staging and operation boundaries", () => {
     });
     const runtime = createGraphRuntime(createGraph({ nodes: [data] }));
 
-    await runtime.transaction(async (transaction) => {
+    await runtime.transaction(async () => {
       await Promise.resolve();
     });
     await runtime.execute([data]);

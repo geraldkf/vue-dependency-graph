@@ -3,10 +3,6 @@ import { fireEvent, render, screen } from "@testing-library/vue";
 import { createPinia } from "pinia";
 import { useDependencyGraphStore } from "../../../src/playground/dependency-graph-store";
 import ContextSwitchingScenario from "../../../src/playground/scenarios/ContextSwitchingScenario.vue";
-import {
-  selectedUserId,
-  userProfile,
-} from "../../../src/playground/scenarios/context-switching-nodes";
 
 describe("ContextSwitchingScenario", () => {
   beforeEach(() => {
@@ -19,7 +15,7 @@ describe("ContextSwitchingScenario", () => {
 
   it("loads the initial user's profile and switches users on click", async () => {
     const pinia = createPinia();
-    const { runtime } = useDependencyGraphStore(pinia);
+    useDependencyGraphStore(pinia);
 
     render(ContextSwitchingScenario, {
       global: { plugins: [pinia] },
