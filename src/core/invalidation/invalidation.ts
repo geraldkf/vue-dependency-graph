@@ -1,13 +1,6 @@
-import type {
-  ActiveAttempt,
-  NodeStateRecord,
-} from "../state/state";
+import type { ActiveAttempt, NodeStateRecord } from "../state/state";
 import { invalidate, writeValue } from "../state/transitions";
-import type {
-  AnyNodeDefinition,
-  ContextNodeDefinition,
-  Graph,
-} from "../graph/types";
+import type { AnyNodeDefinition, ContextNodeDefinition, Graph } from "../graph/types";
 import type { ContextChange } from "../transactions/types";
 
 export interface InvalidationDispatch {
@@ -25,48 +18,32 @@ export interface CombinedInvalidationPlan {
 
 export interface RuntimeInvalidationController {
   readonly resolveContextNode: <TValue>(
-    node: ContextNodeDefinition<TValue>
-  ) => ContextNodeDefinition<TValue>;
-  readonly setContext: <TValue>(
     node: ContextNodeDefinition<TValue>,
-    value: TValue
-  ) => void;
+  ) => ContextNodeDefinition<TValue>;
+  readonly setContext: <TValue>(node: ContextNodeDefinition<TValue>, value: TValue) => void;
   readonly commitContexts: (
     changes: readonly ContextChange[],
     invalidationRoots?: readonly AnyNodeDefinition[],
-    dispatch?: InvalidationDispatch
+    dispatch?: InvalidationDispatch,
   ) => void;
-  readonly invalidateChangedResultDescendants: (
-    node: AnyNodeDefinition
-  ) => void;
+  readonly invalidateChangedResultDescendants: (node: AnyNodeDefinition) => void;
   readonly invalidateChangedResultDescendantsWithoutDispatch: (
-    nodes: readonly AnyNodeDefinition[]
+    nodes: readonly AnyNodeDefinition[],
   ) => boolean;
   readonly prepareCombinedInvalidation: (
     changedResultRoots: readonly AnyNodeDefinition[],
     invalidationRoots: readonly AnyNodeDefinition[],
-    preservedRoots: readonly AnyNodeDefinition[]
+    preservedRoots: readonly AnyNodeDefinition[],
   ) => CombinedInvalidationPlan;
-  readonly invalidateNodesAndDescendants: (
-    nodes: readonly AnyNodeDefinition[]
-  ) => void;
+  readonly invalidateNodesAndDescendants: (nodes: readonly AnyNodeDefinition[]) => void;
 }
 
 export interface RuntimeInvalidationDependencies {
   readonly graph: Graph;
-  readonly getNodeState: (
-    key: string
-  ) => NodeStateRecord;
-  readonly getActiveAttempt: (
-    key: string
-  ) => ActiveAttempt | undefined;
-  readonly hasSubscribers: (
-    node: AnyNodeDefinition
-  ) => boolean;
-  readonly resolveRegisteredNode: (
-    node: AnyNodeDefinition,
-    purpose: string
-  ) => AnyNodeDefinition;
+  readonly getNodeState: (key: string) => NodeStateRecord;
+  readonly getActiveAttempt: (key: string) => ActiveAttempt | undefined;
+  readonly hasSubscribers: (node: AnyNodeDefinition) => boolean;
+  readonly resolveRegisteredNode: (node: AnyNodeDefinition, purpose: string) => AnyNodeDefinition;
   readonly notify: () => void;
   readonly schedule: () => void;
   readonly onContextsCommitted?: (
@@ -81,9 +58,7 @@ export interface RuntimeInvalidationDependencies {
   ) => void;
 }
 
-const isContextNode = (
-  node: AnyNodeDefinition
-): node is ContextNodeDefinition<unknown> =>
+const isContextNode = (node: AnyNodeDefinition): node is ContextNodeDefinition<unknown> =>
   node.kind === "context";
 
 export const createRuntimeInvalidationController = ({
@@ -98,23 +73,21 @@ export const createRuntimeInvalidationController = ({
   onChangedResultInvalidated,
 }: RuntimeInvalidationDependencies): RuntimeInvalidationController => {
   const requireRegisteredContextNode = <TValue>(
-    node: ContextNodeDefinition<TValue>
+    node: ContextNodeDefinition<TValue>,
   ): ContextNodeDefinition<TValue> => {
     const registered = resolveRegisteredNode(node, "context update");
     if (!isContextNode(registered)) {
-      throw new Error(
-        `Context node "${node.key}" is not registered in this graph.`
-      );
+      throw new Error(`Context node "${node.key}" is not registered in this graph.`);
     }
     return registered as ContextNodeDefinition<TValue>;
   };
 
   const collectDescendants = (
-    nodes: readonly AnyNodeDefinition[]
+    nodes: readonly AnyNodeDefinition[],
   ): readonly AnyNodeDefinition[] => {
     const descendants: AnyNodeDefinition[] = [];
     const visited = new Set<string>();
-    const queue = nodes.flatMap(node => graph.getChildren(node));
+    const queue = nodes.flatMap((node) => graph.getChildren(node));
 
     for (let index = 0; index < queue.length; index += 1) {
       const descendant = queue[index];
@@ -127,9 +100,7 @@ export const createRuntimeInvalidationController = ({
     return descendants;
   };
 
-  const invalidateNodes = (
-    descendants: readonly AnyNodeDefinition[]
-  ): boolean => {
+  const invalidateNodes = (descendants: readonly AnyNodeDefinition[]): boolean => {
     let subscribedDescendantChanged = false;
 
     for (const descendant of descendants) {
@@ -149,7 +120,7 @@ export const createRuntimeInvalidationController = ({
   };
 
   const collectNodesAndDescendants = (
-    nodes: readonly AnyNodeDefinition[]
+    nodes: readonly AnyNodeDefinition[],
   ): readonly AnyNodeDefinition[] => {
     const affected = new Map<string, AnyNodeDefinition>();
     for (const node of nodes) affected.set(node.key, node);
@@ -160,18 +131,16 @@ export const createRuntimeInvalidationController = ({
   };
 
   const invalidateChangedResultDescendantsWithoutDispatch = (
-    nodes: readonly AnyNodeDefinition[]
+    nodes: readonly AnyNodeDefinition[],
   ): boolean => {
-    const changedKeys = new Set(nodes.map(node => node.key));
-    return invalidateNodes(
-      collectDescendants(nodes).filter(node => !changedKeys.has(node.key))
-    );
+    const changedKeys = new Set(nodes.map((node) => node.key));
+    return invalidateNodes(collectDescendants(nodes).filter((node) => !changedKeys.has(node.key)));
   };
 
   const prepareCombinedInvalidation = (
     changedResultRoots: readonly AnyNodeDefinition[],
     invalidationRoots: readonly AnyNodeDefinition[],
-    preservedRoots: readonly AnyNodeDefinition[]
+    preservedRoots: readonly AnyNodeDefinition[],
   ): CombinedInvalidationPlan => {
     const affected = new Map<string, AnyNodeDefinition>();
     for (const node of collectDescendants(changedResultRoots)) {
@@ -181,7 +150,7 @@ export const createRuntimeInvalidationController = ({
       affected.set(node.key, node);
     }
 
-    const preservedKeys = new Set(preservedRoots.map(node => node.key));
+    const preservedKeys = new Set(preservedRoots.map((node) => node.key));
     const affectedPreservedKeys = new Set<string>();
     const nodesToInvalidate: AnyNodeDefinition[] = [];
     let subscribedNodeChanged = false;
@@ -206,14 +175,10 @@ export const createRuntimeInvalidationController = ({
     });
   };
 
-  const invalidateNodesAndDescendants = (
-    nodes: readonly AnyNodeDefinition[]
-  ): void => {
+  const invalidateNodesAndDescendants = (nodes: readonly AnyNodeDefinition[]): void => {
     if (nodes.length === 0) return;
 
-    const subscribedNodeChanged = invalidateNodes(
-      collectNodesAndDescendants(nodes)
-    );
+    const subscribedNodeChanged = invalidateNodes(collectNodesAndDescendants(nodes));
     notify();
     if (subscribedNodeChanged) schedule();
   };
@@ -221,10 +186,10 @@ export const createRuntimeInvalidationController = ({
   const commitContexts = (
     changes: readonly ContextChange[],
     invalidationRoots: readonly AnyNodeDefinition[] = [],
-    dispatch: InvalidationDispatch = { notify, schedule }
+    dispatch: InvalidationDispatch = { notify, schedule },
   ): void => {
-    const effectiveChanges = changes.filter(({ node, value }) =>
-      !Object.is(getNodeState(node.key).data, value)
+    const effectiveChanges = changes.filter(
+      ({ node, value }) => !Object.is(getNodeState(node.key).data, value),
     );
     if (effectiveChanges.length === 0 && invalidationRoots.length === 0) {
       return;
@@ -235,9 +200,7 @@ export const createRuntimeInvalidationController = ({
     }
 
     const affected = new Map<string, AnyNodeDefinition>();
-    for (const descendant of collectDescendants(
-      effectiveChanges.map(({ node }) => node)
-    )) {
+    for (const descendant of collectDescendants(effectiveChanges.map(({ node }) => node))) {
       affected.set(descendant.key, descendant);
     }
     for (const node of collectNodesAndDescendants(invalidationRoots)) {
@@ -256,32 +219,24 @@ export const createRuntimeInvalidationController = ({
     if (subscribedNodeChanged) dispatch.schedule();
   };
 
-  const setContext = <TValue>(
-    node: ContextNodeDefinition<TValue>,
-    value: TValue
-  ): void => {
+  const setContext = <TValue>(node: ContextNodeDefinition<TValue>, value: TValue): void => {
     const registered = requireRegisteredContextNode(node);
-    commitContexts([{
-      node: registered as ContextNodeDefinition<unknown>,
-      value,
-    }]);
+    commitContexts([
+      {
+        node: registered as ContextNodeDefinition<unknown>,
+        value,
+      },
+    ]);
   };
 
-  const invalidateChangedResultDescendants = (
-    node: AnyNodeDefinition
-  ): void => {
+  const invalidateChangedResultDescendants = (node: AnyNodeDefinition): void => {
     const affectedNodeKeys = onChangedResultInvalidated
       ? collectDescendants([node]).map((descendant) => descendant.key)
       : undefined;
-    const subscribedDescendantChanged =
-      invalidateChangedResultDescendantsWithoutDispatch([node]);
+    const subscribedDescendantChanged = invalidateChangedResultDescendantsWithoutDispatch([node]);
     if (graph.getChildren(node).length > 0) {
       if (affectedNodeKeys) {
-        onChangedResultInvalidated?.(
-          [node.key],
-          affectedNodeKeys,
-          subscribedDescendantChanged,
-        );
+        onChangedResultInvalidated?.([node.key], affectedNodeKeys, subscribedDescendantChanged);
       }
       notify();
     }

@@ -66,7 +66,7 @@ describe("GraphDevtoolsPanel", () => {
     await fireEvent.click(screen.getByTestId("gdt-tab-metrics"));
 
     expect(screen.getByTestId("gdt-metrics-panel").textContent).not.toContain(
-      "No metrics available"
+      "No metrics available",
     );
   });
 

@@ -37,9 +37,7 @@ describe("query operations", () => {
       key: "query-prefetch",
       nodes: { context, first, summary },
     });
-    const runtime = createGraphRuntime(
-      createGraph({ nodes: [context, first, second, summary] })
-    );
+    const runtime = createGraphRuntime(createGraph({ nodes: [context, first, second, summary] }));
 
     await runtime.prefetchQuery(query);
 
@@ -71,9 +69,7 @@ describe("query operations", () => {
       key: "query-refresh",
       nodes: { context, data, derived },
     });
-    const runtime = createGraphRuntime(
-      createGraph({ nodes: [context, data, derived] })
-    );
+    const runtime = createGraphRuntime(createGraph({ nodes: [context, data, derived] }));
 
     await runtime.prefetchQuery(query);
     const contextGeneration = runtime.getState(context).generation;

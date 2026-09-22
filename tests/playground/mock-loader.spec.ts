@@ -28,9 +28,11 @@ describe("createMockLoader", () => {
     const loader = createMockLoader({ delayMs: 500 });
     let resolved = false;
 
-    void loader.load(() => "value").then(() => {
-      resolved = true;
-    });
+    void loader
+      .load(() => "value")
+      .then(() => {
+        resolved = true;
+      });
 
     await vi.advanceTimersByTimeAsync(499);
     expect(resolved).toBe(false);

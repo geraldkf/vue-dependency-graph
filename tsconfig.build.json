@@ -7,15 +7,6 @@
     "emitDeclarationOnly": false,
     "outDir": "dist"
   },
-  "include": [
-    "src/core/**/*.ts",
-    "src/vue/**/*.ts",
-    "src/devtools/**/*.ts"
-  ],
-  "exclude": [
-    "src/playground",
-    "tests",
-    "dist",
-    "node_modules"
-  ]
+  "include": ["src/core/**/*.ts", "src/vue/**/*.ts", "src/devtools/**/*.ts"],
+  "exclude": ["src/playground", "tests", "dist", "node_modules"]
 }

@@ -34,20 +34,20 @@ describe("advanced runtime diagnostics", () => {
       diagnostics: diagnostics.options,
     });
 
-    await runtime.transaction(transaction => {
+    await runtime.transaction((transaction) => {
       transaction.setContext(context, 2);
     });
-    await expect(runtime.transaction(transaction => {
-      transaction.setContext(context, 3);
-      throw new Error("rollback");
-    })).rejects.toThrow("rollback");
+    await expect(
+      runtime.transaction((transaction) => {
+        transaction.setContext(context, 3);
+        throw new Error("rollback");
+      }),
+    ).rejects.toThrow("rollback");
 
-    expect(diagnostics.events.some(
-      event => event.type === "transaction.committed",
-    )).toBe(true);
-    expect(diagnostics.events.find(
-      event => event.type === "transaction.rolled-back",
-    )).toMatchObject({ error: { name: "Error", message: "rollback" } });
+    expect(diagnostics.events.some((event) => event.type === "transaction.committed")).toBe(true);
+    expect(
+      diagnostics.events.find((event) => event.type === "transaction.rolled-back"),
+    ).toMatchObject({ error: { name: "Error", message: "rollback" } });
     expect(JSON.stringify(diagnostics.events)).not.toContain('"value":2');
     expect(JSON.stringify(diagnostics.events)).not.toContain('"value":3');
   });
@@ -66,7 +66,7 @@ describe("advanced runtime diagnostics", () => {
     });
 
     runtime.publish(changed, { secret: "sensitive" });
-    await runtime.transaction(transaction => {
+    await runtime.transaction((transaction) => {
       transaction.publish(changed, { secret: "transaction-sensitive" });
     });
 
@@ -75,15 +75,20 @@ describe("advanced runtime diagnostics", () => {
         event.type === "event.published" && "eventKey" in event,
     );
     expect(published).toHaveLength(2);
-    expect(published.map(event => event.transactionOwned)).toEqual([false, true]);
-    expect(published.every(event => event.eventKey === "domain.changed")).toBe(true);
+    expect(published.map((event) => event.transactionOwned)).toEqual([false, true]);
+    expect(published.every((event) => event.eventKey === "domain.changed")).toBe(true);
     expect(JSON.stringify(published)).not.toContain("sensitive");
   });
 
   it("records successful and rejected mutation terminal outcomes without input or result values", async () => {
     const success = defineMutation({
       key: "save.success",
-      execute: async ({ input }: { readonly input: { readonly secret: string }; readonly signal: AbortSignal }) => ({ id: 1, echo: input.secret }),
+      execute: async ({
+        input,
+      }: {
+        readonly input: { readonly secret: string };
+        readonly signal: AbortSignal;
+      }) => ({ id: 1, echo: input.secret }),
     });
     const rejection = new Error("rejected");
     const failure = defineMutation({
@@ -98,21 +103,23 @@ describe("advanced runtime diagnostics", () => {
     await runtime.mutate(success, { secret: "input-secret" });
     await expect(runtime.mutate(failure, undefined)).rejects.toBe(rejection);
 
-    expect(diagnostics.events.find(
-      event =>
-        event.type === "mutation.completed" &&
-        "mutationKey" in event &&
-        event.mutationKey === "save.success",
-    )).toMatchObject({ outcome: "succeeded" });
-    expect(diagnostics.events.find(
-      event =>
-        event.type === "mutation.completed" &&
-        "mutationKey" in event &&
-        event.mutationKey === "save.failure",
-    )).toMatchObject({ outcome: "rejected" });
-    const mutationEvents = diagnostics.events.filter(
-      event => event.type.startsWith("mutation."),
-    );
+    expect(
+      diagnostics.events.find(
+        (event) =>
+          event.type === "mutation.completed" &&
+          "mutationKey" in event &&
+          event.mutationKey === "save.success",
+      ),
+    ).toMatchObject({ outcome: "succeeded" });
+    expect(
+      diagnostics.events.find(
+        (event) =>
+          event.type === "mutation.completed" &&
+          "mutationKey" in event &&
+          event.mutationKey === "save.failure",
+      ),
+    ).toMatchObject({ outcome: "rejected" });
+    const mutationEvents = diagnostics.events.filter((event) => event.type.startsWith("mutation."));
     expect(JSON.stringify(mutationEvents)).not.toContain("input-secret");
     expect(JSON.stringify(mutationEvents)).not.toContain('"echo"');
   });
@@ -128,7 +135,7 @@ describe("advanced runtime diagnostics", () => {
         timers.set(id, callback);
         return id;
       },
-      clearTimeout: handle => {
+      clearTimeout: (handle) => {
         if (typeof handle === "number") timers.delete(handle);
       },
       random: () => 0.5,
@@ -149,9 +156,9 @@ describe("advanced runtime diagnostics", () => {
 
     const subscription = runtime.subscribeNodes([node]);
     await runtime.whenSettled();
-    expect(diagnostics.events.find(
-      event => event.type === "refresh-policy.scheduled",
-    )).toMatchObject({
+    expect(
+      diagnostics.events.find((event) => event.type === "refresh-policy.scheduled"),
+    ).toMatchObject({
       nodeKey: "policy-node",
       policyKind: "stale-after",
       delayMs: 100,
@@ -162,9 +169,7 @@ describe("advanced runtime diagnostics", () => {
     timer?.();
     await Promise.resolve();
     await Promise.resolve();
-    expect(diagnostics.events.some(
-      event => event.type === "refresh-policy.started",
-    )).toBe(true);
+    expect(diagnostics.events.some((event) => event.type === "refresh-policy.started")).toBe(true);
     subscription.unsubscribe();
   });
 });

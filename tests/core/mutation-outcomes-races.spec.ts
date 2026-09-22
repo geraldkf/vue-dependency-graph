@@ -31,7 +31,7 @@ describe("mutation outcomes and races", () => {
     await runtime.whenSettled();
 
     const outcome = runtime.mutate(mutation, undefined, {
-      optimistic: effects => effects.update(value, current => current + 10),
+      optimistic: (effects) => effects.update(value, (current) => current + 10),
     });
 
     await expect(outcome).rejects.toMatchObject({
@@ -62,12 +62,14 @@ describe("mutation outcomes and races", () => {
     const runtime = createGraphRuntime(createGraph({ nodes: [value] }));
     await runtime.execute([value]);
 
-    await expect(runtime.mutate(mutation, undefined, {
-      optimistic: effects => effects.update(value, current => current + 10),
-      classifyFailure: () => {
-        throw new Error("Classifier failed");
-      },
-    })).rejects.toMatchObject({
+    await expect(
+      runtime.mutate(mutation, undefined, {
+        optimistic: (effects) => effects.update(value, (current) => current + 10),
+        classifyFailure: () => {
+          throw new Error("Classifier failed");
+        },
+      }),
+    ).rejects.toMatchObject({
       name: "GraphMutationOutcomeUnknownError",
       cause: remoteFailure,
     });
@@ -94,7 +96,7 @@ describe("mutation outcomes and races", () => {
     await runtime.execute([value]);
 
     const optimistic = runtime.mutate(optimisticMutation, undefined, {
-      optimistic: effects => effects.update(value, current => current + 10),
+      optimistic: (effects) => effects.update(value, (current) => current + 10),
       classifyFailure: () => "rejected",
     });
     await waitForCondition(
@@ -131,9 +133,9 @@ describe("mutation outcomes and races", () => {
     await runtime.execute([left, right]);
 
     const pending = runtime.mutate(mutation, undefined, {
-      optimistic: effects => {
-        effects.update(right, current => current + 10);
-        effects.update(left, current => current + 10);
+      optimistic: (effects) => {
+        effects.update(right, (current) => current + 10);
+        effects.update(left, (current) => current + 10);
       },
       classifyFailure: () => "rejected",
     });
@@ -175,10 +177,10 @@ describe("mutation outcomes and races", () => {
     await runtime.execute([left, right]);
 
     const leftPending = runtime.mutate(leftMutation, undefined, {
-      optimistic: effects => effects.update(left, current => current + 10),
+      optimistic: (effects) => effects.update(left, (current) => current + 10),
     });
     const rightPending = runtime.mutate(rightMutation, undefined, {
-      optimistic: effects => effects.update(right, current => current + 20),
+      optimistic: (effects) => effects.update(right, (current) => current + 20),
     });
     await waitForCondition(
       () => runtime.getState(left).data === 11 && runtime.getState(right).data === 21,
@@ -205,7 +207,7 @@ describe("mutation outcomes and races", () => {
     await runtime.execute([value]);
 
     const pending = runtime.mutate(mutation, undefined, {
-      optimistic: effects => effects.update(value, current => current + 10),
+      optimistic: (effects) => effects.update(value, (current) => current + 10),
     });
     await waitForCondition(
       () => runtime.getState(value).data === 11,

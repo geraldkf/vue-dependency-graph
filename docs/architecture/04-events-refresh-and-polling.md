@@ -20,13 +20,13 @@ const CapabilityStatus = defineDataNode({
   key: "capabilityStatus",
   dependencies: [JobSeekerId] as const,
   initialValue: undefined as Status | undefined,
-  invalidatedBy: [{
-    event: AppointmentBooked,
-    when: ({ payload, get }) =>
-      payload.jobSeekerId === get(JobSeekerId),
-  }],
-  load: ({ get, signal }) =>
-    api.getCapabilityStatus(get(JobSeekerId), signal),
+  invalidatedBy: [
+    {
+      event: AppointmentBooked,
+      when: ({ payload, get }) => payload.jobSeekerId === get(JobSeekerId),
+    },
+  ],
+  load: ({ get, signal }) => api.getCapabilityStatus(get(JobSeekerId), signal),
 });
 ```
 
@@ -51,7 +51,7 @@ It evaluates against committed graph state. Matching roots and transitive descen
 Transaction-owned publication is explicit:
 
 ```ts
-await runtime.transaction(transaction => {
+await runtime.transaction((transaction) => {
   transaction.publish(AppointmentBooked, payload);
 });
 ```
@@ -119,8 +119,8 @@ const ReportProgress = defineDataNode({
   refresh: pollUntil({
     intervalMs: 2_000,
     timeoutMs: 600_000,
-    failWhen: value => value?.state === "failed",
-    stopWhen: value => value?.state === "completed",
+    failWhen: (value) => value?.state === "failed",
+    stopWhen: (value) => value?.state === "completed",
   }),
 });
 ```

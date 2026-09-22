@@ -8,12 +8,12 @@ Accepted, implemented, and validated.
 
 `state.ts` seeds one runtime-state slot per node from the graph's static topology at `createGraphRuntime` time and never deletes an entry. Nothing currently clears a node's held value under any condition:
 
-- Losing the last subscriber only aborts an in-flight *automatic-only* execution attempt (`afterUnsubscribe` in `runtime.ts`); a value that already finished loading is untouched.
+- Losing the last subscriber only aborts an in-flight _automatic-only_ execution attempt (`afterUnsubscribe` in `runtime.ts`); a value that already finished loading is untouched.
 - A context change or event invalidation only sets `freshness = "stale"` (`invalidateNodes` in `invalidation.ts`); this is deliberate - [ADR-007](./ADR-007-status-freshness-separation.md) keeps stale-but-useful data visible rather than flashing blank - but it means old data is never cleared, only marked for eventual replacement.
 
 The only thing that ever replaces a value is a successful re-execution actually completing. A node that loses its last subscriber and is never asked for again keeps its value in memory for the runtime's entire lifetime.
 
-This is a narrower problem than it first appears from surveying other caching libraries. TanStack Query, Apollo Client, Relay, and SWR all cache one entry per distinct query-key/variables combination, so their primary concern is bounding the *number of entries*. This framework's node slots are fixed at graph-creation time from static `defineXNode` declarations and never grow in number - there is no "entry count" problem here. The actual gap is narrower and specific: a fixed, known set of node slots, any of which can hold an arbitrarily large value that nothing ever releases.
+This is a narrower problem than it first appears from surveying other caching libraries. TanStack Query, Apollo Client, Relay, and SWR all cache one entry per distinct query-key/variables combination, so their primary concern is bounding the _number of entries_. This framework's node slots are fixed at graph-creation time from static `defineXNode` declarations and never grow in number - there is no "entry count" problem here. The actual gap is narrower and specific: a fixed, known set of node slots, any of which can hold an arbitrarily large value that nothing ever releases.
 
 ## Decision
 
@@ -65,13 +65,13 @@ The refresh-policy and release-policy controllers share one injected `timerEnvir
 - A node's memory can be reclaimed automatically without the app doing anything, closing the gap described in Context - but only for nodes that opt in (via their own `release` or the runtime default), so existing graphs are unaffected until a consumer configures this.
 - Every value-release transition must correctly bump `generation` and go through the same paths `execution.ts` already relies on elsewhere; this is the main correctness risk and needs dedicated tests proving a resubscribe-after-release triggers a genuinely fresh load rather than a stale-generation edge case.
 - A global `releaseAfterMs` default is a guess, same as any duration-based default in any of the systems surveyed (TanStack Query's own 5-minute default is no less arbitrary) - the user guide's coverage of this feature is deliberately light on a recommended number for that reason, framing it as "pick based on how large the data actually is" rather than suggesting a one-size default.
-- Because node slots are fixed in number, this bounds the *size* of idle memory over time but not a hard ceiling the way a count-bounded release buffer (see Alternatives) would - a runtime with many large nodes all idle-but-not-yet-timed-out simultaneously can still spike memory in between fires. Judged an acceptable tradeoff for a simpler, more familiar mental model; revisit if real usage shows otherwise.
+- Because node slots are fixed in number, this bounds the _size_ of idle memory over time but not a hard ceiling the way a count-bounded release buffer (see Alternatives) would - a runtime with many large nodes all idle-but-not-yet-timed-out simultaneously can still spike memory in between fires. Judged an acceptable tradeoff for a simpler, more familiar mental model; revisit if real usage shows otherwise.
 
 ## Alternatives considered
 
 ### Explicit/manual release only (Apollo `cache.gc()`-shaped)
 
-A `runtime.releaseIdleValues()` sweep the app calls when it knows it's safe, with no implicit timer. Simpler to test (no fake-clock involved) and zero background work, but does nothing unless the app remembers to call it - the same failure mode as SWR's lack of any eviction, which this milestone exists specifically to not be. Rejected as the *only* mechanism; nothing rules out adding this as a manual escape hatch alongside the timer-based default later.
+A `runtime.releaseIdleValues()` sweep the app calls when it knows it's safe, with no implicit timer. Simpler to test (no fake-clock involved) and zero background work, but does nothing unless the app remembers to call it - the same failure mode as SWR's lack of any eviction, which this milestone exists specifically to not be. Rejected as the _only_ mechanism; nothing rules out adding this as a manual escape hatch alongside the timer-based default later.
 
 ### Reference-counted release with a count-bounded release buffer (Relay-shaped)
 

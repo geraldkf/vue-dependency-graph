@@ -33,11 +33,10 @@ const cooperativeLoad = (signal: AbortSignal): Promise<number> =>
 const hangingLoad = (): Promise<number> => new Promise<number>(() => undefined);
 
 /** `getActiveAttempts()` is an iterator over the active attempt table. */
-const attemptCount = (state: {
-  readonly getActiveAttempts: () => Iterable<unknown>;
-}): number => [...state.getActiveAttempts()].length;
+const attemptCount = (state: { readonly getActiveAttempts: () => Iterable<unknown> }): number =>
+  [...state.getActiveAttempts()].length;
 
-const flush = (): Promise<void> => new Promise(resolve => setTimeout(resolve, 0));
+const flush = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
 
 const terminalLoadEvents = (
   events: readonly GraphDiagnosticEvent[],
@@ -45,12 +44,12 @@ const terminalLoadEvents = (
 ): readonly string[] =>
   events
     .filter(
-      event =>
+      (event) =>
         "nodeKey" in event &&
         event.nodeKey === nodeKey &&
         /^node\.load\.(succeeded|failed|aborted|discarded)$/.test(event.type),
     )
-    .map(event => event.type);
+    .map((event) => event.type);
 
 describe("the active attempt table empties", () => {
   it.each([
@@ -114,7 +113,7 @@ describe("the active attempt table empties", () => {
   it("after many attempts that end in every way at once", async () => {
     const ctx = defineContextNode({ key: "ctx", initialValue: 0 });
     let mode: "ok" | "fail" | "cooperative" | "hang" = "ok";
-    const nodes: AnyNodeDefinition[] = ["a", "b", "c", "d"].map(key =>
+    const nodes: AnyNodeDefinition[] = ["a", "b", "c", "d"].map((key) =>
       defineDataNode({
         key,
         dependencies: [ctx] as const,
@@ -157,7 +156,10 @@ describe("a loader that ignores its abort signal", () => {
     const runtime = createGraphRuntime(createGraph({ nodes: [hanging, other] }));
 
     const first = runtime.subscribeNodes([hanging]);
-    await waitForCondition(() => runtime.getState(hanging).status === "loading", "the load to start");
+    await waitForCondition(
+      () => runtime.getState(hanging).status === "loading",
+      "the load to start",
+    );
     await flush();
     first.unsubscribe();
     const second = runtime.subscribeNodes([other]);
@@ -176,7 +178,10 @@ describe("a loader that ignores its abort signal", () => {
     });
 
     const first = runtime.subscribeNodes([hanging]);
-    await waitForCondition(() => runtime.getState(hanging).status === "loading", "the load to start");
+    await waitForCondition(
+      () => runtime.getState(hanging).status === "loading",
+      "the load to start",
+    );
     await flush();
     first.unsubscribe();
     await runtime.execute([other]);
@@ -228,7 +233,7 @@ describe("a loader that ignores its abort signal", () => {
       key: "node",
       initialValue: 0,
       load: () =>
-        new Promise<number>(resolve => {
+        new Promise<number>((resolve) => {
           resolveLate = resolve;
         }),
     });
@@ -244,7 +249,11 @@ describe("a loader that ignores its abort signal", () => {
     resolveLate!(99);
     await flush();
 
-    expect(runtime.getState(node)).toMatchObject({ status: "idle", hasSuccessfulValue: false, data: 0 });
+    expect(runtime.getState(node)).toMatchObject({
+      status: "idle",
+      hasSuccessfulValue: false,
+      data: 0,
+    });
     expect(terminalLoadEvents(collector.getEvents(), "node")).toEqual(["node.load.aborted"]);
     expect(runtime.createDiagnosticSnapshot().metrics?.activeLoads).toBe(0);
   });

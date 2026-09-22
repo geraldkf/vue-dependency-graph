@@ -65,12 +65,7 @@ export interface GraphDiagnosticEventBase {
 }
 
 export type GraphDiagnosticOperationKind =
-  | "execute"
-  | "prefetch"
-  | "refresh"
-  | "query-prefetch"
-  | "query-refresh"
-  | "scheduler";
+  "execute" | "prefetch" | "refresh" | "query-prefetch" | "query-refresh" | "scheduler";
 
 export type GraphExecutionReason =
   | "explicit"
@@ -89,8 +84,7 @@ export interface GraphDiagnosticError {
   readonly message: string;
 }
 
-export interface GraphRuntimeCreatedDiagnosticEvent
-  extends GraphDiagnosticEventBase {
+export interface GraphRuntimeCreatedDiagnosticEvent extends GraphDiagnosticEventBase {
   readonly type: "runtime.created";
   readonly nodeKeys: readonly string[];
 }
@@ -103,14 +97,12 @@ export interface GraphRuntimeCreatedDiagnosticEvent
  * present when the notification happened while an operation was being
  * committed, and attributes the failure to it.
  */
-export interface GraphRuntimeListenerFailedDiagnosticEvent
-  extends GraphDiagnosticEventBase {
+export interface GraphRuntimeListenerFailedDiagnosticEvent extends GraphDiagnosticEventBase {
   readonly type: "runtime.listener-failed";
   readonly error: GraphDiagnosticError;
 }
 
-export interface GraphOperationRequestedDiagnosticEvent
-  extends GraphDiagnosticEventBase {
+export interface GraphOperationRequestedDiagnosticEvent extends GraphDiagnosticEventBase {
   readonly type:
     | "operation.execute.requested"
     | "operation.prefetch.requested"
@@ -123,37 +115,30 @@ export interface GraphOperationRequestedDiagnosticEvent
   readonly queryKey?: string;
 }
 
-export interface GraphSubscriptionDiagnosticEvent
-  extends GraphDiagnosticEventBase {
+export interface GraphSubscriptionDiagnosticEvent extends GraphDiagnosticEventBase {
   readonly type: "subscription.added" | "subscription.removed";
   readonly operationId: string;
   readonly nodeKeys: readonly string[];
   readonly requiredNodeKeys: readonly string[];
 }
 
-export interface GraphSchedulerDiagnosticEvent
-  extends GraphDiagnosticEventBase {
+export interface GraphSchedulerDiagnosticEvent extends GraphDiagnosticEventBase {
   readonly type:
-    | "scheduler.requested"
-    | "scheduler.started"
-    | "scheduler.completed"
-    | "scheduler.failed";
+    "scheduler.requested" | "scheduler.started" | "scheduler.completed" | "scheduler.failed";
   readonly operationId: string;
   readonly reason: GraphExecutionReason;
   readonly nodeKeys: readonly string[];
   readonly error?: GraphDiagnosticError;
 }
 
-export interface GraphContextChangedDiagnosticEvent
-  extends GraphDiagnosticEventBase {
+export interface GraphContextChangedDiagnosticEvent extends GraphDiagnosticEventBase {
   readonly type: "context.changed";
   readonly operationId: string;
   readonly contextKeys: readonly string[];
   readonly affectedNodeKeys: readonly string[];
 }
 
-export interface GraphNodeInvalidatedDiagnosticEvent
-  extends GraphDiagnosticEventBase {
+export interface GraphNodeInvalidatedDiagnosticEvent extends GraphDiagnosticEventBase {
   readonly type: "node.invalidated";
   readonly operationId: string;
   readonly reason: "context-invalidation" | "changed-result";
@@ -162,8 +147,7 @@ export interface GraphNodeInvalidatedDiagnosticEvent
   readonly scheduled: boolean;
 }
 
-export interface GraphNodeExecutionDiagnosticEvent
-  extends GraphDiagnosticEventBase {
+export interface GraphNodeExecutionDiagnosticEvent extends GraphDiagnosticEventBase {
   readonly type:
     | "node.execution.skipped"
     | "node.execution.reused"
@@ -187,7 +171,6 @@ export interface GraphNodeExecutionDiagnosticEvent
   readonly blockedBy?: readonly string[];
   readonly error?: GraphDiagnosticError;
 }
-
 
 export interface GraphEventDiagnosticEvent extends GraphDiagnosticEventBase {
   readonly type: "event.published" | "event.matched";
@@ -255,7 +238,8 @@ export interface GraphMutationDiagnosticEvent extends GraphDiagnosticEventBase {
   readonly operationId: string;
   readonly mutationKey: string;
   readonly affectedNodeKeys?: readonly string[];
-  readonly outcome?: "succeeded" | "rejected" | "rollback-conflict" | "unknown" | "reconciliation-failed";
+  readonly outcome?:
+    "succeeded" | "rejected" | "rollback-conflict" | "unknown" | "reconciliation-failed";
   readonly durationMs?: number;
   readonly error?: GraphDiagnosticError;
 }

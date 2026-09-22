@@ -62,4 +62,3 @@ Rejected. A fixed interval may intentionally remain active for the lifetime of a
 #### Support multiple policies per node
 
 Deferred. Composition requires precedence rules for timers, retries, pause state, and terminal outcomes. One policy covers the current milestone use cases with a smaller public contract.
-

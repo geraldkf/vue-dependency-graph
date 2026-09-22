@@ -19,14 +19,12 @@ describe("transaction commit invalidation", () => {
       initialValue: 0,
       load,
     });
-    const runtime = createGraphRuntime(
-      createGraph({ nodes: [data, first, second] })
-    );
+    const runtime = createGraphRuntime(createGraph({ nodes: [data, first, second] }));
     runtime.subscribeNodes([data]);
     await runtime.whenSettled();
     load.mockClear();
 
-    await runtime.transaction(transaction => {
+    await runtime.transaction((transaction) => {
       transaction.setContext(first, 10);
       transaction.setContext(second, 20);
     });
@@ -46,12 +44,10 @@ describe("transaction commit invalidation", () => {
       derive: ({ get }) => get(first) + get(second),
     });
     const observed = vi.fn();
-    const runtime = createGraphRuntime(
-      createGraph({ nodes: [shared, first, second] })
-    );
+    const runtime = createGraphRuntime(createGraph({ nodes: [shared, first, second] }));
     runtime.onChange(observed);
 
-    await runtime.transaction(transaction => {
+    await runtime.transaction((transaction) => {
       transaction.setContext(first, 10);
       transaction.setContext(second, 20);
     });
@@ -80,11 +76,9 @@ describe("transaction commit invalidation", () => {
       dependencies: [left, right] as const,
       derive: ({ get }) => get(left) + get(right),
     });
-    const runtime = createGraphRuntime(
-      createGraph({ nodes: [bottom, left, right, context] })
-    );
+    const runtime = createGraphRuntime(createGraph({ nodes: [bottom, left, right, context] }));
 
-    await runtime.transaction(transaction => {
+    await runtime.transaction((transaction) => {
       transaction.setContext(context, 2);
     });
 
@@ -110,7 +104,7 @@ describe("transaction commit invalidation", () => {
     const execution = runtime.execute([data]);
     await waitForCondition(() => signals.length === 1, "initial attempt to start");
 
-    await runtime.transaction(async transaction => {
+    await runtime.transaction(async (transaction) => {
       transaction.setContext(context, 2);
       expect(signals[0]?.aborted).toBe(false);
       expect(runtime.getState(data).generation).toBe(0);
@@ -138,13 +132,11 @@ describe("transaction commit invalidation", () => {
         return attempt.promise;
       },
     });
-    const runtime = createGraphRuntime(
-      createGraph({ nodes: [data, changed, unrelated] })
-    );
+    const runtime = createGraphRuntime(createGraph({ nodes: [data, changed, unrelated] }));
     const execution = runtime.execute([data]);
     await waitForCondition(() => signals.length === 1, "unaffected attempt to start");
 
-    await runtime.transaction(transaction => {
+    await runtime.transaction((transaction) => {
       transaction.setContext(changed, 2);
     });
 

@@ -1,7 +1,4 @@
-import type {
-  GraphDiagnosticEvent,
-  GraphDiagnosticOperationKind,
-} from "./types";
+import type { GraphDiagnosticEvent, GraphDiagnosticOperationKind } from "./types";
 
 export interface GraphDurationMetrics {
   readonly count: number;
@@ -101,19 +98,15 @@ const createDuration = (): MutableDurationMetrics => ({
   maximumMs: 0,
 });
 
-const addDuration = (
-  target: MutableDurationMetrics,
-  durationMs: number | undefined,
-): void => {
+const addDuration = (target: MutableDurationMetrics, durationMs: number | undefined): void => {
   if (durationMs === undefined) return;
   target.count += 1;
   target.totalMs += durationMs;
   target.maximumMs = Math.max(target.maximumMs, durationMs);
 };
 
-const snapshotDuration = (
-  duration: MutableDurationMetrics,
-): GraphDurationMetrics => Object.freeze({ ...duration });
+const snapshotDuration = (duration: MutableDurationMetrics): GraphDurationMetrics =>
+  Object.freeze({ ...duration });
 
 const createOperationCounts = (): Record<GraphDiagnosticOperationKind, number> => ({
   execute: 0,
@@ -124,9 +117,8 @@ const createOperationCounts = (): Record<GraphDiagnosticOperationKind, number> =
   scheduler: 0,
 });
 
-const getAttemptKey = (
-  event: GraphDiagnosticEvent & { readonly nodeKey: string },
-): string => `${event.runtimeId}:${event.operationId ?? ""}:${event.nodeKey}`;
+const getAttemptKey = (event: GraphDiagnosticEvent & { readonly nodeKey: string }): string =>
+  `${event.runtimeId}:${event.operationId ?? ""}:${event.nodeKey}`;
 
 export const createGraphMetricsReducer = (): GraphMetricsReducer => {
   let eventCount = 0;
@@ -202,10 +194,7 @@ export const createGraphMetricsReducer = (): GraphMetricsReducer => {
         return;
       case "subscription.removed":
         directSubscriptions = Math.max(0, directSubscriptions - event.nodeKeys.length);
-        requiredSubscriptions = Math.max(
-          0,
-          requiredSubscriptions - event.requiredNodeKeys.length,
-        );
+        requiredSubscriptions = Math.max(0, requiredSubscriptions - event.requiredNodeKeys.length);
         return;
       case "scheduler.requested":
         operationCounts.scheduler += 1;
@@ -272,10 +261,7 @@ export const createGraphMetricsReducer = (): GraphMetricsReducer => {
         const attempt = getNodeAttempt(event.nodeKey);
         attempt.failed += 1;
         addDuration(attempt.duration, event.durationMs);
-        if (
-          event.type === "node.load.failed" &&
-          activeAttemptKeys.delete(getAttemptKey(event))
-        ) {
+        if (event.type === "node.load.failed" && activeAttemptKeys.delete(getAttemptKey(event))) {
           activeLoads = Math.max(0, activeLoads - 1);
         }
         return;
@@ -346,11 +332,21 @@ export const createGraphMetricsReducer = (): GraphMetricsReducer => {
         if (!("mutationKey" in event)) return;
         addDuration(mutationDuration, event.durationMs);
         switch (event.outcome) {
-          case "succeeded": mutationsSucceeded += 1; break;
-          case "rejected": mutationsRejected += 1; break;
-          case "rollback-conflict": mutationsRollbackConflicted += 1; break;
-          case "unknown": mutationsUnknown += 1; break;
-          case "reconciliation-failed": mutationsReconciliationFailed += 1; break;
+          case "succeeded":
+            mutationsSucceeded += 1;
+            break;
+          case "rejected":
+            mutationsRejected += 1;
+            break;
+          case "rollback-conflict":
+            mutationsRollbackConflicted += 1;
+            break;
+          case "unknown":
+            mutationsUnknown += 1;
+            break;
+          case "reconciliation-failed":
+            mutationsReconciliationFailed += 1;
+            break;
         }
         return;
       default:
@@ -366,16 +362,18 @@ export const createGraphMetricsReducer = (): GraphMetricsReducer => {
       nodeAttempts: Object.freeze(
         [...nodeAttempts.entries()]
           .sort(([left], [right]) => left.localeCompare(right))
-          .map(([nodeKey, attempt]) => Object.freeze({
-            nodeKey,
-            started: attempt.started,
-            succeeded: attempt.succeeded,
-            failed: attempt.failed,
-            aborted: attempt.aborted,
-            discarded: attempt.discarded,
-            blocked: attempt.blocked,
-            duration: snapshotDuration(attempt.duration),
-          })),
+          .map(([nodeKey, attempt]) =>
+            Object.freeze({
+              nodeKey,
+              started: attempt.started,
+              succeeded: attempt.succeeded,
+              failed: attempt.failed,
+              aborted: attempt.aborted,
+              discarded: attempt.discarded,
+              blocked: attempt.blocked,
+              duration: snapshotDuration(attempt.duration),
+            }),
+          ),
       ),
       activeLoads,
       maximumActiveLoads,

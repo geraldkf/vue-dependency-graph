@@ -13,9 +13,7 @@ const isPlainObject = (value: object): boolean => {
 };
 
 const isProtectedContainer = (value: unknown): value is object =>
-  typeof value === "object" &&
-  value !== null &&
-  (Array.isArray(value) || isPlainObject(value));
+  typeof value === "object" && value !== null && (Array.isArray(value) || isPlainObject(value));
 
 interface MutationUpdaterValueGuard {
   readonly current: unknown;
@@ -94,11 +92,7 @@ const unwrapProtectedValue = (
     const descriptor = Object.getOwnPropertyDescriptor(value, key);
     if (!descriptor) continue;
     if ("value" in descriptor) {
-      const unwrappedProperty = unwrapProtectedValue(
-        descriptor.value,
-        proxyToSource,
-        visited,
-      );
+      const unwrappedProperty = unwrapProtectedValue(descriptor.value, proxyToSource, visited);
       changed ||= !Object.is(descriptor.value, unwrappedProperty);
       Object.defineProperty(unwrapped, key, {
         ...descriptor,
@@ -111,22 +105,18 @@ const unwrapProtectedValue = (
   return changed ? unwrapped : value;
 };
 
-export const guardMutationUpdaterValue = (
-  current: unknown,
-): MutationUpdaterValueGuard => {
+export const guardMutationUpdaterValue = (current: unknown): MutationUpdaterValueGuard => {
   if (!mutationUpdaterGuardsEnabled || !isProtectedContainer(current)) {
-    return { current, unwrap: value => value };
+    return { current, unwrap: (value) => value };
   }
 
   const sourceToProxy = new WeakMap<object, object>();
   const proxyToSource = new WeakMap<object, object>();
   return {
     current: createProtectedView(current, sourceToProxy, proxyToSource),
-    unwrap: value => unwrapProtectedValue(value, proxyToSource, new WeakMap()),
+    unwrap: (value) => unwrapProtectedValue(value, proxyToSource, new WeakMap()),
   };
 };
 
-export const isMutationValueMutationError = (
-  error: unknown,
-): error is MutationValueMutationError =>
+export const isMutationValueMutationError = (error: unknown): error is MutationValueMutationError =>
   error instanceof MutationValueMutationError;

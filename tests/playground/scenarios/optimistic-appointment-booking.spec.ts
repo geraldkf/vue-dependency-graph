@@ -26,9 +26,7 @@ const renderScenario = () => {
 const waitForReady = async (): Promise<void> => {
   await waitFor(() => {
     expect(screen.getByText("confirmed-1: confirmed")).toBeTruthy();
-    expect(
-      screen.getByTestId("optimistic-booking-capability-requests").textContent,
-    ).toContain("1");
+    expect(screen.getByTestId("optimistic-booking-capability-requests").textContent).toContain("1");
   });
 };
 
@@ -47,12 +45,8 @@ describe("OptimisticAppointmentBookingScenario", () => {
 
     await waitFor(() => {
       expect(screen.getByText("pending-1: pending")).toBeTruthy();
-      expect(screen.getByTestId("optimistic-booking-phase").textContent).toContain(
-        "optimistic",
-      );
-      expect(screen.getByTestId("optimistic-booking-requests").textContent).toContain(
-        "1",
-      );
+      expect(screen.getByTestId("optimistic-booking-phase").textContent).toContain("optimistic");
+      expect(screen.getByTestId("optimistic-booking-requests").textContent).toContain("1");
     });
   });
 
@@ -62,20 +56,16 @@ describe("OptimisticAppointmentBookingScenario", () => {
 
     await fireEvent.click(screen.getByRole("button", { name: "Start booking" }));
     await waitFor(() => expect(screen.getByText("pending-1: pending")).toBeTruthy());
-    expect(
-      screen.getByTestId("optimistic-booking-capability-requests").textContent,
-    ).toContain("1");
+    expect(screen.getByTestId("optimistic-booking-capability-requests").textContent).toContain("1");
 
     await fireEvent.click(screen.getByRole("button", { name: "Confirm success" }));
 
     await waitFor(() => {
       expect(screen.getByText("pending-1: confirmed")).toBeTruthy();
-      expect(screen.getByTestId("optimistic-booking-phase").textContent).toContain(
-        "confirmed",
+      expect(screen.getByTestId("optimistic-booking-phase").textContent).toContain("confirmed");
+      expect(screen.getByTestId("optimistic-booking-capability-requests").textContent).toContain(
+        "2",
       );
-      expect(
-        screen.getByTestId("optimistic-booking-capability-requests").textContent,
-      ).toContain("2");
     });
   });
 
@@ -89,16 +79,12 @@ describe("OptimisticAppointmentBookingScenario", () => {
 
     await waitFor(() => {
       expect(screen.queryByText("pending-1: pending")).toBeNull();
-      expect(screen.getByTestId("optimistic-booking-phase").textContent).toContain(
-        "rolled-back",
-      );
+      expect(screen.getByTestId("optimistic-booking-phase").textContent).toContain("rolled-back");
       expect(screen.getByTestId("optimistic-booking-outcome").textContent).toContain(
         "rejected and rolled back",
       );
     });
-    expect(
-      screen.getByTestId("optimistic-booking-capability-requests").textContent,
-    ).toContain("1");
+    expect(screen.getByTestId("optimistic-booking-capability-requests").textContent).toContain("1");
   });
 
   it("shows an unknown outcome and requests authoritative reconciliation", async () => {
@@ -107,14 +93,10 @@ describe("OptimisticAppointmentBookingScenario", () => {
 
     await fireEvent.click(screen.getByRole("button", { name: "Start booking" }));
     await waitFor(() => expect(screen.getByText("pending-1: pending")).toBeTruthy());
-    await fireEvent.click(
-      screen.getByRole("button", { name: "Make outcome unknown" }),
-    );
+    await fireEvent.click(screen.getByRole("button", { name: "Make outcome unknown" }));
 
     await waitFor(() => {
-      expect(screen.getByTestId("optimistic-booking-phase").textContent).toContain(
-        "unknown",
-      );
+      expect(screen.getByTestId("optimistic-booking-phase").textContent).toContain("unknown");
       expect(screen.getByTestId("optimistic-booking-outcome").textContent).toContain(
         "authoritative reload requested",
       );
@@ -129,21 +111,15 @@ describe("OptimisticAppointmentBookingScenario", () => {
 
     await fireEvent.click(screen.getByRole("button", { name: "Start booking" }));
     await waitFor(() => expect(screen.getByText("pending-1: pending")).toBeTruthy());
-    await fireEvent.click(
-      screen.getByRole("button", { name: "Start overlapping booking" }),
-    );
+    await fireEvent.click(screen.getByRole("button", { name: "Start overlapping booking" }));
 
     await waitFor(() => {
       expect(screen.getByTestId("optimistic-booking-outcome").textContent).toContain(
         "overlapping booking rejected",
       );
     });
-    expect(screen.getByTestId("optimistic-booking-requests").textContent).toContain(
-      "1",
-    );
-    expect(screen.getByTestId("optimistic-booking-phase").textContent).toContain(
-      "optimistic",
-    );
+    expect(screen.getByTestId("optimistic-booking-requests").textContent).toContain("1");
+    expect(screen.getByTestId("optimistic-booking-phase").textContent).toContain("optimistic");
   });
 
   it("resets appointments, counters, and outcome deterministically", async () => {
@@ -157,15 +133,11 @@ describe("OptimisticAppointmentBookingScenario", () => {
     await waitFor(() => {
       expect(screen.queryByText("pending-1: pending")).toBeNull();
       expect(screen.getByText("confirmed-1: confirmed")).toBeTruthy();
-      expect(screen.getByTestId("optimistic-booking-phase").textContent).toContain(
-        "ready",
+      expect(screen.getByTestId("optimistic-booking-phase").textContent).toContain("ready");
+      expect(screen.getByTestId("optimistic-booking-requests").textContent).toContain("0");
+      expect(screen.getByTestId("optimistic-booking-capability-requests").textContent).toContain(
+        "1",
       );
-      expect(screen.getByTestId("optimistic-booking-requests").textContent).toContain(
-        "0",
-      );
-      expect(
-        screen.getByTestId("optimistic-booking-capability-requests").textContent,
-      ).toContain("1");
     });
   });
 

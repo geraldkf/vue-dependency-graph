@@ -35,13 +35,13 @@ describe("transaction notification and scheduling isolation", () => {
     const listener = vi.fn();
     runtime.onChange(listener);
 
-    const firstTransaction = runtime.transaction(async transaction => {
+    const firstTransaction = runtime.transaction(async (transaction) => {
       transaction.setContext(firstContext, 2);
       await releaseFirst.promise;
     });
     await Promise.resolve();
 
-    await runtime.transaction(transaction => {
+    await runtime.transaction((transaction) => {
       transaction.setContext(secondContext, 20);
     });
 
@@ -71,13 +71,11 @@ describe("transaction notification and scheduling isolation", () => {
       load,
     });
     const releaseTransaction = deferred<void>();
-    const runtime = createGraphRuntime(
-      createGraph({ nodes: [data, stagedContext] }),
-    );
+    const runtime = createGraphRuntime(createGraph({ nodes: [data, stagedContext] }));
     const listener = vi.fn();
     runtime.onChange(listener);
 
-    const pendingTransaction = runtime.transaction(async transaction => {
+    const pendingTransaction = runtime.transaction(async (transaction) => {
       transaction.setContext(stagedContext, 2);
       await releaseTransaction.promise;
     });
@@ -109,20 +107,18 @@ describe("transaction notification and scheduling isolation", () => {
       load,
     });
     const releaseTransaction = deferred<void>();
-    const runtime = createGraphRuntime(
-      createGraph({ nodes: [target, stagedContext] }),
-    );
+    const runtime = createGraphRuntime(createGraph({ nodes: [target, stagedContext] }));
     const subscription = runtime.subscribeNodes([target]);
     await runtime.whenSettled();
     load.mockClear();
 
-    const pendingTransaction = runtime.transaction(async transaction => {
+    const pendingTransaction = runtime.transaction(async (transaction) => {
       transaction.setContext(stagedContext, 2);
       await releaseTransaction.promise;
     });
     await Promise.resolve();
 
-    await runtime.transaction(transaction => {
+    await runtime.transaction((transaction) => {
       transaction.publish(changed, undefined);
     });
     await runtime.whenSettled();
@@ -141,5 +137,4 @@ describe("transaction notification and scheduling isolation", () => {
     await pendingTransaction;
     subscription.unsubscribe();
   });
-
 });

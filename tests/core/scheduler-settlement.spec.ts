@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  createGraph,
-  createGraphRuntime,
-  defineDataNode,
-} from "../../src/core";
+import { createGraph, createGraphRuntime, defineDataNode } from "../../src/core";
 import { deferred, waitForCondition } from "./test-helpers";
 
 describe("scheduler settlement", () => {
@@ -22,13 +18,19 @@ describe("scheduler settlement", () => {
     const first = runtime.whenSettled();
     const second = runtime.whenSettled();
     let settled = false;
-    void first.then(() => { settled = true; });
+    void first.then(() => {
+      settled = true;
+    });
     await waitForCondition(() => runtime.getSchedulerState().isRunning, "scheduler to run");
     expect(settled).toBe(false);
 
     result.resolve("loaded");
     await Promise.all([first, second]);
-    expect(runtime.getSchedulerState()).toEqual({ isScheduled: false, isRunning: false, error: null });
+    expect(runtime.getSchedulerState()).toEqual({
+      isScheduled: false,
+      isRunning: false,
+      error: null,
+    });
   });
   it("returns independent frozen scheduler snapshots", () => {
     const data = defineDataNode({ key: "data", initialValue: "", load: async () => "loaded" });
@@ -44,9 +46,7 @@ describe("scheduler settlement", () => {
     expect(Object.isFrozen(before)).toBe(true);
     expect(Object.isFrozen(queued)).toBe(true);
   });
-
 });
-
 
 describe("scheduler observation", () => {
   it("exposes committed scheduler transitions without recursive scheduling", async () => {

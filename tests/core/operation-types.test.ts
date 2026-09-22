@@ -9,7 +9,11 @@ import {
 
 const context = defineContextNode({ key: "context", initialValue: 1 });
 const data = defineDataNode({ key: "data", initialValue: "", load: async () => "loaded" });
-const derived = defineDerivedNode({ key: "derived", dependencies: [data] as const, derive: ({ get }) => get(data).length });
+const derived = defineDerivedNode({
+  key: "derived",
+  dependencies: [data] as const,
+  derive: ({ get }) => get(data).length,
+});
 const runtime = createGraphRuntime(createGraph({ nodes: [derived, data, context] }));
 
 const prefetch: Promise<void> = runtime.prefetch([context, data, derived] as const);
@@ -22,7 +26,6 @@ runtime.refresh([context]);
 runtime.prefetch(["data"]);
 // @ts-expect-error refresh accepts handles, not string keys
 runtime.refresh(["data"]);
-
 
 const changed = defineEvent<{ id: number }>("domain.changed");
 runtime.publish(changed, { id: 1 });

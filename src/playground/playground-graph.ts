@@ -1,10 +1,7 @@
 import { createGraph } from "../core";
 import { metricA, metricB, metricC } from "./scenarios/aggregate-query-nodes";
 import { sharedResource } from "./scenarios/concurrent-consumers-nodes";
-import {
-  selectedUserId,
-  userProfile,
-} from "./scenarios/context-switching-nodes";
+import { selectedUserId, userProfile } from "./scenarios/context-switching-nodes";
 import { flakyResource } from "./scenarios/error-and-retry-nodes";
 import { optimisticAppointments } from "./scenarios/optimistic-appointment-nodes";
 import { toggleableResource } from "./scenarios/unmount-cleanup-nodes";

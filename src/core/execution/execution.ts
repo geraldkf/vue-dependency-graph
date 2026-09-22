@@ -1,11 +1,6 @@
 import type { RuntimeDiagnosticEmitter } from "../diagnostics/diagnostic-emitter";
 import type { GraphExecutionReason } from "../diagnostics/types";
-import {
-  abortAttempt,
-  beginAttempt,
-  failAttempt,
-  succeedAttempt,
-} from "../state/transitions";
+import { abortAttempt, beginAttempt, failAttempt, succeedAttempt } from "../state/transitions";
 import type { ExecutionConcurrencyLimiter } from "./concurrency-limiter";
 import {
   GraphExecutionError,
@@ -14,11 +9,7 @@ import {
   isAbortError,
   toError,
 } from "./types";
-import type {
-  ActiveAttempt,
-  ExecutionOrigin,
-  NodeStateRecord,
-} from "../state/state";
+import type { ActiveAttempt, ExecutionOrigin, NodeStateRecord } from "../state/state";
 import type {
   AnyNodeDefinition,
   DataNodeDefinition,
@@ -49,9 +40,7 @@ export interface RuntimeExecutionDependencies {
   readonly getActiveAttempt: (key: string) => ActiveAttempt | undefined;
   readonly setActiveAttempt: (key: string, attempt: ActiveAttempt) => void;
   readonly deleteActiveAttempt: (key: string, token: symbol) => void;
-  readonly resolveRegisteredNode: (
-    node: AnyNodeDefinition
-  ) => AnyNodeDefinition;
+  readonly resolveRegisteredNode: (node: AnyNodeDefinition) => AnyNodeDefinition;
   readonly notify: () => void;
   readonly onChangedRefreshResult: (
     node: AnyNodeDefinition,
@@ -69,7 +58,7 @@ export interface RuntimeExecutionDependencies {
 class NodeAttemptFailure extends Error {
   public constructor(
     public readonly nodeKey: string,
-    public readonly causeError: Error
+    public readonly causeError: Error,
   ) {
     super(`Node "${nodeKey}" failed.`);
     this.name = "NodeAttemptFailure";
@@ -84,21 +73,15 @@ class ObsoleteAttempt extends Error {
 }
 
 const isDataNode = (
-  node: AnyNodeDefinition
-): node is DataNodeDefinition<unknown, readonly AnyNodeDefinition[]> =>
-  node.kind === "data";
+  node: AnyNodeDefinition,
+): node is DataNodeDefinition<unknown, readonly AnyNodeDefinition[]> => node.kind === "data";
 
 const isDerivedNode = (
-  node: AnyNodeDefinition
-): node is DerivedNodeDefinition<unknown, readonly AnyNodeDefinition[]> =>
-  node.kind === "derived";
+  node: AnyNodeDefinition,
+): node is DerivedNodeDefinition<unknown, readonly AnyNodeDefinition[]> => node.kind === "derived";
 
-const hasFreshSuccessfulValue = (
-  state: NodeStateRecord
-): boolean =>
-  state.hasSuccessfulValue &&
-  state.status === "success" &&
-  state.freshness === "fresh";
+const hasFreshSuccessfulValue = (state: NodeStateRecord): boolean =>
+  state.hasSuccessfulValue && state.status === "success" && state.freshness === "fresh";
 
 const createLoadAbortedError = (): Error => {
   const error = new Error("Load aborted.");
@@ -118,10 +101,7 @@ const createLoadAbortedError = (): Error => {
  * For a loader that ignores the signal the runtime stops *waiting*; it cannot
  * stop the underlying work, whose eventual result or failure is ignored.
  */
-const settleOrAbort = <T>(
-  signal: AbortSignal,
-  start: () => Promise<T> | T,
-): Promise<T> =>
+const settleOrAbort = <T>(signal: AbortSignal, start: () => Promise<T> | T): Promise<T> =>
   new Promise<T>((resolve, reject) => {
     const onAbort = (): void => reject(createLoadAbortedError());
     signal.addEventListener("abort", onAbort, { once: true });
@@ -138,11 +118,11 @@ const settleOrAbort = <T>(
     // Both handlers are attached, so a loader that fails after the attempt
     // was abandoned never becomes an unhandled rejection.
     pending.then(
-      value => {
+      (value) => {
         signal.removeEventListener("abort", onAbort);
         resolve(value);
       },
-      error => {
+      (error) => {
         signal.removeEventListener("abort", onAbort);
         reject(error);
       },
@@ -162,13 +142,11 @@ export const createRuntimeExecutionController = ({
   diagnostics,
 }: RuntimeExecutionDependencies): RuntimeExecutionController => {
   const getDependencyValue = <TNode extends AnyNodeDefinition>(
-    dependency: TNode
+    dependency: TNode,
   ): NodeValue<TNode> => {
     const state = getNodeState(dependency.key);
     if (!state.hasSuccessfulValue || state.freshness !== "fresh") {
-      throw new Error(
-        `Dependency "${dependency.key}" does not have a successful fresh value.`
-      );
+      throw new Error(`Dependency "${dependency.key}" does not have a successful fresh value.`);
     }
     return state.data as NodeValue<TNode>;
   };
@@ -250,7 +228,7 @@ export const createRuntimeExecutionController = ({
         let value: unknown;
         if (isDataNode(node)) {
           await concurrencyLimiter.acquire(controller.signal, () =>
-            emitExecution("node.load.queued", node, generation, origin, context)
+            emitExecution("node.load.queued", node, generation, origin, context),
           );
           emitExecution(startedType, node, generation, origin, context);
           try {
@@ -292,8 +270,7 @@ export const createRuntimeExecutionController = ({
         );
 
         if (
-          (currentAttempt.origins.has("refresh") ||
-            currentAttempt.origins.has("refresh-policy")) &&
+          (currentAttempt.origins.has("refresh") || currentAttempt.origins.has("refresh-policy")) &&
           hadSuccessfulValue &&
           !Object.is(previousData, value)
         ) {
@@ -306,9 +283,7 @@ export const createRuntimeExecutionController = ({
           thrown instanceof ObsoleteAttempt ||
           current.generation !== generation ||
           currentAttempt?.token !== token;
-        const aborted =
-          !discarded &&
-          (controller.signal.aborted || isAbortError(thrown));
+        const aborted = !discarded && (controller.signal.aborted || isAbortError(thrown));
 
         if (aborted || discarded) {
           // If nothing superseded the node while this attempt ran, it still
@@ -316,10 +291,7 @@ export const createRuntimeExecutionController = ({
           // not-running instead of leaving it `loading`/`refreshing` with
           // nothing in flight. A superseded attempt leaves the superseding
           // transition's state alone.
-          if (
-            current.generation === generation &&
-            currentAttempt?.token === token
-          ) {
+          if (current.generation === generation && currentAttempt?.token === token) {
             abortAttempt(current);
             notify();
           }
@@ -400,36 +372,33 @@ export const createRuntimeExecutionController = ({
         ? {
             operationId: context.operationId,
             ...(context.causeId === undefined ? {} : { causeId: context.causeId }),
-            reason: targetKeys.has(node.key) ? context.reason : "dependency" as const,
+            reason: targetKeys.has(node.key) ? context.reason : ("dependency" as const),
           }
         : undefined;
 
       const promise = (async (): Promise<NodeAttemptOutcome> => {
         const parents = graph.getParents(node);
         const parentSettlements = await Promise.allSettled(
-          parents.map(parent => ensureNode(parent))
+          parents.map((parent) => ensureNode(parent)),
         );
         // A settlement can only reject for a genuinely unexpected error
         // (see the comment in `run` above) - expected outcomes always
         // resolve. Treat an unexpected rejection as a failure for
         // blocking purposes rather than letting it derail the traversal.
-        const parentOutcomes: NodeAttemptOutcome[] = parentSettlements.map(
-          settlement =>
-            settlement.status === "fulfilled"
-              ? settlement.value
-              : { status: "failed", error: toError(settlement.reason) },
+        const parentOutcomes: NodeAttemptOutcome[] = parentSettlements.map((settlement) =>
+          settlement.status === "fulfilled"
+            ? settlement.value
+            : { status: "failed", error: toError(settlement.reason) },
         );
 
-        if (parentOutcomes.some(outcome => outcome.status === "obsolete")) {
+        if (parentOutcomes.some((outcome) => outcome.status === "obsolete")) {
           return { status: "obsolete" };
         }
 
         const blockedBy = parentOutcomes.flatMap((outcome, index) =>
           outcome.status === "failed"
-            ? [parents[index]?.key].filter(
-                (key): key is string => key !== undefined
-              )
-            : []
+            ? [parents[index]?.key].filter((key): key is string => key !== undefined)
+            : [],
         );
 
         if (blockedBy.length > 0) {
@@ -438,9 +407,7 @@ export const createRuntimeExecutionController = ({
             diagnostics.emit({
               type: "node.execution.blocked",
               operationId: nodeContext.operationId,
-              ...(nodeContext.causeId === undefined
-                ? {}
-                : { causeId: nodeContext.causeId }),
+              ...(nodeContext.causeId === undefined ? {} : { causeId: nodeContext.causeId }),
               nodeKey: node.key,
               nodeKind: node.kind,
               generation: getNodeState(node.key).generation,
@@ -451,9 +418,7 @@ export const createRuntimeExecutionController = ({
           }
           return {
             status: "failed",
-            error: new Error(
-              `Node "${node.key}" was blocked by: ${blockedBy.join(", ")}.`
-            ),
+            error: new Error(`Node "${node.key}" was blocked by: ${blockedBy.join(", ")}.`),
           };
         }
 
@@ -469,7 +434,7 @@ export const createRuntimeExecutionController = ({
     };
 
     const registeredTargets = targets.map(resolveRegisteredNode);
-    await Promise.allSettled(registeredTargets.map(target => ensureNode(target)));
+    await Promise.allSettled(registeredTargets.map((target) => ensureNode(target)));
 
     if (failures.size > 0) {
       throw new GraphExecutionError([...failures.values()]);

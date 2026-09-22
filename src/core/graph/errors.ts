@@ -13,7 +13,7 @@ export type GraphValidationErrorCode =
 export class GraphValidationError extends Error {
   public constructor(
     public readonly code: GraphValidationErrorCode,
-    message: string
+    message: string,
   ) {
     super(message);
     this.name = "GraphValidationError";

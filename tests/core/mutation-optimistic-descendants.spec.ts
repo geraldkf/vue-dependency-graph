@@ -10,11 +10,12 @@ import { deferred, waitForCondition } from "./test-helpers";
 
 const rejection = new Error("Known rejection");
 
-const createParent = (key: string) => defineDataNode({
-  key,
-  initialValue: 0,
-  load: async () => 1,
-});
+const createParent = (key: string) =>
+  defineDataNode({
+    key,
+    initialValue: 0,
+    load: async () => 1,
+  });
 
 describe("optimistic data descendant loading", () => {
   it("allows a subscribed data descendant to settle before mutation success", async () => {
@@ -41,7 +42,7 @@ describe("optimistic data descendant loading", () => {
     await runtime.whenSettled();
 
     const pending = runtime.mutate(mutation, undefined, {
-      optimistic: effects => effects.update(parent, current => current + 10),
+      optimistic: (effects) => effects.update(parent, (current) => current + 10),
     });
     await waitForCondition(
       () => descendantLoads === 2,
@@ -105,7 +106,7 @@ describe("optimistic data descendant loading", () => {
     await runtime.whenSettled();
 
     const pending = runtime.mutate(mutation, undefined, {
-      optimistic: effects => effects.update(parent, current => current + 10),
+      optimistic: (effects) => effects.update(parent, (current) => current + 10),
       classifyFailure: () => "rejected",
     });
     await waitForCondition(
@@ -179,22 +180,17 @@ describe("optimistic data descendant loading", () => {
     await runtime.whenSettled();
 
     const pending = runtime.mutate(mutation, undefined, {
-      optimistic: effects => effects.update(parent, current => current + 10),
+      optimistic: (effects) => effects.update(parent, (current) => current + 10),
       classifyFailure: () => "rejected",
     });
-    await waitForCondition(
-      () => descendantLoads === 2,
-      "active descendant reload to start",
-    );
+    await waitForCondition(() => descendantLoads === 2, "active descendant reload to start");
     const optimisticDescendantGeneration = runtime.getState(descendant).generation;
 
     request.reject(rejection);
     await expect(pending).rejects.toBe(rejection);
 
     const rollbackDescendantGeneration = runtime.getState(descendant).generation;
-    expect(rollbackDescendantGeneration).toBeGreaterThan(
-      optimisticDescendantGeneration,
-    );
+    expect(rollbackDescendantGeneration).toBeGreaterThan(optimisticDescendantGeneration);
     expect(runtime.getState(descendant)).toMatchObject({
       data: 10,
       freshness: "fresh",
@@ -242,22 +238,18 @@ describe("optimistic data descendant loading", () => {
       key: "optimistic-descendant.concurrency",
       execute,
     });
-    const runtime = createGraphRuntime(
-      createGraph({ nodes: [blocker, descendant, parent] }),
-      { maxConcurrentLoads: 1 },
-    );
+    const runtime = createGraphRuntime(createGraph({ nodes: [blocker, descendant, parent] }), {
+      maxConcurrentLoads: 1,
+    });
     const subscription = runtime.subscribeNodes([descendant]);
     await runtime.whenSettled();
     await runtime.execute([blocker]);
 
     const blockingRefresh = runtime.refresh([blocker]);
-    await waitForCondition(
-      () => blockerLoads === 2,
-      "blocking data load to occupy the only slot",
-    );
+    await waitForCondition(() => blockerLoads === 2, "blocking data load to occupy the only slot");
 
     const pending = runtime.mutate(mutation, undefined, {
-      optimistic: effects => effects.update(parent, current => current + 10),
+      optimistic: (effects) => effects.update(parent, (current) => current + 10),
     });
     await waitForCondition(
       () => execute.mock.calls.length === 1,

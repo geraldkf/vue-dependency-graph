@@ -12,16 +12,18 @@ export interface InMemoryGraphDiagnostics extends GraphDiagnosticSink {
 }
 
 const freezeEvent = (event: GraphDiagnosticEvent): GraphDiagnosticEvent =>
-  Object.freeze(Object.fromEntries(
-    Object.entries(event).map(([key, value]) => [
-      key,
-      Array.isArray(value)
-        ? Object.freeze([...value])
-        : typeof value === "object" && value !== null
-          ? Object.freeze({ ...value })
-          : value,
-    ]),
-  )) as unknown as GraphDiagnosticEvent;
+  Object.freeze(
+    Object.fromEntries(
+      Object.entries(event).map(([key, value]) => [
+        key,
+        Array.isArray(value)
+          ? Object.freeze([...value])
+          : typeof value === "object" && value !== null
+            ? Object.freeze({ ...value })
+            : value,
+      ]),
+    ),
+  ) as unknown as GraphDiagnosticEvent;
 
 export const createInMemoryGraphDiagnostics = (
   options: InMemoryGraphDiagnosticsOptions,
@@ -44,11 +46,9 @@ export const createInMemoryGraphDiagnostics = (
     }
   };
 
-  const getEvents = (): readonly GraphDiagnosticEvent[] =>
-    Object.freeze([...events]);
+  const getEvents = (): readonly GraphDiagnosticEvent[] => Object.freeze([...events]);
 
-  const getMetrics = (): GraphMetricsSnapshot =>
-    metrics.getSnapshot(droppedEventCount);
+  const getMetrics = (): GraphMetricsSnapshot => metrics.getSnapshot(droppedEventCount);
 
   const reset = (): void => {
     events.length = 0;

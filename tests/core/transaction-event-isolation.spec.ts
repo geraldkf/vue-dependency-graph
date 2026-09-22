@@ -1,10 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import {
-  createGraph,
-  createGraphRuntime,
-  defineDataNode,
-  defineEvent,
-} from "../../src/core";
+import { createGraph, createGraphRuntime, defineDataNode, defineEvent } from "../../src/core";
 import { deferred } from "./test-helpers";
 
 describe("transaction event ownership", () => {
@@ -24,11 +19,9 @@ describe("transaction event ownership", () => {
       load: async () => 1,
     });
     const releaseTransaction = deferred<void>();
-    const runtime = createGraphRuntime(
-      createGraph({ nodes: [stagedTarget, immediateTarget] }),
-    );
+    const runtime = createGraphRuntime(createGraph({ nodes: [stagedTarget, immediateTarget] }));
 
-    const pendingTransaction = runtime.transaction(async transaction => {
+    const pendingTransaction = runtime.transaction(async (transaction) => {
       transaction.publish(stagedEvent, undefined);
       await releaseTransaction.promise;
     });
@@ -65,11 +58,9 @@ describe("transaction event ownership", () => {
       load: async () => 1,
     });
     const releaseTransaction = deferred<void>();
-    const runtime = createGraphRuntime(
-      createGraph({ nodes: [stagedTarget, immediateTarget] }),
-    );
+    const runtime = createGraphRuntime(createGraph({ nodes: [stagedTarget, immediateTarget] }));
 
-    const pendingTransaction = runtime.transaction(async transaction => {
+    const pendingTransaction = runtime.transaction(async (transaction) => {
       transaction.publish(stagedEvent, undefined);
       await releaseTransaction.promise;
       throw new Error("rollback");
@@ -108,16 +99,14 @@ describe("transaction event ownership", () => {
       load,
     });
     const releaseTransaction = deferred<void>();
-    const runtime = createGraphRuntime(
-      createGraph({ nodes: [stagedTarget, immediateTarget] }),
-    );
+    const runtime = createGraphRuntime(createGraph({ nodes: [stagedTarget, immediateTarget] }));
     runtime.subscribeNodes([immediateTarget]);
     await runtime.whenSettled();
     load.mockClear();
     const listener = vi.fn();
     runtime.onChange(listener);
 
-    const pendingTransaction = runtime.transaction(async transaction => {
+    const pendingTransaction = runtime.transaction(async (transaction) => {
       transaction.publish(stagedEvent, undefined);
       await releaseTransaction.promise;
     });
@@ -133,5 +122,4 @@ describe("transaction event ownership", () => {
     releaseTransaction.resolve();
     await pendingTransaction;
   });
-
 });

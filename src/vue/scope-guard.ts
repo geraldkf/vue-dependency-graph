@@ -17,7 +17,7 @@ export const assertActiveEffectScope = (composableName: string): void => {
   if (!getCurrentScope()) {
     throw new Error(
       `${composableName}() must be called inside setup() or an active effect scope, ` +
-        "or its subscription will never be released."
+        "or its subscription will never be released.",
     );
   }
 };

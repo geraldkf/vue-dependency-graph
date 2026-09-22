@@ -222,14 +222,16 @@ export const createDiagnosticSnapshot = ({
       return {
         key: node.key,
         kind: node.kind,
-        dependencyKeys: graph.getParents(node).map(parent => parent.key),
-        childKeys: graph.getChildren(node).map(child => child.key),
-        eventKeys: (observableNode.invalidatedBy ?? []).flatMap(item => {
+        dependencyKeys: graph.getParents(node).map((parent) => parent.key),
+        childKeys: graph.getChildren(node).map((child) => child.key),
+        eventKeys: (observableNode.invalidatedBy ?? []).flatMap((item) => {
           if (typeof item !== "object" || item === null) return [];
           if ("event" in item) {
             const event = item.event;
-            return typeof event === "object" && event !== null &&
-              "key" in event && typeof event.key === "string"
+            return typeof event === "object" &&
+              event !== null &&
+              "key" in event &&
+              typeof event.key === "string"
               ? [event.key]
               : [];
           }
@@ -238,7 +240,7 @@ export const createDiagnosticSnapshot = ({
         ...(refreshPolicyKind === undefined ? {} : { refreshPolicyKind }),
       };
     }),
-    nodes: nodes.map(node => {
+    nodes: nodes.map((node) => {
       const state = getNodeState(node.key);
       return {
         key: node.key,
@@ -258,7 +260,7 @@ export const createDiagnosticSnapshot = ({
         error: scheduler.error ? serialiseDiagnosticError(scheduler.error) : null,
       };
     })(),
-    subscriptions: nodes.map(node => ({
+    subscriptions: nodes.map((node) => ({
       key: node.key,
       ...getSubscriptionState(node),
     })),

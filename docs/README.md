@@ -19,4 +19,3 @@ Use these maintained documents as the current sources of truth:
 - [Mutation adoption guide](./guides/04-mutation-adoption.md)
 - [Roadmap](./ROADMAP.md)
 - [Playground](./PLAYGROUND.md)
-

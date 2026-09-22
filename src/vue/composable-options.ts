@@ -12,6 +12,5 @@ export interface GraphComposableOptions {
   readonly runtime?: GraphRuntime;
 }
 
-export const resolveGraphRuntime = (
-  options?: GraphComposableOptions
-): GraphRuntime => options?.runtime ?? useGraphRuntime();
+export const resolveGraphRuntime = (options?: GraphComposableOptions): GraphRuntime =>
+  options?.runtime ?? useGraphRuntime();

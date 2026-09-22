@@ -29,7 +29,7 @@ export const createDevtoolsPlaygroundScenario = (): DevtoolsPlaygroundScenario =
   let failNext = false;
 
   const AppointmentBooked = defineEvent<{ userId: string }>(
-    "devtools-playground.appointment-booked"
+    "devtools-playground.appointment-booked",
   );
 
   const emptyAppointments: readonly string[] = [];
@@ -43,19 +43,22 @@ export const createDevtoolsPlaygroundScenario = (): DevtoolsPlaygroundScenario =
     key: "devtools-playground.appointments",
     dependencies: [UserId] as const,
     initialValue: emptyAppointments,
-    invalidatedBy: [{
-      event: AppointmentBooked,
-      when: ({ payload, get }: EventInvalidationContext<
-        typeof AppointmentBooked,
-        readonly [typeof UserId]
-      >) => payload.userId === get(UserId),
-    }] as const,
+    invalidatedBy: [
+      {
+        event: AppointmentBooked,
+        when: ({
+          payload,
+          get,
+        }: EventInvalidationContext<typeof AppointmentBooked, readonly [typeof UserId]>) =>
+          payload.userId === get(UserId),
+      },
+    ] as const,
     load: async ({ get }) => {
       if (failNext) {
         failNext = false;
         throw new Error("Demonstration load failure.");
       }
-      await new Promise(resolve => setTimeout(resolve, 30));
+      await new Promise((resolve) => setTimeout(resolve, 30));
       return [`Checkup for ${get(UserId)}`, `Follow-up for ${get(UserId)}`];
     },
   });
@@ -77,7 +80,7 @@ export const createDevtoolsPlaygroundScenario = (): DevtoolsPlaygroundScenario =
   const BookAppointment = defineMutation({
     key: "devtools-playground.book-appointment",
     execute: async ({ input }: { input: { userId: string } }) => {
-      await new Promise(resolve => setTimeout(resolve, 20));
+      await new Promise((resolve) => setTimeout(resolve, 20));
       return { userId: input.userId, appointmentId: `apt-${Date.now()}` };
     },
   });
@@ -87,8 +90,10 @@ export const createDevtoolsPlaygroundScenario = (): DevtoolsPlaygroundScenario =
   });
   const runtime = createGraphRuntime(graph, { diagnostics: { sink: diagnostics } });
 
-  let subscription: NodeSubscription | undefined =
-    runtime.subscribeNodes([AppointmentCount, ComplianceStatus]);
+  let subscription: NodeSubscription | undefined = runtime.subscribeNodes([
+    AppointmentCount,
+    ComplianceStatus,
+  ]);
 
   const changeUser = (): void => {
     runtime.setContext(UserId, `user-${nextUserSuffix}`);
@@ -97,11 +102,15 @@ export const createDevtoolsPlaygroundScenario = (): DevtoolsPlaygroundScenario =
 
   const bookAppointment = async (): Promise<void> => {
     const userId = runtime.getState(UserId).data;
-    await runtime.mutate(BookAppointment, { userId }, {
-      onSuccess: (effects, result) => {
-        effects.publish(AppointmentBooked, { userId: result.userId });
+    await runtime.mutate(
+      BookAppointment,
+      { userId },
+      {
+        onSuccess: (effects, result) => {
+          effects.publish(AppointmentBooked, { userId: result.userId });
+        },
       },
-    });
+    );
   };
 
   const failNextLoad = (): void => {

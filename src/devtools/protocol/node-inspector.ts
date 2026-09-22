@@ -15,12 +15,12 @@ const meanOf = (duration: GraphDurationMetrics): number | null =>
  */
 export const computeNodeDetail = (
   snapshot: GraphDiagnosticSnapshotV1,
-  nodeKey: string
+  nodeKey: string,
 ): InspectorNodeDetail | undefined => {
-  const topologyNode = snapshot.topology.find(node => node.key === nodeKey);
+  const topologyNode = snapshot.topology.find((node) => node.key === nodeKey);
   if (!topologyNode) return undefined;
 
-  const stateByKey = new Map(snapshot.nodes.map(state => [state.key, state]));
+  const stateByKey = new Map(snapshot.nodes.map((state) => [state.key, state]));
   const state = stateByKey.get(nodeKey);
 
   const toDependency = (key: string): InspectorNodeDependency => ({
@@ -28,15 +28,9 @@ export const computeNodeDetail = (
     status: stateByKey.get(key)?.status ?? "idle",
   });
 
-  const subscription = snapshot.subscriptions.find(
-    entry => entry.key === nodeKey
-  );
-  const refreshPolicy = snapshot.refreshPolicies.find(
-    policy => policy.key === nodeKey
-  );
-  const attempt = snapshot.metrics?.nodeAttempts.find(
-    entry => entry.nodeKey === nodeKey
-  );
+  const subscription = snapshot.subscriptions.find((entry) => entry.key === nodeKey);
+  const refreshPolicy = snapshot.refreshPolicies.find((policy) => policy.key === nodeKey);
+  const attempt = snapshot.metrics?.nodeAttempts.find((entry) => entry.nodeKey === nodeKey);
 
   return {
     key: nodeKey,

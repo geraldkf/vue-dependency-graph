@@ -17,11 +17,7 @@ import { createRuntimeEventMatcher } from "./events/event-matcher";
 import type { AnyEventDefinition, EventPayload } from "./events/types";
 import type { ExecutionDiagnosticContext } from "./execution/execution";
 import { toError } from "./execution/types";
-import type {
-  AnyNodeDefinition,
-  ContextNodeDefinition,
-  Graph,
-} from "./graph/types";
+import type { AnyNodeDefinition, ContextNodeDefinition, Graph } from "./graph/types";
 import { createRuntimeMutationController } from "./mutations/mutation-controller";
 import type { MutationDefinition, MutationOptions } from "./mutations/types";
 import { createRuntimeObserver } from "./observation/observer";
@@ -43,10 +39,7 @@ type RequestedOperation = Parameters<
   RuntimeDiagnosticEmitter["emitOperationRequested"]
 >[0]["operation"];
 
-export const createGraphRuntime = (
-  graph: Graph,
-  options?: GraphRuntimeOptions,
-): GraphRuntime => {
+export const createGraphRuntime = (graph: Graph, options?: GraphRuntimeOptions): GraphRuntime => {
   const diagnostics = createRuntimeDiagnosticEmitter(options?.diagnostics);
   const {
     getNodeState,
@@ -74,10 +67,7 @@ export const createGraphRuntime = (
       });
     },
   });
-  const requireRegisteredNode = (
-    node: AnyNodeDefinition,
-    purpose: string,
-  ): AnyNodeDefinition => {
+  const requireRegisteredNode = (node: AnyNodeDefinition, purpose: string): AnyNodeDefinition => {
     const registered = graph.getNode(node.key);
     if (!registered) {
       throw new Error(`Node "${node.key}" is not registered for ${purpose}.`);
@@ -91,21 +81,20 @@ export const createGraphRuntime = (
   // the run, then read back when the flush actually executes.
   const schedulerRequest = createSchedulerRequestTracker("subscription");
 
-  const { execution, scheduler, subscriptions, invalidation } =
-    createGraphCoordination({
-      graph,
-      diagnostics,
-      getNodeState,
-      getActiveAttempt,
-      setActiveAttempt,
-      deleteActiveAttempt,
-      getActiveAttempts,
-      notify: emitNotify,
-      requireRegisteredNode,
-      schedulerRequest,
-      operationObservation,
-      maxConcurrentLoads: options?.maxConcurrentLoads,
-    });
+  const { execution, scheduler, subscriptions, invalidation } = createGraphCoordination({
+    graph,
+    diagnostics,
+    getNodeState,
+    getActiveAttempt,
+    setActiveAttempt,
+    deleteActiveAttempt,
+    getActiveAttempts,
+    notify: emitNotify,
+    requireRegisteredNode,
+    schedulerRequest,
+    operationObservation,
+    maxConcurrentLoads: options?.maxConcurrentLoads,
+  });
 
   // Every caller-facing operation announces itself (`operation.<kind>.requested`)
   // and then runs with that operation's id as its diagnostic context, so all
@@ -165,8 +154,7 @@ export const createGraphRuntime = (
     getActiveAttempt,
     hasSubscribers: subscriptions.hasSubscribers,
     matchPublications: events.matchPublications,
-    prepareCombinedInvalidation:
-      invalidation.prepareCombinedInvalidation,
+    prepareCombinedInvalidation: invalidation.prepareCombinedInvalidation,
     notify: emitNotify,
     schedule: scheduler.schedule,
   });
@@ -185,14 +173,12 @@ export const createGraphRuntime = (
   diagnostics.emitRuntimeCreated(graph.getNodes().map((node) => node.key));
 
   return Object.freeze({
-    getState: <TNode extends AnyNodeDefinition>(node: TNode) =>
-      getSnapshot(node),
+    getState: <TNode extends AnyNodeDefinition>(node: TNode) => getSnapshot(node),
     setContext: <TValue>(node: ContextNodeDefinition<TValue>, value: TValue) => {
       const operationId = diagnostics.createOperationId();
       schedulerRequest.request("context-invalidation", operationId);
-      operationObservation.runObserved(
-        { operationId, reason: "context-invalidation" },
-        () => transactions.setContext(node, value),
+      operationObservation.runObserved({ operationId, reason: "context-invalidation" }, () =>
+        transactions.setContext(node, value),
       );
     },
     execute: (targets: readonly AnyNodeDefinition[]) =>
@@ -227,14 +213,10 @@ export const createGraphRuntime = (
         query.key,
       );
     },
-    publish: <TEvent extends AnyEventDefinition>(
-      event: TEvent,
-      payload: EventPayload<TEvent>,
-    ) => {
+    publish: <TEvent extends AnyEventDefinition>(event: TEvent, payload: EventPayload<TEvent>) => {
       const operationId = diagnostics.createOperationId();
-      operationObservation.runObserved(
-        { operationId, reason: "context-invalidation" },
-        () => transactions.publish(event, payload),
+      operationObservation.runObserved({ operationId, reason: "context-invalidation" }, () =>
+        transactions.publish(event, payload),
       );
     },
     mutate: <TInput, TResult>(
@@ -253,20 +235,21 @@ export const createGraphRuntime = (
     getSchedulerState: scheduler.getSchedulerState,
     whenSettled: scheduler.whenSettled,
     onChange,
-    createDiagnosticSnapshot: () => createDiagnosticSnapshot({
-      graph,
-      runtimeId: diagnostics.runtimeId,
-      now: diagnostics.now,
-      getNodeState,
-      getSchedulerState: scheduler.getSchedulerState,
-      getSubscriptionState: subscriptions.getSubscriptionState,
-      getRefreshPolicySnapshot: policies.getRefreshPolicyDiagnosticSnapshot,
-      ...(options?.diagnostics?.sink === undefined
-        ? {}
-        : {
-            collector: options.diagnostics.sink as DiagnosticCollectorInspection,
-          }),
-    }),
+    createDiagnosticSnapshot: () =>
+      createDiagnosticSnapshot({
+        graph,
+        runtimeId: diagnostics.runtimeId,
+        now: diagnostics.now,
+        getNodeState,
+        getSchedulerState: scheduler.getSchedulerState,
+        getSubscriptionState: subscriptions.getSubscriptionState,
+        getRefreshPolicySnapshot: policies.getRefreshPolicyDiagnosticSnapshot,
+        ...(options?.diagnostics?.sink === undefined
+          ? {}
+          : {
+              collector: options.diagnostics.sink as DiagnosticCollectorInspection,
+            }),
+      }),
     transaction: <T>(work: (transaction: GraphTransaction) => T | Promise<T>) => {
       const session = beginTransactionDiagnostics(diagnostics);
       return transactions

@@ -8,7 +8,7 @@ import type {
 } from "./types";
 
 export const defineQuery = <const TNodes extends QueryNodeMap>(
-  options: DefineQueryOptions<TNodes>
+  options: DefineQueryOptions<TNodes>,
 ): QueryDefinition<TNodes> => {
   if (options.key.trim().length === 0) {
     throw new Error("Query key must not be blank.");
@@ -26,17 +26,14 @@ export const defineQuery = <const TNodes extends QueryNodeMap>(
   });
 };
 
-
-export const getQueryNodes = (
-  query: AnyQueryDefinition
-): readonly AnyNodeDefinition[] => Object.freeze(Object.values(query.nodes));
+export const getQueryNodes = (query: AnyQueryDefinition): readonly AnyNodeDefinition[] =>
+  Object.freeze(Object.values(query.nodes));
 
 export const getQueryRefreshableNodes = (
-  query: AnyQueryDefinition
+  query: AnyQueryDefinition,
 ): readonly RefreshableNodeDefinition[] =>
   Object.freeze(
     getQueryNodes(query).filter(
-      (node): node is RefreshableNodeDefinition =>
-        node.kind === "data" || node.kind === "derived"
-    )
+      (node): node is RefreshableNodeDefinition => node.kind === "data" || node.kind === "derived",
+    ),
   );

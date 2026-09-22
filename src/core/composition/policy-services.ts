@@ -12,10 +12,7 @@ import {
   createRuntimeReleasePolicyController,
   type RuntimeReleasePolicyDependencies,
 } from "../release-policies/policy-controller";
-import {
-  createDefaultTimerEnvironment,
-  type TimerEnvironment,
-} from "../timer-environment";
+import { createDefaultTimerEnvironment, type TimerEnvironment } from "../timer-environment";
 
 export interface RuntimePolicyServicesDependencies {
   readonly graph: Graph;
@@ -100,16 +97,10 @@ export const createRuntimePolicyServices = ({
           ? {}
           : {
               nodeKey: node.key,
-              ...(node.refresh === undefined
-                ? {}
-                : { policyKind: node.refresh.kind }),
+              ...(node.refresh === undefined ? {} : { policyKind: node.refresh.kind }),
             }),
-        ...(details?.delayMs === undefined
-          ? {}
-          : { delayMs: details.delayMs }),
-        ...(details?.error === undefined
-          ? {}
-          : { error: diagnostics.toError(details.error) }),
+        ...(details?.delayMs === undefined ? {} : { delayMs: details.delayMs }),
+        ...(details?.error === undefined ? {} : { error: diagnostics.toError(details.error) }),
       });
     },
   });

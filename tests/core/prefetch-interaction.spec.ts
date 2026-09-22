@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
-import { GraphExecutionError, createGraph, createGraphRuntime, defineDataNode } from "../../src/core";
+import {
+  GraphExecutionError,
+  createGraph,
+  createGraphRuntime,
+  defineDataNode,
+} from "../../src/core";
 import { deferred, waitForCondition } from "./test-helpers";
 
 describe("prefetch interactions", () => {
@@ -40,7 +45,13 @@ describe("prefetch interactions", () => {
   });
 
   it("rejects caller-visible failure without setting scheduler error", async () => {
-    const data = defineDataNode({ key: "data", initialValue: "", load: async () => { throw new Error("failed"); } });
+    const data = defineDataNode({
+      key: "data",
+      initialValue: "",
+      load: async () => {
+        throw new Error("failed");
+      },
+    });
     const runtime = createGraphRuntime(createGraph({ nodes: [data] }));
 
     await expect(runtime.prefetch([data])).rejects.toBeInstanceOf(GraphExecutionError);

@@ -6,7 +6,7 @@ export interface BrowserTimerEnvironmentOptions {
 }
 
 export const createBrowserTimerEnvironment = (
-  options?: BrowserTimerEnvironmentOptions
+  options?: BrowserTimerEnvironmentOptions,
 ): TimerEnvironment => {
   const pauseWhenHidden = options?.pauseWhenHidden ?? true;
   const pauseWhenOffline = options?.pauseWhenOffline ?? true;
@@ -16,12 +16,9 @@ export const createBrowserTimerEnvironment = (
 
   return Object.freeze({
     now: () => Date.now(),
-    setTimeout: (callback: () => void, delayMs: number) =>
-      globalThis.setTimeout(callback, delayMs),
+    setTimeout: (callback: () => void, delayMs: number) => globalThis.setTimeout(callback, delayMs),
     clearTimeout: (handle: unknown) =>
-      globalThis.clearTimeout(
-        handle as ReturnType<typeof globalThis.setTimeout>
-      ),
+      globalThis.clearTimeout(handle as ReturnType<typeof globalThis.setTimeout>),
     random: () => Math.random(),
     isPaused,
     onPauseChange: (listener: (paused: boolean) => void) => {

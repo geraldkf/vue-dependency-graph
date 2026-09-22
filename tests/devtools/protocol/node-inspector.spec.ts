@@ -33,9 +33,7 @@ describe("computeNodeDetail", () => {
       dependencies: [Thing] as const,
       derive: () => "label",
     });
-    const runtime = createGraphRuntime(
-      createGraph({ nodes: [UserId, Thing, ThingLabel] }),
-    );
+    const runtime = createGraphRuntime(createGraph({ nodes: [UserId, Thing, ThingLabel] }));
     const subscription = runtime.subscribeNodes([ThingLabel]);
 
     const detail = computeNodeDetail(runtime.createDiagnosticSnapshot(), "thing");

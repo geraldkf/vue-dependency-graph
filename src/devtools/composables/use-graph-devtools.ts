@@ -1,9 +1,5 @@
 import { computed, onScopeDispose, ref, type ComputedRef, type Ref } from "vue";
-import type {
-  GraphRuntime,
-  InMemoryGraphDiagnostics,
-  GraphDiagnosticSnapshotV1,
-} from "../../core";
+import type { GraphRuntime, InMemoryGraphDiagnostics, GraphDiagnosticSnapshotV1 } from "../../core";
 import { assertActiveEffectScope } from "./scope-guard";
 import { computeGraphView } from "../protocol/graph-view";
 import { computeNodeDetail } from "../protocol/node-inspector";
@@ -58,9 +54,7 @@ export interface DevtoolsExport {
  * recompute a full snapshot and re-layout once per individual state
  * transition.
  */
-export const useGraphDevtools = (
-  options: UseGraphDevtoolsOptions
-): UseGraphDevtoolsResult => {
+export const useGraphDevtools = (options: UseGraphDevtoolsOptions): UseGraphDevtoolsResult => {
   assertActiveEffectScope("useGraphDevtools");
   const { runtime, diagnostics } = options;
 
@@ -96,7 +90,7 @@ export const useGraphDevtools = (
   const selectedNodeDetail = computed(() =>
     selectedNodeKey.value === undefined
       ? undefined
-      : computeNodeDetail(snapshot.value, selectedNodeKey.value)
+      : computeNodeDetail(snapshot.value, selectedNodeKey.value),
   );
   const select = (key: string | undefined): void => {
     selectedNodeKey.value = key;

@@ -31,39 +31,25 @@ describe("UnmountCleanupScenario", () => {
     // the component.
     await vi.advanceTimersByTimeAsync(300);
 
-    expect(screen.getByTestId("subscriber-count").textContent).toContain(
-      "1"
-    );
+    expect(screen.getByTestId("subscriber-count").textContent).toContain("1");
     expect(runtime.getSubscriptionState(toggleableResource).direct).toBe(1);
-    expect(screen.getByTestId("toggleable-status").textContent).toContain(
-      "success"
-    );
+    expect(screen.getByTestId("toggleable-status").textContent).toContain("success");
 
-    await fireEvent.click(
-      screen.getByRole("button", { name: "Hide consumer" })
-    );
+    await fireEvent.click(screen.getByRole("button", { name: "Hide consumer" }));
 
-    expect(screen.getByTestId("subscriber-count").textContent).toContain(
-      "0"
-    );
+    expect(screen.getByTestId("subscriber-count").textContent).toContain("0");
     expect(runtime.getSubscriptionState(toggleableResource).direct).toBe(0);
     // v-if actually removed the consumer, not just visually hid it —
     // this is the thing a unit test could miss if it only checked the
     // subscription count and never confirmed the DOM itself changed.
     expect(screen.queryByTestId("toggleable-status")).toBeNull();
 
-    await fireEvent.click(
-      screen.getByRole("button", { name: "Show consumer" })
-    );
+    await fireEvent.click(screen.getByRole("button", { name: "Show consumer" }));
 
-    expect(screen.getByTestId("subscriber-count").textContent).toContain(
-      "1"
-    );
+    expect(screen.getByTestId("subscriber-count").textContent).toContain("1");
     expect(runtime.getSubscriptionState(toggleableResource).direct).toBe(1);
 
     await vi.advanceTimersByTimeAsync(300);
-    expect(screen.getByTestId("toggleable-status").textContent).toContain(
-      "success"
-    );
+    expect(screen.getByTestId("toggleable-status").textContent).toContain("success");
   });
 });

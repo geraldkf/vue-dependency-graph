@@ -5,8 +5,16 @@ describe("refresh descendant invalidation", () => {
   it("invalidates transitive descendants once when the value changes", async () => {
     let value = 1;
     const root = defineDataNode({ key: "root", initialValue: 0, load: async () => value });
-    const child = defineDerivedNode({ key: "child", dependencies: [root] as const, derive: ({ get }) => get(root) + 1 });
-    const leaf = defineDerivedNode({ key: "leaf", dependencies: [child] as const, derive: ({ get }) => get(child) + 1 });
+    const child = defineDerivedNode({
+      key: "child",
+      dependencies: [root] as const,
+      derive: ({ get }) => get(root) + 1,
+    });
+    const leaf = defineDerivedNode({
+      key: "leaf",
+      dependencies: [child] as const,
+      derive: ({ get }) => get(child) + 1,
+    });
     const runtime = createGraphRuntime(createGraph({ nodes: [leaf, child, root] }));
     await runtime.prefetch([leaf]);
 
@@ -19,7 +27,11 @@ describe("refresh descendant invalidation", () => {
 
   it("does not invalidate descendants when the value is equal", async () => {
     const root = defineDataNode({ key: "root", initialValue: 0, load: async () => 1 });
-    const child = defineDerivedNode({ key: "child", dependencies: [root] as const, derive: ({ get }) => get(root) + 1 });
+    const child = defineDerivedNode({
+      key: "child",
+      dependencies: [root] as const,
+      derive: ({ get }) => get(root) + 1,
+    });
     const runtime = createGraphRuntime(createGraph({ nodes: [child, root] }));
     await runtime.prefetch([child]);
     const before = runtime.getState(child);

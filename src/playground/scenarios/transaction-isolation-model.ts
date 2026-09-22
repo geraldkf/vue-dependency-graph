@@ -11,11 +11,7 @@ import {
 } from "../../core";
 
 export type TransactionIsolationPhase =
-  | "idle"
-  | "open"
-  | "committed"
-  | "rolled-back"
-  | "conflicted";
+  "idle" | "open" | "committed" | "rolled-back" | "conflicted";
 
 export type TransactionIsolationMode = "independent" | "conflict";
 export type TransactionIsolationDecision = "commit" | "rollback";
@@ -57,7 +53,7 @@ interface PendingDecision {
 
 const createPendingDecision = (): PendingDecision => {
   let resolve!: (decision: TransactionIsolationDecision) => void;
-  const promise = new Promise<TransactionIsolationDecision>(complete => {
+  const promise = new Promise<TransactionIsolationDecision>((complete) => {
     resolve = complete;
   });
   return { promise, resolve };
@@ -149,24 +145,22 @@ export const createTransactionIsolationScenario = (): TransactionIsolationScenar
     }
   };
 
-  const runOperation = (
-    operation: "A" | "B",
-    decision: PendingDecision,
-  ): Promise<void> => runtime.transaction(async transaction => {
-    if (mode === "independent") {
-      if (operation === "A") transaction.setContext(operationAContext, 2);
-      else transaction.setContext(operationBContext, 20);
-    } else {
-      transaction.setContext(sharedContext, operation === "A" ? 200 : 300);
-      if (operation === "A") transaction.setContext(operationAContext, 2);
-      else transaction.setContext(operationBContext, 20);
-    }
+  const runOperation = (operation: "A" | "B", decision: PendingDecision): Promise<void> =>
+    runtime.transaction(async (transaction) => {
+      if (mode === "independent") {
+        if (operation === "A") transaction.setContext(operationAContext, 2);
+        else transaction.setContext(operationBContext, 20);
+      } else {
+        transaction.setContext(sharedContext, operation === "A" ? 200 : 300);
+        if (operation === "A") transaction.setContext(operationAContext, 2);
+        else transaction.setContext(operationBContext, 20);
+      }
 
-    const outcome = await decision.promise;
-    if (outcome === "rollback") {
-      throw new Error(`Operation ${operation} rolled back.`);
-    }
-  });
+      const outcome = await decision.promise;
+      if (outcome === "rollback") {
+        throw new Error(`Operation ${operation} rolled back.`);
+      }
+    });
 
   const start = async (nextMode: TransactionIsolationMode): Promise<void> => {
     await initialize();
@@ -215,7 +209,7 @@ export const createTransactionIsolationScenario = (): TransactionIsolationScenar
   const reset = async (): Promise<void> => {
     if (operationAPhase === "open") await complete("A", "rollback");
     if (operationBPhase === "open") await complete("B", "rollback");
-    await runtime.transaction(transaction => {
+    await runtime.transaction((transaction) => {
       transaction.setContext(operationAContext, 1);
       transaction.setContext(operationBContext, 10);
       transaction.setContext(sharedContext, 100);

@@ -20,11 +20,11 @@ describe("transaction session isolation", () => {
     const runtime = createGraphRuntime(createGraph({ nodes: [context] }));
     const releaseFailing = deferred<void>();
 
-    const succeeding = runtime.transaction(transaction => {
+    const succeeding = runtime.transaction((transaction) => {
       transaction.setContext(context, 2);
     });
     const failing = runtime
-      .transaction(async transaction => {
+      .transaction(async (transaction) => {
         transaction.setContext(context, 3);
         await releaseFailing.promise;
         throw new Error("unrelated failure");
@@ -51,11 +51,11 @@ describe("transaction session isolation", () => {
     const runtime = createGraphRuntime(createGraph({ nodes: [first, second] }));
     const releaseFirst = deferred<void>();
 
-    const firstTransaction = runtime.transaction(async transaction => {
+    const firstTransaction = runtime.transaction(async (transaction) => {
       transaction.setContext(first, 2);
       await releaseFirst.promise;
     });
-    const secondTransaction = runtime.transaction(transaction => {
+    const secondTransaction = runtime.transaction((transaction) => {
       transaction.setContext(second, 20);
     });
 
@@ -75,12 +75,12 @@ describe("transaction session isolation", () => {
     const runtime = createGraphRuntime(createGraph({ nodes: [context] }));
     const releaseSecond = deferred<void>();
 
-    const firstTransaction = runtime.transaction(transaction => {
+    const firstTransaction = runtime.transaction((transaction) => {
       transaction.setContext(context, 2);
     });
     await firstTransaction;
 
-    const secondTransaction = runtime.transaction(async transaction => {
+    const secondTransaction = runtime.transaction(async (transaction) => {
       transaction.setContext(context, 3);
       await releaseSecond.promise;
     });

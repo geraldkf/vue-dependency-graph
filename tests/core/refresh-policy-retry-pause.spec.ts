@@ -30,7 +30,7 @@ const createEnvironment = (randomValues: readonly number[] = [0.5]) => {
       timers.set(id, { id, dueAt: now + delayMs, callback });
       return id;
     },
-    clearTimeout: handle => {
+    clearTimeout: (handle) => {
       if (typeof handle === "number") timers.delete(handle);
     },
     random: () => {
@@ -39,7 +39,7 @@ const createEnvironment = (randomValues: readonly number[] = [0.5]) => {
       return value;
     },
     isPaused: () => paused,
-    onPauseChange: listener => {
+    onPauseChange: (listener) => {
       pauseListeners.add(listener);
       return () => pauseListeners.delete(listener);
     },
@@ -48,7 +48,7 @@ const createEnvironment = (randomValues: readonly number[] = [0.5]) => {
     now += durationMs;
     while (true) {
       const next = [...timers.values()]
-        .filter(timer => timer.dueAt <= now)
+        .filter((timer) => timer.dueAt <= now)
         .sort((left, right) => left.dueAt - right.dueAt || left.id - right.id)[0];
       if (!next) return;
       timers.delete(next.id);
@@ -60,9 +60,7 @@ const createEnvironment = (randomValues: readonly number[] = [0.5]) => {
     for (const listener of [...pauseListeners]) listener(value);
   };
   const nextDelay = (): number | undefined => {
-    const next = [...timers.values()].sort(
-      (left, right) => left.dueAt - right.dueAt
-    )[0];
+    const next = [...timers.values()].sort((left, right) => left.dueAt - right.dueAt)[0];
     return next ? next.dueAt - now : undefined;
   };
   return {
@@ -201,7 +199,7 @@ describe("refresh policy retry and pause", () => {
     clock.advanceBy(20);
     await waitForCondition(
       () => runtime.getState(node).error instanceof GraphRefreshRetryExhaustedError,
-      "retry exhaustion"
+      "retry exhaustion",
     );
 
     const state = runtime.getState(node);

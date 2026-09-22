@@ -33,12 +33,8 @@ describe("playground shell", () => {
       global: { plugins: [pinia] },
     });
 
-    expect(
-      screen.getByRole("heading", { name: "Vue Dependency Graph" })
-    ).toBeTruthy();
-    expect(
-      screen.getByRole("heading", { name: "Context Switching" })
-    ).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Vue Dependency Graph" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Context Switching" })).toBeTruthy();
 
     const tabs = [
       "Atomic Transaction",
@@ -56,9 +52,7 @@ describe("playground shell", () => {
     for (const tab of tabs) {
       await fireEvent.click(screen.getByRole("button", { name: tab }));
       expect(screen.getByRole("heading", { name: tab })).toBeTruthy();
-      expect(
-        screen.getByRole("button", { name: tab }).getAttribute("aria-pressed")
-      ).toBe("true");
+      expect(screen.getByRole("button", { name: tab }).getAttribute("aria-pressed")).toBe("true");
     }
   });
 
@@ -73,47 +67,35 @@ describe("playground shell", () => {
     expect(runtime.getSubscriptionState(selectedUserId).direct).toBe(1);
     expect(runtime.getSubscriptionState(userProfile).direct).toBe(1);
 
-    await fireEvent.click(
-      screen.getByRole("button", { name: "Optimistic Appointment Booking" })
-    );
+    await fireEvent.click(screen.getByRole("button", { name: "Optimistic Appointment Booking" }));
 
     expect(runtime.getSubscriptionState(optimisticAppointments).direct).toBe(1);
 
-    await fireEvent.click(
-      screen.getByRole("button", { name: "Concurrent Consumers" })
-    );
+    await fireEvent.click(screen.getByRole("button", { name: "Concurrent Consumers" }));
 
     expect(runtime.getSubscriptionState(optimisticAppointments).direct).toBe(0);
     expect(runtime.getSubscriptionState(selectedUserId).direct).toBe(0);
     expect(runtime.getSubscriptionState(userProfile).direct).toBe(0);
     expect(runtime.getSubscriptionState(sharedResource).direct).toBe(2);
 
-    await fireEvent.click(
-      screen.getByRole("button", { name: "Error and Retry" })
-    );
+    await fireEvent.click(screen.getByRole("button", { name: "Error and Retry" }));
 
     expect(runtime.getSubscriptionState(sharedResource).direct).toBe(0);
     expect(runtime.getSubscriptionState(flakyResource).direct).toBe(1);
 
-    await fireEvent.click(
-      screen.getByRole("button", { name: "Unmount Cleanup" })
-    );
+    await fireEvent.click(screen.getByRole("button", { name: "Unmount Cleanup" }));
 
     expect(runtime.getSubscriptionState(flakyResource).direct).toBe(0);
     expect(runtime.getSubscriptionState(toggleableResource).direct).toBe(1);
 
-    await fireEvent.click(
-      screen.getByRole("button", { name: "Aggregate Query" })
-    );
+    await fireEvent.click(screen.getByRole("button", { name: "Aggregate Query" }));
 
     expect(runtime.getSubscriptionState(toggleableResource).direct).toBe(0);
     expect(runtime.getSubscriptionState(metricA).direct).toBe(1);
     expect(runtime.getSubscriptionState(metricB).direct).toBe(1);
     expect(runtime.getSubscriptionState(metricC).direct).toBe(1);
 
-    await fireEvent.click(
-      screen.getByRole("button", { name: "Query Groups" })
-    );
+    await fireEvent.click(screen.getByRole("button", { name: "Query Groups" }));
 
     expect(runtime.getSubscriptionState(metricA).direct).toBe(0);
     expect(runtime.getSubscriptionState(metricB).direct).toBe(0);
@@ -121,16 +103,12 @@ describe("playground shell", () => {
     expect(runtime.getSubscriptionState(queryGroupsAppointments).direct).toBe(0);
     expect(runtime.getSubscriptionState(queryGroupsCapabilityStatus).direct).toBe(0);
 
-    await fireEvent.click(
-      screen.getByRole("button", { name: "Mount consumer" })
-    );
+    await fireEvent.click(screen.getByRole("button", { name: "Mount consumer" }));
 
     expect(runtime.getSubscriptionState(queryGroupsAppointments).direct).toBe(1);
     expect(runtime.getSubscriptionState(queryGroupsCapabilityStatus).direct).toBe(1);
 
-    await fireEvent.click(
-      screen.getByRole("button", { name: "Context Switching" })
-    );
+    await fireEvent.click(screen.getByRole("button", { name: "Context Switching" }));
 
     expect(runtime.getSubscriptionState(queryGroupsAppointments).direct).toBe(0);
     expect(runtime.getSubscriptionState(queryGroupsCapabilityStatus).direct).toBe(0);

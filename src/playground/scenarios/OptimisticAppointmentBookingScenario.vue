@@ -2,23 +2,15 @@
   <section aria-labelledby="optimistic-booking-heading">
     <h2 id="optimistic-booking-heading">Optimistic Appointment Booking</h2>
     <p>
-      Shows immediate optimistic data, confirmed reconciliation, safe rollback,
-      and unknown-outcome recovery through the Pinia-owned runtime.
+      Shows immediate optimistic data, confirmed reconciliation, safe rollback, and unknown-outcome
+      recovery through the Pinia-owned runtime.
     </p>
 
     <div>
-      <button :disabled="isSubmitting" @click="startBooking">
-        Start booking
-      </button>
-      <button :disabled="!isSubmitting" @click="confirmBooking">
-        Confirm success
-      </button>
-      <button :disabled="!isSubmitting" @click="rejectBooking">
-        Reject booking
-      </button>
-      <button :disabled="!isSubmitting" @click="makeOutcomeUnknown">
-        Make outcome unknown
-      </button>
+      <button :disabled="isSubmitting" @click="startBooking">Start booking</button>
+      <button :disabled="!isSubmitting" @click="confirmBooking">Confirm success</button>
+      <button :disabled="!isSubmitting" @click="rejectBooking">Reject booking</button>
+      <button :disabled="!isSubmitting" @click="makeOutcomeUnknown">Make outcome unknown</button>
       <button :disabled="!isSubmitting" @click="startOverlappingBooking">
         Start overlapping booking
       </button>
@@ -27,18 +19,14 @@
 
     <p data-testid="optimistic-booking-phase">Phase: {{ phase }}</p>
     <p data-testid="optimistic-booking-outcome">Outcome: {{ outcome }}</p>
-    <p data-testid="optimistic-booking-error">
-      Error: {{ errorMessage ?? "none" }}
-    </p>
+    <p data-testid="optimistic-booking-error">Error: {{ errorMessage ?? "none" }}</p>
     <p data-testid="optimistic-booking-requests">
       Booking requests: {{ optimisticAppointmentApi.requestCount.value }}
     </p>
     <p data-testid="optimistic-booking-state">
       Appointments: {{ appointments.status.value }} / {{ appointments.freshness.value }}
     </p>
-    <p data-testid="optimistic-booking-capability">
-      Capability: {{ capability.data.value }}
-    </p>
+    <p data-testid="optimistic-booking-capability">Capability: {{ capability.data.value }}</p>
     <p data-testid="optimistic-booking-capability-requests">
       Capability requests: {{ capabilityStatusLoader.requestCount.value }}
     </p>
@@ -53,10 +41,7 @@
 
 <script setup lang="ts">
 import { computed, onScopeDispose, ref } from "vue";
-import {
-  GraphMutationConflictError,
-  GraphMutationOutcomeUnknownError,
-} from "../../core";
+import { GraphMutationConflictError, GraphMutationOutcomeUnknownError } from "../../core";
 import { useNode } from "../../vue";
 import { useDependencyGraphStore } from "../dependency-graph-store";
 import { appointmentBooked } from "./appointments-domain";
@@ -77,16 +62,14 @@ const runtime = useDependencyGraphStore().runtime;
 const appointments = useNode(optimisticAppointments, { runtime });
 const capability = useNode(capabilityInterviewStatus, { runtime });
 
-const phase = ref<
-  "ready" | "submitting" | "optimistic" | "confirmed" | "rolled-back" | "unknown"
->("ready");
+const phase = ref<"ready" | "submitting" | "optimistic" | "confirmed" | "rolled-back" | "unknown">(
+  "ready",
+);
 const outcome = ref("ready");
 const errorMessage = ref<string | null>(null);
 const nextClientId = ref(1);
 let activeBooking: Promise<void> | undefined;
-const isSubmitting = computed(() =>
-  phase.value === "submitting" || phase.value === "optimistic"
-);
+const isSubmitting = computed(() => phase.value === "submitting" || phase.value === "optimistic");
 
 const runBooking = async (input: BookAppointmentInput): Promise<void> => {
   phase.value = "submitting";
@@ -95,8 +78,8 @@ const runBooking = async (input: BookAppointmentInput): Promise<void> => {
 
   try {
     await runtime.mutate(bookAppointment, input, {
-      optimistic: effects => {
-        effects.update(optimisticAppointments, current => [
+      optimistic: (effects) => {
+        effects.update(optimisticAppointments, (current) => [
           ...current,
           {
             id: -nextClientId.value,
@@ -109,18 +92,17 @@ const runBooking = async (input: BookAppointmentInput): Promise<void> => {
         outcome.value = "optimistic appointment visible";
       },
       onSuccess: (effects, saved) => {
-        effects.update(optimisticAppointments, current =>
-          current.map(appointment =>
-            appointment.clientId === saved.clientId ? saved : appointment
-          )
+        effects.update(optimisticAppointments, (current) =>
+          current.map((appointment) =>
+            appointment.clientId === saved.clientId ? saved : appointment,
+          ),
         );
         effects.publish(appointmentBooked, {
           jobSeekerId: saved.jobSeekerId,
           appointmentId: saved.id,
         });
       },
-      classifyFailure: error =>
-        isKnownBookingRejection(error) ? "rejected" : "unknown",
+      classifyFailure: (error) => (isKnownBookingRejection(error) ? "rejected" : "unknown"),
     });
     phase.value = "confirmed";
     outcome.value = "booking confirmed";
@@ -160,8 +142,8 @@ const startOverlappingBooking = async (): Promise<void> => {
 
   try {
     await runtime.mutate(bookAppointment, input, {
-      optimistic: effects => {
-        effects.update(optimisticAppointments, current => [
+      optimistic: (effects) => {
+        effects.update(optimisticAppointments, (current) => [
           ...current,
           {
             id: -nextClientId.value,

@@ -2,10 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { createBrowserTimerEnvironment } from "../../src/vue";
 
 describe("browser refresh policy environment", () => {
-  const originalVisibility = Object.getOwnPropertyDescriptor(
-    document,
-    "visibilityState"
-  );
+  const originalVisibility = Object.getOwnPropertyDescriptor(document, "visibilityState");
   const originalOnline = Object.getOwnPropertyDescriptor(navigator, "onLine");
 
   afterEach(() => {

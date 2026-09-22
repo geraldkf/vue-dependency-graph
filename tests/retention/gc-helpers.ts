@@ -25,8 +25,7 @@ const collect = (): void => {
   gc();
 };
 
-const nextMacrotask = (): Promise<void> =>
-  new Promise(resolve => setTimeout(resolve, 0));
+const nextMacrotask = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
 
 export const collectGarbage = async (rounds = 3): Promise<void> => {
   for (let round = 0; round < rounds; round += 1) {
@@ -36,18 +35,16 @@ export const collectGarbage = async (rounds = 3): Promise<void> => {
 };
 
 /** A distinctive object big enough to be a realistic node value. */
-export const makeValue = (label: string): { readonly label: string; readonly payload: number[] } => ({
+export const makeValue = (
+  label: string,
+): { readonly label: string; readonly payload: number[] } => ({
   label,
   payload: new Array<number>(2_000).fill(1),
 });
 
-export const weakRefTo = <T extends object>(value: T): WeakRef<T> =>
-  new WeakRef(value);
+export const weakRefTo = <T extends object>(value: T): WeakRef<T> => new WeakRef(value);
 
-export const expectCollected = async (
-  ref: WeakRef<object>,
-  description: string,
-): Promise<void> => {
+export const expectCollected = async (ref: WeakRef<object>, description: string): Promise<void> => {
   for (let attempt = 0; attempt < 20; attempt += 1) {
     await collectGarbage();
     if (ref.deref() === undefined) return;
@@ -55,10 +52,7 @@ export const expectCollected = async (
   throw new Error(`${description} is still reachable after garbage collection`);
 };
 
-export const expectRetained = async (
-  ref: WeakRef<object>,
-  description: string,
-): Promise<void> => {
+export const expectRetained = async (ref: WeakRef<object>, description: string): Promise<void> => {
   await collectGarbage(5);
   if (ref.deref() === undefined) {
     throw new Error(`${description} was collected but is expected to still be reachable`);

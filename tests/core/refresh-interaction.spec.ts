@@ -74,7 +74,7 @@ describe("refresh interactions and races", () => {
     const second = runtime.refresh([right, left, right]);
     await waitForCondition(
       () => leftLoad.mock.calls.length === 1 && rightLoad.mock.calls.length === 1,
-      "order-independent shared refresh"
+      "order-independent shared refresh",
     );
 
     leftResult.resolve("left");
@@ -98,7 +98,7 @@ describe("refresh interactions and races", () => {
     const rightRefresh = runtime.refresh([right]);
     await waitForCondition(
       () => leftLoad.mock.calls.length === 1 && rightLoad.mock.calls.length === 1,
-      "independent refresh operations"
+      "independent refresh operations",
     );
 
     leftResult.resolve("left");
@@ -108,5 +108,4 @@ describe("refresh interactions and races", () => {
     expect(runtime.getState(left).data).toBe("left");
     expect(runtime.getState(right).data).toBe("right");
   });
-
 });

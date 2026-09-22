@@ -29,16 +29,12 @@ describe("ContextSwitchingScenario", () => {
 
     await vi.advanceTimersByTimeAsync(600);
     expect(screen.getByTestId("status").textContent).toContain("success");
-    expect(screen.getByTestId("data").textContent).toContain(
-      "Profile for user #1"
-    );
+    expect(screen.getByTestId("data").textContent).toContain("Profile for user #1");
 
     await fireEvent.click(screen.getByRole("button", { name: "User 2" }));
     await vi.advanceTimersByTimeAsync(600);
 
     expect(screen.getByTestId("status").textContent).toContain("success");
-    expect(screen.getByTestId("data").textContent).toContain(
-      "Profile for user #2"
-    );
+    expect(screen.getByTestId("data").textContent).toContain("Profile for user #2");
   });
 });

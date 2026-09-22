@@ -14,7 +14,7 @@ const createAbortError = (message: string): Error => {
 };
 
 export const createExecutionConcurrencyLimiter = (
-  maxConcurrent: number
+  maxConcurrent: number,
 ): ExecutionConcurrencyLimiter => {
   if (Number.isNaN(maxConcurrent) || maxConcurrent < 1) {
     throw new Error("maxConcurrent must be at least 1.");
@@ -25,9 +25,7 @@ export const createExecutionConcurrencyLimiter = (
 
   const acquire = (signal: AbortSignal, onQueued?: () => void): Promise<void> => {
     if (signal.aborted) {
-      return Promise.reject(
-        createAbortError("Aborted before acquiring a concurrency slot.")
-      );
+      return Promise.reject(createAbortError("Aborted before acquiring a concurrency slot."));
     }
 
     if (active < maxConcurrent) {
@@ -48,9 +46,7 @@ export const createExecutionConcurrencyLimiter = (
         if (!queued) return;
         queued = false;
         removeFromQueue();
-        reject(
-          createAbortError("Aborted while waiting for a concurrency slot.")
-        );
+        reject(createAbortError("Aborted while waiting for a concurrency slot."));
       };
 
       const entry: QueuedAcquisition = {
@@ -61,9 +57,7 @@ export const createExecutionConcurrencyLimiter = (
           signal.removeEventListener("abort", onAbort);
 
           if (signal.aborted) {
-            reject(
-              createAbortError("Aborted while waiting for a concurrency slot.")
-            );
+            reject(createAbortError("Aborted while waiting for a concurrency slot."));
             return false;
           }
 

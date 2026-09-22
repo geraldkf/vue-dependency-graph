@@ -36,9 +36,7 @@ describe("optimistic rollback scheduling", () => {
         return recoveryLoad.promise;
       },
     });
-    const { mutation, reject } = createRejectedMutation(
-      "rollback-scheduling.stale-subscribed",
-    );
+    const { mutation, reject } = createRejectedMutation("rollback-scheduling.stale-subscribed");
     const runtime = createGraphRuntime(createGraph({ nodes: [value] }));
     const subscription = runtime.subscribeNodes([value]);
     await runtime.whenSettled();
@@ -47,20 +45,14 @@ describe("optimistic rollback scheduling", () => {
     await waitForCondition(() => loadCount === 2, "stale refresh to start");
 
     const pending = runtime.mutate(mutation, undefined, {
-      optimistic: effects => effects.update(value, current => current + 10),
+      optimistic: (effects) => effects.update(value, (current) => current + 10),
       classifyFailure: () => "rejected",
     });
-    await waitForCondition(
-      () => runtime.getState(value).data === 11,
-      "optimistic value to appear",
-    );
+    await waitForCondition(() => runtime.getState(value).data === 11, "optimistic value to appear");
 
     reject();
     await expect(pending).rejects.toBe(knownRejection);
-    await waitForCondition(
-      () => loadCount === 3,
-      "rollback recovery load to start",
-    );
+    await waitForCondition(() => loadCount === 3, "rollback recovery load to start");
 
     expect(runtime.getState(value)).toMatchObject({
       data: 1,
@@ -99,15 +91,13 @@ describe("optimistic rollback scheduling", () => {
         return loadCount;
       },
     });
-    const { mutation, reject } = createRejectedMutation(
-      "rollback-scheduling.fresh-subscribed",
-    );
+    const { mutation, reject } = createRejectedMutation("rollback-scheduling.fresh-subscribed");
     const runtime = createGraphRuntime(createGraph({ nodes: [value] }));
     const subscription = runtime.subscribeNodes([value]);
     await runtime.whenSettled();
 
     const pending = runtime.mutate(mutation, undefined, {
-      optimistic: effects => effects.update(value, current => current + 10),
+      optimistic: (effects) => effects.update(value, (current) => current + 10),
       classifyFailure: () => "rejected",
     });
     await waitForCondition(
@@ -139,16 +129,14 @@ describe("optimistic rollback scheduling", () => {
         return loadCount === 1 ? 1 : staleLoad.promise;
       },
     });
-    const { mutation, reject } = createRejectedMutation(
-      "rollback-scheduling.stale-unsubscribed",
-    );
+    const { mutation, reject } = createRejectedMutation("rollback-scheduling.stale-unsubscribed");
     const runtime = createGraphRuntime(createGraph({ nodes: [value] }));
     await runtime.execute([value]);
 
     const staleRefresh = runtime.refresh([value]);
     await waitForCondition(() => loadCount === 2, "unsubscribed refresh to start");
     const pending = runtime.mutate(mutation, undefined, {
-      optimistic: effects => effects.update(value, current => current + 10),
+      optimistic: (effects) => effects.update(value, (current) => current + 10),
       classifyFailure: () => "rejected",
     });
     await waitForCondition(
@@ -196,9 +184,7 @@ describe("optimistic rollback scheduling", () => {
         return recoveryRight.promise;
       },
     });
-    const { mutation, reject } = createRejectedMutation(
-      "rollback-scheduling.multiple",
-    );
+    const { mutation, reject } = createRejectedMutation("rollback-scheduling.multiple");
     const runtime = createGraphRuntime(createGraph({ nodes: [left, right] }));
     const subscription = runtime.subscribeNodes([left, right]);
     await runtime.whenSettled();
@@ -214,9 +200,9 @@ describe("optimistic rollback scheduling", () => {
     });
 
     const pending = runtime.mutate(mutation, undefined, {
-      optimistic: effects => {
-        effects.update(left, current => current + 10);
-        effects.update(right, current => current + 10);
+      optimistic: (effects) => {
+        effects.update(left, (current) => current + 10);
+        effects.update(right, (current) => current + 10);
       },
       classifyFailure: () => "rejected",
     });
@@ -269,36 +255,26 @@ describe("optimistic rollback scheduling", () => {
         return get(parent) * 2;
       },
     });
-    const { mutation, reject } = createRejectedMutation(
-      "rollback-scheduling.shared-graph",
-    );
+    const { mutation, reject } = createRejectedMutation("rollback-scheduling.shared-graph");
     const runtime = createGraphRuntime(createGraph({ nodes: [child, parent] }));
     const subscription = runtime.subscribeNodes([child]);
     await runtime.whenSettled();
 
     const staleRefresh = runtime.refresh([parent, child]);
-    await waitForCondition(
-      () => parentLoads === 2,
-      "shared parent refresh to start",
-    );
+    await waitForCondition(() => parentLoads === 2, "shared parent refresh to start");
     const pending = runtime.mutate(mutation, undefined, {
-      optimistic: effects => effects.update(parent, current => current + 10),
+      optimistic: (effects) => effects.update(parent, (current) => current + 10),
       classifyFailure: () => "rejected",
     });
     await waitForCondition(
-      () =>
-        runtime.getState(parent).data === 11 &&
-        runtime.getState(child).data === 22,
+      () => runtime.getState(parent).data === 11 && runtime.getState(child).data === 22,
       "shared graph optimistic values to appear",
     );
     const deriveCountAfterOptimistic = deriveCount;
 
     reject();
     await expect(pending).rejects.toBe(knownRejection);
-    await waitForCondition(
-      () => parentLoads === 3,
-      "shared graph recovery to start",
-    );
+    await waitForCondition(() => parentLoads === 3, "shared graph recovery to start");
 
     staleParent.resolve(90);
     recoveryParent.resolve(5);

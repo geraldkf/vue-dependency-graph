@@ -20,8 +20,8 @@ interface OtherValue {
 const polling = pollUntil<Progress>({
   intervalMs: 2_000,
   timeoutMs: 60_000,
-  stopWhen: value => value.state === "completed" && value.percentage === 100,
-  failWhen: value => value.state === "failed",
+  stopWhen: (value) => value.state === "completed" && value.percentage === 100,
+  failWhen: (value) => value.state === "failed",
 });
 
 const typedPolling: PollUntilPolicy<Progress> = polling;
@@ -38,7 +38,7 @@ void progressNode;
 const otherPolicy = pollUntil<OtherValue>({
   intervalMs: 1,
   timeoutMs: 2,
-  stopWhen: value => value.value.length > 0,
+  stopWhen: (value) => value.value.length > 0,
 });
 
 // @ts-expect-error polling policy value types are not interchangeable

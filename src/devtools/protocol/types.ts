@@ -1,12 +1,7 @@
-import type {
-  NodeKind,
-  GraphDiagnosticNodeStateSnapshot,
-  GraphSerializedError,
-} from "../../core";
+import type { NodeKind, GraphDiagnosticNodeStateSnapshot, GraphSerializedError } from "../../core";
 
 export type InspectorNodeStatus = GraphDiagnosticNodeStateSnapshot["status"];
-export type InspectorNodeFreshness =
-  GraphDiagnosticNodeStateSnapshot["freshness"];
+export type InspectorNodeFreshness = GraphDiagnosticNodeStateSnapshot["freshness"];
 
 /**
  * One node's position and at-a-glance state in the graph view. Layout is

@@ -50,10 +50,7 @@ const options: GraphRuntimeOptions = {
   maxConcurrentLoads: 2,
   timerEnvironment,
 };
-const limitedRuntime = createGraphRuntime(
-  createGraph({ nodes: [derived, data, count] }),
-  options
-);
+const limitedRuntime = createGraphRuntime(createGraph({ nodes: [derived, data, count] }), options);
 void limitedRuntime;
 
 createGraphRuntime(createGraph({ nodes: [] }), {});

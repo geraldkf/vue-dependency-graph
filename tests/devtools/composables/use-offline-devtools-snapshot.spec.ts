@@ -36,7 +36,7 @@ const realExport = async (): Promise<string> => {
   });
   const { unmount } = render(Probe);
   await runtime.execute([Count]);
-  await new Promise(resolve => queueMicrotask(() => resolve(undefined)));
+  await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
 
   const exported = live.exportSnapshot();
   unmount();
@@ -64,7 +64,7 @@ describe("useOfflineDevtoolsSnapshot", () => {
 
     expect(offline.loaded.value).toBeDefined();
     expect(offline.graphView.value.nodes).toEqual(
-      expect.arrayContaining([expect.objectContaining({ key: "offline-count" })])
+      expect.arrayContaining([expect.objectContaining({ key: "offline-count" })]),
     );
     offline.select("offline-count");
     expect(offline.selectedNodeDetail.value).toMatchObject({ key: "offline-count" });
@@ -78,16 +78,14 @@ describe("useOfflineDevtoolsSnapshot", () => {
   it("rejects well-formed JSON that isn't a devtools export", () => {
     const offline = useOfflineDevtoolsSnapshot();
     expect(() => offline.loadFromJson(JSON.stringify({ hello: "world" }))).toThrow(
-      InvalidDevtoolsExportError
+      InvalidDevtoolsExportError,
     );
   });
 
   it("rejects an unsupported schema version", () => {
     const offline = useOfflineDevtoolsSnapshot();
     expect(() =>
-      offline.loadFromJson(
-        JSON.stringify({ schemaVersion: 99, snapshot: {}, events: [] })
-      )
+      offline.loadFromJson(JSON.stringify({ schemaVersion: 99, snapshot: {}, events: [] })),
     ).toThrow(/unsupported schemaVersion/);
   });
 

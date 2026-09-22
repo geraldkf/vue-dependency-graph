@@ -52,9 +52,7 @@ describe("diagnostic normalisation", () => {
     const first = await createScenario("first-runtime", 10);
     const second = await createScenario("second-runtime", 10_000);
 
-    expect(normalizeDiagnosticExport(first)).toEqual(
-      normalizeDiagnosticExport(second),
-    );
+    expect(normalizeDiagnosticExport(first)).toEqual(normalizeDiagnosticExport(second));
   });
 
   it("preserves meaningful state, outcome, and ordering differences", async () => {
@@ -76,9 +74,7 @@ describe("diagnostic normalisation", () => {
       ...changed,
       events: [...changed.events].reverse(),
     };
-    expect(normalizeDiagnosticExport(baseline)).not.toEqual(
-      normalizeDiagnosticExport(reversed),
-    );
+    expect(normalizeDiagnosticExport(baseline)).not.toEqual(normalizeDiagnosticExport(reversed));
   });
 
   it("aliases operation and cause identifiers while preserving causal links", () => {
@@ -136,7 +132,7 @@ describe("diagnostic normalisation", () => {
         durationMs: 0,
       },
     ]);
-    expect(normalized.map(event => event.type)).toEqual(events.map(event => event.type));
+    expect(normalized.map((event) => event.type)).toEqual(events.map((event) => event.type));
   });
 
   it("does not mutate the source and is idempotent", async () => {

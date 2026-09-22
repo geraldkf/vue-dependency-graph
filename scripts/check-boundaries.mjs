@@ -11,7 +11,7 @@ const forbiddenImports = [
   /from\s+["']\.\.\/playground(?:\/|["'])/,
 ];
 
-const inspectDirectory = async directory => {
+const inspectDirectory = async (directory) => {
   const entries = await readdir(directory, { withFileTypes: true });
   for (const entry of entries) {
     const path = join(directory, entry.name);
@@ -21,7 +21,7 @@ const inspectDirectory = async directory => {
     }
     if (![".ts", ".tsx"].includes(extname(entry.name))) continue;
     const source = await readFile(path, "utf8");
-    if (forbiddenImports.some(pattern => pattern.test(source))) {
+    if (forbiddenImports.some((pattern) => pattern.test(source))) {
       throw new Error(`Forbidden core import found in ${path}`);
     }
   }
@@ -59,7 +59,7 @@ for (const directory of capabilityDirectories) {
     }
     const filePath = join(path, entry.name);
     const source = await readFile(filePath, "utf8");
-    if (forbiddenDiagnosticCapabilityImports.some(pattern => pattern.test(source))) {
+    if (forbiddenDiagnosticCapabilityImports.some((pattern) => pattern.test(source))) {
       throw new Error(`Forbidden diagnostics implementation import found in ${filePath}`);
     }
   }
@@ -87,10 +87,9 @@ const allowedTransitionImporters = new Set([
   "release-policies/policy-controller.ts", // releaseValue
 ]);
 const writableMappedType = /-\s*readonly\b/;
-const transitionsImport =
-  /from\s+["'](?:[^"']*\/state\/transitions|\.\/transitions)["']/;
+const transitionsImport = /from\s+["'](?:[^"']*\/state\/transitions|\.\/transitions)["']/;
 
-const listSourceFiles = async directory => {
+const listSourceFiles = async (directory) => {
   const files = [];
   for (const entry of await readdir(directory, { withFileTypes: true })) {
     const path = join(directory, entry.name);
@@ -109,10 +108,7 @@ for (const filePath of await listSourceFiles(coreDirectory)) {
       `Writable mapped type (-readonly) found in ${relativePath}. Node state is made writable only inside state/transitions.ts; add or extend a transition instead.`,
     );
   }
-  if (
-    transitionsImport.test(source) &&
-    !allowedTransitionImporters.has(relativePath)
-  ) {
+  if (transitionsImport.test(source) && !allowedTransitionImporters.has(relativePath)) {
     throw new Error(
       `${relativePath} imports state/transitions but is not on the allowlist in scripts/check-boundaries.mjs. Only modules that own a state transition may change node state.`,
     );

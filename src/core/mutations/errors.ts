@@ -27,26 +27,18 @@ export class GraphMutationOutcomeUnknownError extends Error {
 
   public constructor(nodeKeys: readonly string[], cause: unknown) {
     const sortedKeys = normalizeNodeKeys(nodeKeys);
-    super(
-      `Mutation outcome is unknown for nodes: ${sortedKeys.join(", ")}.`,
-      { cause },
-    );
+    super(`Mutation outcome is unknown for nodes: ${sortedKeys.join(", ")}.`, { cause });
     this.name = "GraphMutationOutcomeUnknownError";
     this.nodeKeys = sortedKeys;
   }
 }
-
 
 export class GraphMutationReconciliationError extends Error {
   public readonly mutationKey: string;
   public readonly nodeKeys: readonly string[];
   public readonly remoteSucceeded = true as const;
 
-  public constructor(
-    mutationKey: string,
-    nodeKeys: readonly string[],
-    cause: unknown,
-  ) {
+  public constructor(mutationKey: string, nodeKeys: readonly string[], cause: unknown) {
     const sortedKeys = normalizeNodeKeys(nodeKeys);
     super(
       `Mutation "${mutationKey}" succeeded remotely but local reconciliation failed for nodes: ${sortedKeys.join(", ")}.`,

@@ -1,10 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import {
-  createGraph,
-  createGraphRuntime,
-  defineContextNode,
-  defineDataNode,
-} from "../../src/core";
+import { createGraph, createGraphRuntime, defineContextNode, defineDataNode } from "../../src/core";
 import { waitForCondition } from "./test-helpers";
 
 describe("transaction staging and operation boundaries", () => {
@@ -45,7 +40,7 @@ describe("transaction staging and operation boundaries", () => {
     await runtime.whenSettled();
     load.mockClear();
 
-    await runtime.transaction(async transaction => {
+    await runtime.transaction(async (transaction) => {
       transaction.setContext(context, 2);
       await Promise.resolve();
       await Promise.resolve();
@@ -65,9 +60,9 @@ describe("transaction staging and operation boundaries", () => {
       observed.push(runtime.getState(context).data);
     });
 
-    await runtime.transaction(async transaction => {
+    await runtime.transaction(async (transaction) => {
       transaction.setContext(context, 2);
-      await transaction.transaction(inner => {
+      await transaction.transaction((inner) => {
         inner.setContext(context, 3);
       });
       transaction.setContext(context, 4);
@@ -82,7 +77,7 @@ describe("transaction staging and operation boundaries", () => {
     const runtime = createGraphRuntime(createGraph({ nodes: [context] }));
     runtime.onChange(() => observed.push(runtime.getState(context).data));
 
-    await runtime.transaction(async transaction => {
+    await runtime.transaction(async (transaction) => {
       transaction.setContext(context, 2);
       expect(runtime.getState(context).data).toBe(1);
       expect(runtime.getState(context).generation).toBe(0);
@@ -104,9 +99,9 @@ describe("transaction staging and operation boundaries", () => {
     const context = defineContextNode({ key: "nested-context", initialValue: 1 });
     const runtime = createGraphRuntime(createGraph({ nodes: [context] }));
 
-    await runtime.transaction(async transaction => {
+    await runtime.transaction(async (transaction) => {
       transaction.setContext(context, 2);
-      await transaction.transaction(inner => {
+      await transaction.transaction((inner) => {
         inner.setContext(context, 3);
         expect(runtime.getState(context).data).toBe(1);
       });
@@ -124,7 +119,7 @@ describe("transaction staging and operation boundaries", () => {
     const runtime = createGraphRuntime(createGraph({ nodes: [context] }));
     runtime.onChange(observed);
 
-    await runtime.transaction(transaction => {
+    await runtime.transaction((transaction) => {
       transaction.setContext(context, 2);
       transaction.setContext(context, 1);
     });
@@ -144,7 +139,7 @@ describe("transaction staging and operation boundaries", () => {
     });
     const runtime = createGraphRuntime(createGraph({ nodes: [data] }));
 
-    await runtime.transaction(async transaction => {
+    await runtime.transaction(async (transaction) => {
       await Promise.resolve();
     });
     await runtime.execute([data]);

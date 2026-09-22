@@ -32,7 +32,7 @@ const fakeClock = () => {
       timers.set(id, { dueAt: now + delayMs, callback });
       return id;
     },
-    clearTimeout: handle => {
+    clearTimeout: (handle) => {
       if (typeof handle === "number") timers.delete(handle);
     },
     random: () => 0.5,
@@ -50,11 +50,11 @@ const fakeClock = () => {
   return { environment, advanceBy, timerCount: () => timers.size };
 };
 
-const flush = (): Promise<void> => new Promise(resolve => setTimeout(resolve, 0));
+const flush = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
 
 const expectQuiescent = (runtime: GraphRuntime): void => {
   const snapshot = runtime.createDiagnosticSnapshot();
-  expect(snapshot.subscriptions.filter(entry => entry.total !== 0)).toEqual([]);
+  expect(snapshot.subscriptions.filter((entry) => entry.total !== 0)).toEqual([]);
   expect(snapshot.scheduler).toMatchObject({ isScheduled: false, isRunning: false });
   expect(snapshot.metrics?.activeLoads).toBe(0);
 };
@@ -130,7 +130,11 @@ describe("subscriptions and scheduling", () => {
     subscription.unsubscribe();
 
     for (const node of [ctx, a, b, derived]) {
-      expect(runtime.getSubscriptionState(node)).toMatchObject({ direct: 0, required: 0, total: 0 });
+      expect(runtime.getSubscriptionState(node)).toMatchObject({
+        direct: 0,
+        required: 0,
+        total: 0,
+      });
     }
     await runtime.whenSettled();
   });
@@ -271,9 +275,11 @@ describe("browser timer environment listeners", () => {
   const watchPauseListeners = () => {
     const events = new Set(["visibilitychange", "online", "offline"]);
     const net = { value: 0 };
-    const count = (delta: number) => (type: string): void => {
-      if (events.has(type)) net.value += delta;
-    };
+    const count =
+      (delta: number) =>
+      (type: string): void => {
+        if (events.has(type)) net.value += delta;
+      };
     const documentAdd = vi.spyOn(document, "addEventListener");
     const documentRemove = vi.spyOn(document, "removeEventListener");
     const windowAdd = vi.spyOn(globalThis, "addEventListener");

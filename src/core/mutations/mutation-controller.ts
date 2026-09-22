@@ -6,10 +6,7 @@ import type { EventPublication } from "../transactions/types";
 import { GraphMutationConflictError } from "./errors";
 import type { MutationDefinition, MutationOptions } from "./types";
 import { createMutationUpdatePlanner } from "./mutation-update-planner";
-import {
-  createOptimisticSessionManager,
-  type OptimisticSession,
-} from "./optimistic-session";
+import { createOptimisticSessionManager, type OptimisticSession } from "./optimistic-session";
 import { createMutationCommitter } from "./mutation-commit";
 import { createMutationSettlementCoordinator } from "./mutation-settlement";
 
@@ -35,10 +32,7 @@ export interface RuntimeMutationController {
 }
 
 export interface RuntimeMutationControllerDependencies {
-  readonly resolveRegisteredNode: (
-    node: AnyNodeDefinition,
-    purpose: string,
-  ) => AnyNodeDefinition;
+  readonly resolveRegisteredNode: (node: AnyNodeDefinition, purpose: string) => AnyNodeDefinition;
   readonly getNodeState: (key: string) => NodeStateRecord;
   readonly getActiveAttempt: (key: string) => ActiveAttempt | undefined;
   readonly hasSubscribers: (node: AnyNodeDefinition) => boolean;
@@ -106,9 +100,9 @@ export const createRuntimeMutationController = ({
     onLifecycle?: MutationLifecycleListener,
   ): OptimisticSession | undefined => {
     const prepared = updatePlanner.prepare(
-      updatePlanner.collect(effects => work(effects, input), "optimistic"),
+      updatePlanner.collect((effects) => work(effects, input), "optimistic"),
     );
-    const changed = prepared.filter(update => update.changed);
+    const changed = prepared.filter((update) => update.changed);
     if (changed.length === 0) return undefined;
 
     const invalidation = prepareCombinedInvalidation(
@@ -147,24 +141,14 @@ export const createRuntimeMutationController = ({
     result: TResult,
     input: TInput,
     optimistic: OptimisticSession | undefined,
-  ): TResult => mutationSettlement.settleSuccess(
-    mutation.key,
-    options,
-    result,
-    input,
-    optimistic,
-  );
+  ): TResult => mutationSettlement.settleSuccess(mutation.key, options, result, input, optimistic);
 
   /** Lifecycle seam: classifies and reconciles a remote failure. */
   const settleRemoteFailure = <TInput, TResult>(
     options: MutationOptions<TInput, TResult> | undefined,
     error: unknown,
     optimistic: OptimisticSession | undefined,
-  ): never => mutationSettlement.settleFailure(
-    options,
-    error,
-    optimistic,
-  );
+  ): never => mutationSettlement.settleFailure(options, error, optimistic);
 
   const mutate = <TInput, TResult>(
     mutation: MutationDefinition<TInput, TResult>,
@@ -180,9 +164,7 @@ export const createRuntimeMutationController = ({
         if (options?.optimistic) {
           optimistic = startOptimisticSession(
             mutation.key,
-            options.optimistic as NonNullable<
-              MutationOptions<TInput, unknown>["optimistic"]
-            >,
+            options.optimistic as NonNullable<MutationOptions<TInput, unknown>["optimistic"]>,
             input,
             onLifecycle,
           );
@@ -191,19 +173,13 @@ export const createRuntimeMutationController = ({
         return executeRemoteMutation(mutation, input, controller.signal);
       })
       .then(
-        result => {
+        (result) => {
           onLifecycle?.("remote-succeeded");
-          const settled = settleRemoteSuccess(
-            mutation,
-            options,
-            result,
-            input,
-            optimistic,
-          );
+          const settled = settleRemoteSuccess(mutation, options, result, input, optimistic);
           onLifecycle?.("success-committed");
           return settled;
         },
-        error => {
+        (error) => {
           onLifecycle?.("remote-failed");
           return settleRemoteFailure(options, error, optimistic);
         },

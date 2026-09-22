@@ -1,25 +1,24 @@
 import { describe, expect, it, vi } from "vitest";
-import {
-  createGraph,
-  createGraphRuntime,
-  defineDataNode,
-} from "../../src/core";
+import { createGraph, createGraphRuntime, defineDataNode } from "../../src/core";
 import { deferred, waitForCondition } from "./test-helpers";
 
-const abortableLoader = (
-  result: ReturnType<typeof deferred<string>>,
-  signals: AbortSignal[]
-) => ({ signal }: { readonly signal: AbortSignal }): Promise<string> => {
-  signals.push(signal);
-  return new Promise((resolve, reject) => {
-    signal.addEventListener("abort", () => {
-      const error = new Error("aborted");
-      error.name = "AbortError";
-      reject(error);
-    }, { once: true });
-    result.promise.then(resolve, reject);
-  });
-};
+const abortableLoader =
+  (result: ReturnType<typeof deferred<string>>, signals: AbortSignal[]) =>
+  ({ signal }: { readonly signal: AbortSignal }): Promise<string> => {
+    signals.push(signal);
+    return new Promise((resolve, reject) => {
+      signal.addEventListener(
+        "abort",
+        () => {
+          const error = new Error("aborted");
+          error.name = "AbortError";
+          reject(error);
+        },
+        { once: true },
+      );
+      result.promise.then(resolve, reject);
+    });
+  };
 
 describe("subscription-driven cancellation", () => {
   it("aborts scheduler-owned work after the final subscriber unsubscribes", async () => {

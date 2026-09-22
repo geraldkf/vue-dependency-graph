@@ -24,8 +24,7 @@ const createDiagnostics = () => {
   };
 };
 
-const eventTypes = (events: readonly GraphDiagnosticEvent[]) =>
-  events.map((event) => event.type);
+const eventTypes = (events: readonly GraphDiagnosticEvent[]) => events.map((event) => event.type);
 
 describe("runtime diagnostic causality", () => {
   it("traces explicit dependency execution, fresh skips, and active reuse", async () => {
@@ -41,10 +40,9 @@ describe("runtime diagnostic causality", () => {
       derive: ({ get }) => get(parent).length,
     });
     const diagnostics = createDiagnostics();
-    const runtime = createGraphRuntime(
-      createGraph({ nodes: [child, parent] }),
-      { diagnostics: diagnostics.options },
-    );
+    const runtime = createGraphRuntime(createGraph({ nodes: [child, parent] }), {
+      diagnostics: diagnostics.options,
+    });
 
     const first = runtime.execute([child]);
     await waitForCondition(
@@ -56,9 +54,7 @@ describe("runtime diagnostic causality", () => {
     await Promise.all([first, second]);
     await runtime.execute([child]);
 
-    const parentStarted = diagnostics.events.find(
-      (event) => event.type === "node.load.started",
-    );
+    const parentStarted = diagnostics.events.find((event) => event.type === "node.load.started");
     expect(parentStarted).toMatchObject({
       nodeKey: "parent",
       reason: "dependency",
@@ -66,9 +62,7 @@ describe("runtime diagnostic causality", () => {
     });
     expect(
       diagnostics.events.some(
-        (event) =>
-          event.type === "node.execution.reused" &&
-          event.nodeKey === "parent",
+        (event) => event.type === "node.execution.reused" && event.nodeKey === "parent",
       ),
     ).toBe(true);
     expect(
@@ -116,13 +110,9 @@ describe("runtime diagnostic causality", () => {
       ]),
     );
 
-    const contextChanged = diagnostics.events.find(
-      (event) => event.type === "context.changed",
-    );
+    const contextChanged = diagnostics.events.find((event) => event.type === "context.changed");
     const invalidated = diagnostics.events.find(
-      (event) =>
-        event.type === "node.invalidated" &&
-        event.reason === "context-invalidation",
+      (event) => event.type === "node.invalidated" && event.reason === "context-invalidation",
     );
     expect(contextChanged).toMatchObject({
       contextKeys: ["context"],
@@ -135,9 +125,7 @@ describe("runtime diagnostic causality", () => {
     });
 
     const scheduledReload = diagnostics.events.find(
-      (event) =>
-        event.type === "node.load.started" &&
-        event.reason === "context-invalidation",
+      (event) => event.type === "node.load.started" && event.reason === "context-invalidation",
     );
     expect(scheduledReload).toBeDefined();
   });
@@ -154,9 +142,11 @@ describe("runtime diagnostic causality", () => {
       initialValue: "",
       load: async ({ signal }) => {
         await new Promise<void>((resolve, reject) => {
-          signal.addEventListener("abort", () => reject(
-            Object.assign(new Error("aborted"), { name: "AbortError" }),
-          ), { once: true });
+          signal.addEventListener(
+            "abort",
+            () => reject(Object.assign(new Error("aborted"), { name: "AbortError" })),
+            { once: true },
+          );
           resolve();
         });
         return "second";
@@ -213,25 +203,18 @@ describe("runtime diagnostic causality", () => {
       derive: ({ get }) => get(parent).length,
     });
     const diagnostics = createDiagnostics();
-    const runtime = createGraphRuntime(
-      createGraph({ nodes: [parent, child] }),
-      { diagnostics: diagnostics.options },
-    );
+    const runtime = createGraphRuntime(createGraph({ nodes: [parent, child] }), {
+      diagnostics: diagnostics.options,
+    });
 
-    await expect(runtime.execute([child])).rejects.toThrow(
-      "Graph execution failed for 2 node(s).",
-    );
+    await expect(runtime.execute([child])).rejects.toThrow("Graph execution failed for 2 node(s).");
 
-    expect(
-      diagnostics.events.find((event) => event.type === "node.load.failed"),
-    ).toMatchObject({
+    expect(diagnostics.events.find((event) => event.type === "node.load.failed")).toMatchObject({
       nodeKey: "failing-parent",
       error: { name: "Error", message: "request failed" },
     });
     expect(
-      diagnostics.events.find(
-        (event) => event.type === "node.execution.blocked",
-      ),
+      diagnostics.events.find((event) => event.type === "node.execution.blocked"),
     ).toMatchObject({
       nodeKey: "blocked-child",
       blockedBy: ["failing-parent"],

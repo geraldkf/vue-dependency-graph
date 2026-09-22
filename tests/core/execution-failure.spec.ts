@@ -11,7 +11,13 @@ import { deferred } from "./test-helpers";
 
 describe("execution failures", () => {
   it("normalises initial and derived failures", async () => {
-    const failed = defineDataNode({ key: "failed", initialValue: "", load: async () => { throw "failure"; } });
+    const failed = defineDataNode({
+      key: "failed",
+      initialValue: "",
+      load: async () => {
+        throw "failure";
+      },
+    });
     const runtime = createGraphRuntime(createGraph({ nodes: [failed] }));
 
     await expect(runtime.execute([failed])).rejects.toBeInstanceOf(GraphExecutionError);
@@ -23,7 +29,13 @@ describe("execution failures", () => {
     expect(runtime.getState(failed).error?.message).toBe("failure");
 
     const base = defineContextNode({ key: "base", initialValue: 1 });
-    const derived = defineDerivedNode({ key: "derived", dependencies: [base] as const, derive: () => { throw 42; } });
+    const derived = defineDerivedNode({
+      key: "derived",
+      dependencies: [base] as const,
+      derive: () => {
+        throw 42;
+      },
+    });
     const derivedRuntime = createGraphRuntime(createGraph({ nodes: [derived, base] }));
     await expect(derivedRuntime.execute([derived])).rejects.toBeInstanceOf(GraphExecutionError);
     expect(derivedRuntime.getState(derived).error?.message).toBe("42");
@@ -31,9 +43,23 @@ describe("execution failures", () => {
 
   it("blocks dependent nodes while allowing independent branches to settle", async () => {
     const independentResult = deferred<string>();
-    const failed = defineDataNode({ key: "failed", initialValue: "", load: async () => { throw new Error("failed"); } });
-    const blocked = defineDerivedNode({ key: "blocked", dependencies: [failed] as const, derive: () => "never" });
-    const independent = defineDataNode({ key: "independent", initialValue: "", load: () => independentResult.promise });
+    const failed = defineDataNode({
+      key: "failed",
+      initialValue: "",
+      load: async () => {
+        throw new Error("failed");
+      },
+    });
+    const blocked = defineDerivedNode({
+      key: "blocked",
+      dependencies: [failed] as const,
+      derive: () => "never",
+    });
+    const independent = defineDataNode({
+      key: "independent",
+      initialValue: "",
+      load: () => independentResult.promise,
+    });
     const runtime = createGraphRuntime(createGraph({ nodes: [blocked, independent, failed] }));
 
     const execution = runtime.execute([blocked, independent]);
@@ -50,7 +76,7 @@ describe("execution failures", () => {
         expect.arrayContaining([
           expect.objectContaining({ nodeKey: "failed", kind: "failed" }),
           expect.objectContaining({ nodeKey: "blocked", kind: "blocked", blockedBy: ["failed"] }),
-        ])
+        ]),
       );
     }
 

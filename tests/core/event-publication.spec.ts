@@ -29,9 +29,11 @@ describe("event publication", () => {
       initialValue: "unrelated-initial",
       load: async () => "unrelated-loaded",
     });
-    const runtime = createGraphRuntime(createGraph({
-      nodes: [descendant, unrelated, root],
-    }));
+    const runtime = createGraphRuntime(
+      createGraph({
+        nodes: [descendant, unrelated, root],
+      }),
+    );
     await runtime.execute([descendant, unrelated]);
 
     runtime.publish(changed, { id: 1 });
@@ -66,13 +68,16 @@ describe("event publication", () => {
     const data = defineDataNode({
       key: "data",
       dependencies: [jobSeekerId] as const,
-      invalidatedBy: [{
-        event: changed,
-        when: ({ payload, get }: EventInvalidationContext<
-          typeof changed,
-          readonly [typeof jobSeekerId]
-        >) => payload.jobSeekerId === get(jobSeekerId),
-      }] as const,
+      invalidatedBy: [
+        {
+          event: changed,
+          when: ({
+            payload,
+            get,
+          }: EventInvalidationContext<typeof changed, readonly [typeof jobSeekerId]>) =>
+            payload.jobSeekerId === get(jobSeekerId),
+        },
+      ] as const,
       initialValue: 0,
       load: async () => 1,
     });
@@ -95,20 +100,20 @@ describe("event publication", () => {
     });
     const second = defineDataNode({
       key: "second",
-      invalidatedBy: [{
-        event: changed,
-        when: () => {
-          throw new Error("predicate failed");
+      invalidatedBy: [
+        {
+          event: changed,
+          when: () => {
+            throw new Error("predicate failed");
+          },
         },
-      }] as const,
+      ] as const,
       initialValue: 0,
       load: async () => 2,
     });
     const runtime = createGraphRuntime(createGraph({ nodes: [first, second] }));
 
-    expect(() => runtime.publish(changed, undefined)).toThrowError(
-      "predicate failed"
-    );
+    expect(() => runtime.publish(changed, undefined)).toThrowError("predicate failed");
     expect(runtime.getState(first).generation).toBe(0);
     expect(runtime.getState(second).generation).toBe(0);
   });
@@ -144,13 +149,13 @@ describe("event publication", () => {
     const unused = defineEvent<void>("domain.unused");
     const data = defineDataNode({
       key: "data",
-      invalidatedBy: [{
-        event: changed,
-        when: ({ payload }: EventInvalidationContext<
-          typeof changed,
-          readonly []
-        >) => payload.match,
-      }] as const,
+      invalidatedBy: [
+        {
+          event: changed,
+          when: ({ payload }: EventInvalidationContext<typeof changed, readonly []>) =>
+            payload.match,
+        },
+      ] as const,
       initialValue: 0,
       load: async () => 1,
     });
@@ -223,5 +228,4 @@ describe("event publication", () => {
     expect(runtime.getState(data).data).toBe("initial");
     expect(runtime.getState(data).freshness).toBe("stale");
   });
-
 });

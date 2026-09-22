@@ -26,7 +26,7 @@ const createTestEnvironment = () => {
       timers.set(id, { id, dueAt: now + delayMs, callback });
       return id;
     },
-    clearTimeout: handle => {
+    clearTimeout: (handle) => {
       if (typeof handle === "number") timers.delete(handle);
     },
     random: () => 0.5,
@@ -37,11 +37,9 @@ const createTestEnvironment = () => {
     now += durationMs;
     while (true) {
       const next = [...timers.values()]
-        .filter(timer => timer.dueAt <= now)
+        .filter((timer) => timer.dueAt <= now)
         .sort((left, right) =>
-          left.dueAt === right.dueAt
-            ? left.id - right.id
-            : left.dueAt - right.dueAt
+          left.dueAt === right.dueAt ? left.id - right.id : left.dueAt - right.dueAt,
         )[0];
       if (!next) return;
       timers.delete(next.id);
@@ -49,9 +47,7 @@ const createTestEnvironment = () => {
     }
   };
   const nextDelay = (): number | undefined => {
-    const next = [...timers.values()].sort(
-      (left, right) => left.dueAt - right.dueAt
-    )[0];
+    const next = [...timers.values()].sort((left, right) => left.dueAt - right.dueAt)[0];
     return next ? next.dueAt - now : undefined;
   };
   return { environment, advanceBy, nextDelay, timerCount: () => timers.size };
@@ -78,24 +74,18 @@ describe("fixed interval refresh policy", () => {
 
     clock.advanceBy(100);
     await waitForCondition(() => requests === 2, "first interval refresh");
-    await waitForCondition(
-      () => runtime.getState(node).data === 2,
-      "first interval result"
-    );
+    await waitForCondition(() => runtime.getState(node).data === 2, "first interval result");
     await waitForCondition(
       () => clock.nextDelay() === 100,
-      "next interval after first refresh settlement"
+      "next interval after first refresh settlement",
     );
 
     clock.advanceBy(100);
     await waitForCondition(() => requests === 3, "second interval refresh");
-    await waitForCondition(
-      () => runtime.getState(node).data === 3,
-      "second interval result"
-    );
+    await waitForCondition(() => runtime.getState(node).data === 3, "second interval result");
     await waitForCondition(
       () => clock.nextDelay() === 100,
-      "next interval after second refresh settlement"
+      "next interval after second refresh settlement",
     );
     subscription.unsubscribe();
   });
@@ -137,13 +127,10 @@ describe("fixed interval refresh policy", () => {
     expect(maximumActive).toBe(1);
 
     secondLoad.resolve(2);
-    await waitForCondition(
-      () => runtime.getState(node).data === 2,
-      "slow refresh result"
-    );
+    await waitForCondition(() => runtime.getState(node).data === 2, "slow refresh result");
     await waitForCondition(
       () => clock.nextDelay() === 100,
-      "interval after slow refresh settlement"
+      "interval after slow refresh settlement",
     );
     subscription.unsubscribe();
   });

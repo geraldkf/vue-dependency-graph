@@ -1,9 +1,5 @@
 import type { ComputedRef } from "vue";
-import {
-  defineContextNode,
-  defineDataNode,
-  defineQuery,
-} from "../../src/core";
+import { defineContextNode, defineDataNode, defineQuery } from "../../src/core";
 import { useQuery } from "../../src/vue";
 
 const jobSeekerId = defineContextNode({
@@ -28,19 +24,12 @@ const appointmentsPage = defineQuery({
 
 const result = useQuery(appointmentsPage);
 
-const currentJobSeeker: ComputedRef<number> =
-  result.nodes.currentJobSeeker.data;
+const currentJobSeeker: ComputedRef<number> = result.nodes.currentJobSeeker.data;
 const appointmentList: ComputedRef<string[]> = result.nodes.appointments.data;
 const isLoading: ComputedRef<boolean> = result.isLoading;
 const prefetchResult: Promise<void> = result.prefetch();
 const refreshResult: Promise<void> = result.refresh();
-void [
-  currentJobSeeker,
-  appointmentList,
-  isLoading,
-  prefetchResult,
-  refreshResult,
-];
+void [currentJobSeeker, appointmentList, isLoading, prefetchResult, refreshResult];
 
 // @ts-expect-error query aliases are retained exactly
 result.nodes.missing;

@@ -48,14 +48,11 @@ The optional `createBrowserTimerEnvironment(...)` adapter belongs to the Vue ent
 The recommended setup store creates one runtime inside the store factory:
 
 ```ts
-export const useDependencyGraphStore = defineStore(
-  "dependencyGraph",
-  () => {
-    const runtime = markRaw(createGraphRuntime(graph));
-    onScopeDispose(() => runtime.dispose());
-    return { runtime };
-  }
-);
+export const useDependencyGraphStore = defineStore("dependencyGraph", () => {
+  const runtime = markRaw(createGraphRuntime(graph));
+  onScopeDispose(() => runtime.dispose());
+  return { runtime };
+});
 ```
 
 This provides:

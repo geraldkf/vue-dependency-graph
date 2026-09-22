@@ -25,7 +25,7 @@ describe("computeMetricsView", () => {
     await runtime.execute([Count]);
 
     const view = computeMetricsView(diagnostics.getMetrics());
-    const titles = view.groups.map(group => group.title);
+    const titles = view.groups.map((group) => group.title);
     expect(titles).toEqual([
       "Events",
       "Operations",
@@ -38,8 +38,8 @@ describe("computeMetricsView", () => {
       "Subscriptions",
     ]);
 
-    const execution = view.groups.find(group => group.title === "Execution");
-    const queueWait = execution?.rows.find(row => row.label === "Queue wait");
+    const execution = view.groups.find((group) => group.title === "Execution");
+    const queueWait = execution?.rows.find((row) => row.label === "Queue wait");
     expect(queueWait?.value === "no samples" || /ms avg/.test(queueWait?.value ?? "")).toBe(true);
   });
 });

@@ -7,6 +7,4 @@ export interface EventDefinition<TPayload> {
 export type AnyEventDefinition = EventDefinition<unknown>;
 
 export type EventPayload<TEvent extends AnyEventDefinition> =
-  TEvent extends EventDefinition<infer TPayload>
-    ? TPayload
-    : never;
+  TEvent extends EventDefinition<infer TPayload> ? TPayload : never;

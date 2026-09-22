@@ -6,9 +6,9 @@ import * as vue from "../../src/vue";
 
 describe("public entry points", () => {
   it("exposes only explicit package subpaths", () => {
-    const packageJson = JSON.parse(
-      readFileSync("package.json", "utf8")
-    ) as { exports: Record<string, unknown> };
+    const packageJson = JSON.parse(readFileSync("package.json", "utf8")) as {
+      exports: Record<string, unknown>;
+    };
 
     expect(packageJson.exports).toEqual({
       "./core": expect.any(Object),

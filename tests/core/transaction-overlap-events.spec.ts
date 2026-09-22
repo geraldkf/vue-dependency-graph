@@ -62,18 +62,15 @@ describe("overlapping transaction event isolation", () => {
       });
       const diagnostics = createInMemoryGraphDiagnostics({ capacity: 200 });
       let now = 0;
-      const runtime = createGraphRuntime(
-        createGraph({ nodes: [firstTarget, secondTarget] }),
-        {
-          diagnostics: {
-            sink: diagnostics,
-            environment: {
-              now: () => ++now,
-              createRuntimeId: () => "overlap-event-runtime",
-            },
+      const runtime = createGraphRuntime(createGraph({ nodes: [firstTarget, secondTarget] }), {
+        diagnostics: {
+          sink: diagnostics,
+          environment: {
+            now: () => ++now,
+            createRuntimeId: () => "overlap-event-runtime",
           },
         },
-      );
+      });
       const subscription = runtime.subscribeNodes([firstTarget, secondTarget]);
       await runtime.whenSettled();
       firstLoad.mockClear();
@@ -84,12 +81,12 @@ describe("overlapping transaction event isolation", () => {
       const releaseFirst = deferred<void>();
       const releaseSecond = deferred<void>();
 
-      const firstTransaction = runtime.transaction(async transaction => {
+      const firstTransaction = runtime.transaction(async (transaction) => {
         transaction.publish(firstEvent, undefined);
         await releaseFirst.promise;
         if (committedLabel !== "first") throw new Error("first rollback");
       });
-      const secondTransaction = runtime.transaction(async transaction => {
+      const secondTransaction = runtime.transaction(async (transaction) => {
         transaction.publish(secondEvent, undefined);
         await releaseSecond.promise;
         if (committedLabel !== "second") throw new Error("second rollback");
@@ -107,12 +104,12 @@ describe("overlapping transaction event isolation", () => {
       await runtime.whenSettled();
 
       expect(listener).toHaveBeenCalled();
-      expect(runtime.getState(
-        committedLabel === "first" ? firstTarget : secondTarget,
-      )).toMatchObject({ generation: 1, freshness: "fresh" });
-      expect(runtime.getState(
-        committedLabel === "first" ? secondTarget : firstTarget,
-      )).toMatchObject({ generation: 0, freshness: "fresh" });
+      expect(
+        runtime.getState(committedLabel === "first" ? firstTarget : secondTarget),
+      ).toMatchObject({ generation: 1, freshness: "fresh" });
+      expect(
+        runtime.getState(committedLabel === "first" ? secondTarget : firstTarget),
+      ).toMatchObject({ generation: 0, freshness: "fresh" });
 
       if (committedLabel === "first") releaseSecond.resolve();
       else releaseFirst.resolve();
@@ -124,25 +121,31 @@ describe("overlapping transaction event isolation", () => {
       expect(secondLoad).toHaveBeenCalledTimes(committedLabel === "second" ? 1 : 0);
 
       const events = normalizeDiagnosticEvents(diagnostics.getEvents());
-      const committedPublication = events.find(event =>
-        event.type === "event.published" &&
-        "eventKey" in event &&
-        event.eventKey === committedEventKey
+      const committedPublication = events.find(
+        (event) =>
+          event.type === "event.published" &&
+          "eventKey" in event &&
+          event.eventKey === committedEventKey,
       );
       expect(committedPublication).toMatchObject({ transactionOwned: true });
-      expect(events.some(event =>
-        event.type === "event.published" &&
-        "eventKey" in event &&
-        event.eventKey === rolledBackEventKey
-      )).toBe(false);
-      expect(events.find(event =>
-        event.type === "node.load.started" &&
-        event.nodeKey === committedTargetKey
-      )).toMatchObject({ causeId: committedPublication?.operationId });
-      expect(events.some(event =>
-        event.type === "node.load.started" &&
-        event.nodeKey === rolledBackTargetKey
-      )).toBe(false);
+      expect(
+        events.some(
+          (event) =>
+            event.type === "event.published" &&
+            "eventKey" in event &&
+            event.eventKey === rolledBackEventKey,
+        ),
+      ).toBe(false);
+      expect(
+        events.find(
+          (event) => event.type === "node.load.started" && event.nodeKey === committedTargetKey,
+        ),
+      ).toMatchObject({ causeId: committedPublication?.operationId });
+      expect(
+        events.some(
+          (event) => event.type === "node.load.started" && event.nodeKey === rolledBackTargetKey,
+        ),
+      ).toBe(false);
 
       subscription.unsubscribe();
     },
@@ -168,23 +171,22 @@ describe("overlapping transaction event isolation", () => {
       load: successfulLoad,
     });
     const diagnostics = createInMemoryGraphDiagnostics({ capacity: 100 });
-    const runtime = createGraphRuntime(
-      createGraph({ nodes: [failingTarget, successfulTarget] }),
-      { diagnostics: { sink: diagnostics } },
-    );
+    const runtime = createGraphRuntime(createGraph({ nodes: [failingTarget, successfulTarget] }), {
+      diagnostics: { sink: diagnostics },
+    });
     const subscription = runtime.subscribeNodes([successfulTarget]);
     await runtime.whenSettled();
     successfulLoad.mockClear();
     diagnostics.reset();
     const releaseFailure = deferred<void>();
 
-    const failingTransaction = runtime.transaction(async transaction => {
+    const failingTransaction = runtime.transaction(async (transaction) => {
       transaction.publish(failingEvent, undefined);
       await releaseFailure.promise;
     });
     await Promise.resolve();
 
-    await runtime.transaction(transaction => {
+    await runtime.transaction((transaction) => {
       transaction.publish(successfulEvent, undefined);
     });
     await runtime.whenSettled();
@@ -204,17 +206,23 @@ describe("overlapping transaction event isolation", () => {
     expect(runtime.getState(failingTarget).generation).toBe(0);
 
     const events = normalizeDiagnosticEvents(diagnostics.getEvents());
-    expect(events.some(event =>
-      event.type === "event.published" &&
-      "eventKey" in event &&
-      event.eventKey === "overlap-events.predicate-success"
-    )).toBe(true);
-    expect(events.some(event =>
-      event.type === "event.published" &&
-      "eventKey" in event &&
-      event.eventKey === "overlap-events.predicate-failure"
-    )).toBe(false);
-    expect(events.some(event => event.type === "transaction.rolled-back")).toBe(true);
+    expect(
+      events.some(
+        (event) =>
+          event.type === "event.published" &&
+          "eventKey" in event &&
+          event.eventKey === "overlap-events.predicate-success",
+      ),
+    ).toBe(true);
+    expect(
+      events.some(
+        (event) =>
+          event.type === "event.published" &&
+          "eventKey" in event &&
+          event.eventKey === "overlap-events.predicate-failure",
+      ),
+    ).toBe(false);
+    expect(events.some((event) => event.type === "transaction.rolled-back")).toBe(true);
 
     subscription.unsubscribe();
   });
@@ -243,18 +251,14 @@ describe("overlapping transaction event isolation", () => {
       initialValue: 0,
       load: async () => 1,
     });
-    const runtime = createGraphRuntime(createGraph({
-      nodes: [
-        shared,
-        rejectedOnly,
-        committedOnly,
-        rejectedTarget,
-        committedTarget,
-      ],
-    }));
+    const runtime = createGraphRuntime(
+      createGraph({
+        nodes: [shared, rejectedOnly, committedOnly, rejectedTarget, committedTarget],
+      }),
+    );
     const releaseRejected = deferred<void>();
 
-    const rejectedTransaction = runtime.transaction(async transaction => {
+    const rejectedTransaction = runtime.transaction(async (transaction) => {
       transaction.setContext(shared, 2);
       transaction.setContext(rejectedOnly, 20);
       transaction.publish(rejectedEvent, undefined);
@@ -262,7 +266,7 @@ describe("overlapping transaction event isolation", () => {
     });
     await Promise.resolve();
 
-    await runtime.transaction(transaction => {
+    await runtime.transaction((transaction) => {
       transaction.setContext(shared, 3);
       transaction.setContext(committedOnly, 200);
       transaction.publish(committedEvent, undefined);

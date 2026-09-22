@@ -1,9 +1,5 @@
 import { computed, onScopeDispose, shallowRef, type ComputedRef } from "vue";
-import type {
-  AnyNodeDefinition,
-  NodeRuntimeState,
-  RuntimeNodeData,
-} from "../core";
+import type { AnyNodeDefinition, NodeRuntimeState, RuntimeNodeData } from "../core";
 import { resolveGraphRuntime, type GraphComposableOptions } from "./composable-options";
 import { assertActiveEffectScope } from "./scope-guard";
 import { statesEqual } from "./states-equal";
@@ -16,13 +12,12 @@ export interface UseNodesAggregate {
 }
 
 export type UseNodesResults<TNodes extends readonly AnyNodeDefinition[]> = {
-  readonly [K in keyof TNodes]: ComputedRef<
-    NodeRuntimeState<RuntimeNodeData<TNodes[K]>>
-  >;
+  readonly [K in keyof TNodes]: ComputedRef<NodeRuntimeState<RuntimeNodeData<TNodes[K]>>>;
 };
 
-export interface UseNodesResult<TNodes extends readonly AnyNodeDefinition[]>
-  extends UseNodesAggregate {
+export interface UseNodesResult<
+  TNodes extends readonly AnyNodeDefinition[],
+> extends UseNodesAggregate {
   readonly results: UseNodesResults<TNodes>;
 }
 
@@ -40,15 +35,15 @@ export interface UseNodesResult<TNodes extends readonly AnyNodeDefinition[]>
  */
 export const useNodes = <const TNodes extends readonly AnyNodeDefinition[]>(
   nodes: TNodes,
-  options?: GraphComposableOptions
+  options?: GraphComposableOptions,
 ): UseNodesResult<TNodes> => {
   assertActiveEffectScope("useNodes");
   const runtime = resolveGraphRuntime(options);
 
-  const state = shallowRef(nodes.map(node => runtime.getState(node)));
+  const state = shallowRef(nodes.map((node) => runtime.getState(node)));
 
   const sync = (): void => {
-    const next = nodes.map(node => runtime.getState(node));
+    const next = nodes.map((node) => runtime.getState(node));
     const changed = next.some((nextState, index) => {
       const previousState = state.value[index];
       return previousState === undefined || !statesEqual(previousState, nextState);
@@ -67,25 +62,22 @@ export const useNodes = <const TNodes extends readonly AnyNodeDefinition[]>(
   });
 
   const results = nodes.map((_, index) =>
-    computed(() => state.value[index])
+    computed(() => state.value[index]),
   ) as unknown as UseNodesResults<TNodes>;
 
   return {
     results,
     isLoading: computed(() =>
       state.value.some(
-        nodeState =>
-          nodeState.status === "loading" || nodeState.status === "refreshing"
-      )
+        (nodeState) => nodeState.status === "loading" || nodeState.status === "refreshing",
+      ),
     ),
-    isError: computed(() => state.value.some(nodeState => nodeState.error !== null)),
+    isError: computed(() => state.value.some((nodeState) => nodeState.error !== null)),
     errors: computed(() =>
       state.value
-        .map(nodeState => nodeState.error)
-        .filter((error): error is Error => error !== null)
+        .map((nodeState) => nodeState.error)
+        .filter((error): error is Error => error !== null),
     ),
-    isSuccess: computed(() =>
-      state.value.every(nodeState => nodeState.hasSuccessfulValue)
-    ),
+    isSuccess: computed(() => state.value.every((nodeState) => nodeState.hasSuccessfulValue)),
   };
 };

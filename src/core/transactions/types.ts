@@ -16,10 +16,7 @@ export interface TransactionCommitContext {
 }
 
 export interface GraphTransaction {
-  readonly setContext: <TValue>(
-    node: ContextNodeDefinition<TValue>,
-    value: TValue,
-  ) => void;
+  readonly setContext: <TValue>(node: ContextNodeDefinition<TValue>, value: TValue) => void;
   readonly publish: <TEvent extends AnyEventDefinition>(
     event: TEvent,
     payload: EventPayload<TEvent>,
@@ -35,7 +32,5 @@ export interface GraphTransaction {
    * genuine composition rather than two unrelated operations that happen
    * to overlap in time.
    */
-  readonly transaction: <T>(
-    work: (transaction: GraphTransaction) => T | Promise<T>,
-  ) => Promise<T>;
+  readonly transaction: <T>(work: (transaction: GraphTransaction) => T | Promise<T>) => Promise<T>;
 }

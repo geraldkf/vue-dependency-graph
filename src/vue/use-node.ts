@@ -1,10 +1,5 @@
 import { computed, onScopeDispose, type ComputedRef } from "vue";
-import type {
-  AnyNodeDefinition,
-  NodeFreshness,
-  NodeStatus,
-  RuntimeNodeData,
-} from "../core";
+import type { AnyNodeDefinition, NodeFreshness, NodeStatus, RuntimeNodeData } from "../core";
 import { resolveGraphRuntime, type GraphComposableOptions } from "./composable-options";
 import { assertActiveEffectScope } from "./scope-guard";
 import { createNodeSubscription } from "./node-subscription";
@@ -30,7 +25,7 @@ export interface UseNodeResult<TNode extends AnyNodeDefinition> {
  */
 export const useNode = <TNode extends AnyNodeDefinition>(
   node: TNode,
-  options?: GraphComposableOptions
+  options?: GraphComposableOptions,
 ): UseNodeResult<TNode> => {
   assertActiveEffectScope("useNode");
   const runtime = resolveGraphRuntime(options);

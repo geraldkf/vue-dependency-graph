@@ -13,42 +13,44 @@ const event = (
   input: Readonly<Record<string, unknown>> & {
     readonly type: GraphDiagnosticEvent["type"];
   },
-): GraphDiagnosticEvent => ({
-  schemaVersion: 1,
-  sequence,
-  timestamp: sequence * 10,
-  runtimeId: "runtime",
-  ...input,
-} as GraphDiagnosticEvent);
+): GraphDiagnosticEvent =>
+  ({
+    schemaVersion: 1,
+    sequence,
+    timestamp: sequence * 10,
+    runtimeId: "runtime",
+    ...input,
+  }) as GraphDiagnosticEvent;
 
 describe("in-memory graph diagnostics", () => {
-  it.each([0, -1, 1.5, Number.NaN])(
-    "rejects invalid capacity %s",
-    (capacity: number) => {
-      expect(() => createInMemoryGraphDiagnostics({ capacity })).toThrow(
-        "Diagnostic capacity must be a positive integer.",
-      );
-    },
-  );
+  it.each([0, -1, 1.5, Number.NaN])("rejects invalid capacity %s", (capacity: number) => {
+    expect(() => createInMemoryGraphDiagnostics({ capacity })).toThrow(
+      "Diagnostic capacity must be a positive integer.",
+    );
+  });
 
   it("retains the newest events and reports dropped records", () => {
     const diagnostics = createInMemoryGraphDiagnostics({ capacity: 2 });
 
     diagnostics.emit(event(1, { type: "runtime.created", nodeKeys: [] }));
-    diagnostics.emit(event(2, {
-      type: "operation.execute.requested",
-      operationId: "operation-1",
-      operation: "execute",
-      nodeKeys: [],
-    }));
-    diagnostics.emit(event(3, {
-      type: "operation.prefetch.requested",
-      operationId: "operation-2",
-      operation: "prefetch",
-      nodeKeys: [],
-    }));
+    diagnostics.emit(
+      event(2, {
+        type: "operation.execute.requested",
+        operationId: "operation-1",
+        operation: "execute",
+        nodeKeys: [],
+      }),
+    );
+    diagnostics.emit(
+      event(3, {
+        type: "operation.prefetch.requested",
+        operationId: "operation-2",
+        operation: "prefetch",
+        nodeKeys: [],
+      }),
+    );
 
-    expect(diagnostics.getEvents().map(item => item.sequence)).toEqual([2, 3]);
+    expect(diagnostics.getEvents().map((item) => item.sequence)).toEqual([2, 3]);
     expect(Object.isFrozen(diagnostics.getEvents())).toBe(true);
     expect(Object.isFrozen(diagnostics.getEvents()[0])).toBe(true);
     expect(diagnostics.getMetrics()).toMatchObject({
@@ -61,27 +63,35 @@ describe("in-memory graph diagnostics", () => {
   it("keeps cumulative metrics after retained events are evicted", () => {
     const diagnostics = createInMemoryGraphDiagnostics({ capacity: 1 });
 
-    diagnostics.emit(event(1, {
-      type: "transaction.started",
-      operationId: "transaction-1",
-    }));
-    diagnostics.emit(event(2, {
-      type: "transaction.committed",
-      operationId: "transaction-1",
-      durationMs: 25,
-    }));
-    diagnostics.emit(event(3, {
-      type: "mutation.started",
-      operationId: "mutation-1",
-      mutationKey: "save",
-    }));
-    diagnostics.emit(event(4, {
-      type: "mutation.completed",
-      operationId: "mutation-1",
-      mutationKey: "save",
-      outcome: "succeeded",
-      durationMs: 40,
-    }));
+    diagnostics.emit(
+      event(1, {
+        type: "transaction.started",
+        operationId: "transaction-1",
+      }),
+    );
+    diagnostics.emit(
+      event(2, {
+        type: "transaction.committed",
+        operationId: "transaction-1",
+        durationMs: 25,
+      }),
+    );
+    diagnostics.emit(
+      event(3, {
+        type: "mutation.started",
+        operationId: "mutation-1",
+        mutationKey: "save",
+      }),
+    );
+    diagnostics.emit(
+      event(4, {
+        type: "mutation.completed",
+        operationId: "mutation-1",
+        mutationKey: "save",
+        outcome: "succeeded",
+        durationMs: 40,
+      }),
+    );
 
     expect(diagnostics.getEvents()).toHaveLength(1);
     expect(diagnostics.getMetrics()).toMatchObject({
@@ -103,54 +113,64 @@ describe("in-memory graph diagnostics", () => {
   it("tracks queue wait, active load maximum, outcomes, and node durations", () => {
     const diagnostics = createInMemoryGraphDiagnostics({ capacity: 20 });
 
-    diagnostics.emit(event(1, {
-      type: "node.load.queued",
-      operationId: "operation-1",
-      nodeKey: "first",
-      nodeKind: "data",
-      generation: 0,
-      origin: "explicit",
-      reason: "explicit",
-    }));
-    diagnostics.emit(event(2, {
-      type: "node.load.started",
-      operationId: "operation-1",
-      nodeKey: "first",
-      nodeKind: "data",
-      generation: 0,
-      origin: "explicit",
-      reason: "explicit",
-    }));
-    diagnostics.emit(event(3, {
-      type: "node.load.started",
-      operationId: "operation-1",
-      nodeKey: "second",
-      nodeKind: "data",
-      generation: 0,
-      origin: "explicit",
-      reason: "explicit",
-    }));
-    diagnostics.emit(event(4, {
-      type: "node.load.succeeded",
-      operationId: "operation-1",
-      nodeKey: "first",
-      nodeKind: "data",
-      generation: 0,
-      origin: "explicit",
-      reason: "explicit",
-      durationMs: 30,
-    }));
-    diagnostics.emit(event(5, {
-      type: "node.load.failed",
-      operationId: "operation-1",
-      nodeKey: "second",
-      nodeKind: "data",
-      generation: 0,
-      origin: "explicit",
-      reason: "explicit",
-      durationMs: 20,
-      error: { name: "Error", message: "failed" },
-    }));
+    diagnostics.emit(
+      event(1, {
+        type: "node.load.queued",
+        operationId: "operation-1",
+        nodeKey: "first",
+        nodeKind: "data",
+        generation: 0,
+        origin: "explicit",
+        reason: "explicit",
+      }),
+    );
+    diagnostics.emit(
+      event(2, {
+        type: "node.load.started",
+        operationId: "operation-1",
+        nodeKey: "first",
+        nodeKind: "data",
+        generation: 0,
+        origin: "explicit",
+        reason: "explicit",
+      }),
+    );
+    diagnostics.emit(
+      event(3, {
+        type: "node.load.started",
+        operationId: "operation-1",
+        nodeKey: "second",
+        nodeKind: "data",
+        generation: 0,
+        origin: "explicit",
+        reason: "explicit",
+      }),
+    );
+    diagnostics.emit(
+      event(4, {
+        type: "node.load.succeeded",
+        operationId: "operation-1",
+        nodeKey: "first",
+        nodeKind: "data",
+        generation: 0,
+        origin: "explicit",
+        reason: "explicit",
+        durationMs: 30,
+      }),
+    );
+    diagnostics.emit(
+      event(5, {
+        type: "node.load.failed",
+        operationId: "operation-1",
+        nodeKey: "second",
+        nodeKind: "data",
+        generation: 0,
+        origin: "explicit",
+        reason: "explicit",
+        durationMs: 20,
+        error: { name: "Error", message: "failed" },
+      }),
+    );
 
     const metrics = diagnostics.getMetrics();
     expect(metrics).toMatchObject({
@@ -235,9 +255,10 @@ describe("in-memory graph diagnostics", () => {
     await firstWork;
 
     const runtimeIds = new Set(
-      diagnostics.getEvents()
-        .filter(item => item.type === "runtime.created")
-        .map(item => item.runtimeId),
+      diagnostics
+        .getEvents()
+        .filter((item) => item.type === "runtime.created")
+        .map((item) => item.runtimeId),
     );
     expect(runtimeIds.size).toBe(2);
     expect(diagnostics.getMetrics()).toMatchObject({

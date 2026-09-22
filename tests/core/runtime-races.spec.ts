@@ -1,10 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import {
-  createGraph,
-  createGraphRuntime,
-  defineContextNode,
-  defineDataNode,
-} from "../../src/core";
+import { createGraph, createGraphRuntime, defineContextNode, defineDataNode } from "../../src/core";
 import { deferred, waitForCondition } from "./test-helpers";
 
 describe("runtime cancellation and races", () => {
@@ -24,8 +19,8 @@ describe("runtime cancellation and races", () => {
         const current = get(context);
         call += 1;
         return call === 1
-          ? firstResult.promise.then(value => `${value}-${current}`)
-          : secondResult.promise.then(value => `${value}-${current}`);
+          ? firstResult.promise.then((value) => `${value}-${current}`)
+          : secondResult.promise.then((value) => `${value}-${current}`);
       },
     });
     const unrelated = defineDataNode({
@@ -40,7 +35,7 @@ describe("runtime cancellation and races", () => {
     const firstExecution = runtime.execute([affected, unrelated]);
     await waitForCondition(
       () => signals.length === 1 && runtime.getState(unrelated).status === "loading",
-      "affected and unrelated loaders to start"
+      "affected and unrelated loaders to start",
     );
     runtime.setContext(context, 2);
 
@@ -55,10 +50,7 @@ describe("runtime cancellation and races", () => {
     expect(runtime.getState(unrelated).status).toBe("loading");
 
     const secondExecution = runtime.execute([affected]);
-    await waitForCondition(
-      () => signals.length === 2,
-      "the replacement loader to start"
-    );
+    await waitForCondition(() => signals.length === 2, "the replacement loader to start");
     secondResult.resolve("new");
     unrelatedResult.resolve("unrelated");
     firstResult.resolve("old");
@@ -94,13 +86,13 @@ describe("runtime cancellation and races", () => {
     const first = runtime.execute([data]);
     await waitForCondition(
       () => load.mock.calls.length === 1,
-      "the first generation loader to start"
+      "the first generation loader to start",
     );
     runtime.setContext(context, 2);
     const second = runtime.execute([data]);
     await waitForCondition(
       () => load.mock.calls.length === 2,
-      "the second generation loader to start"
+      "the second generation loader to start",
     );
 
     results[1]?.resolve(20);

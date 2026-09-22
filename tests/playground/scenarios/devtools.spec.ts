@@ -7,31 +7,25 @@ describe("DevtoolsScenario", () => {
     render(DevtoolsScenario);
 
     await waitFor(() => {
-      expect(
-        screen.getByTestId("gdt-graph-node-devtools-playground.appointments")
-      ).toBeTruthy();
+      expect(screen.getByTestId("gdt-graph-node-devtools-playground.appointments")).toBeTruthy();
     });
 
     await fireEvent.click(screen.getByTestId("devtools-change-user"));
     await waitFor(() => {
-      expect(screen.getByTestId("devtools-last-action").textContent).toContain(
-        "user changed"
-      );
+      expect(screen.getByTestId("devtools-last-action").textContent).toContain("user changed");
     });
 
     await fireEvent.click(screen.getByTestId("devtools-book-appointment"));
     await waitFor(() => {
       expect(screen.getByTestId("devtools-last-action").textContent).toContain(
-        "appointment booked"
+        "appointment booked",
       );
     });
 
     await fireEvent.click(screen.getByTestId("devtools-fail-next"));
     await fireEvent.click(screen.getByTestId("devtools-change-user"));
     await waitFor(() => {
-      expect(
-        screen.getByTestId("gdt-graph-node-devtools-playground.appointments")
-      ).toBeTruthy();
+      expect(screen.getByTestId("gdt-graph-node-devtools-playground.appointments")).toBeTruthy();
     });
 
     await fireEvent.click(screen.getByTestId("gdt-tab-timeline"));

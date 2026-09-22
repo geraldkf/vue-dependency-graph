@@ -2,17 +2,13 @@
   <section aria-label="Concurrency limit scenario">
     <h2>Concurrency Limit</h2>
     <p>
-      Start four independent data loads and complete them manually to observe
-      runtime-wide FIFO admission.
+      Start four independent data loads and complete them manually to observe runtime-wide FIFO
+      admission.
     </p>
 
     <label>
       Maximum concurrent loads
-      <select
-        v-model="selectedLimit"
-        aria-label="Maximum concurrent loads"
-        @change="reset"
-      >
+      <select v-model="selectedLimit" aria-label="Maximum concurrent loads" @change="reset">
         <option value="1">1</option>
         <option value="2">2</option>
         <option value="unlimited">Unlimited</option>
@@ -21,12 +17,8 @@
 
     <div>
       <button :disabled="hasRun" @click="runAll">Run all</button>
-      <button :disabled="activeCount === 0" @click="completeNext">
-        Complete next
-      </button>
-      <button :disabled="activeCount === 0" @click="completeAll">
-        Complete all
-      </button>
+      <button :disabled="activeCount === 0" @click="completeNext">Complete next</button>
+      <button :disabled="activeCount === 0" @click="completeAll">Complete all</button>
       <button @click="reset">Reset</button>
     </div>
 
@@ -41,7 +33,8 @@
 
     <ul>
       <li v-for="entry in entries" :key="entry.key">
-        <strong>{{ entry.label }}</strong>:
+        <strong>{{ entry.label }}</strong
+        >:
         <span :data-testid="`loader-state-${entry.key}`">
           {{ loaderStates[entry.key] }}
         </span>
@@ -90,9 +83,7 @@ let executionSettled = true;
 let nodes: readonly DataNodeDefinition<string, readonly []>[];
 
 const configuredLimit = computed(() =>
-  selectedLimit.value === "unlimited"
-    ? undefined
-    : Number(selectedLimit.value)
+  selectedLimit.value === "unlimited" ? undefined : Number(selectedLimit.value),
 );
 
 const createScenario = (): void => {
@@ -103,13 +94,10 @@ const createScenario = (): void => {
       load: async () => {
         loaderStates[key] = "running";
         activeCount.value += 1;
-        maximumObserved.value = Math.max(
-          maximumObserved.value,
-          activeCount.value
-        );
+        maximumObserved.value = Math.max(maximumObserved.value, activeCount.value);
         startOrder.value.push(key);
 
-        await new Promise<void>(resolve => {
+        await new Promise<void>((resolve) => {
           completions.set(key, resolve);
         });
 
@@ -118,15 +106,13 @@ const createScenario = (): void => {
         loaderStates[key] = "completed";
         return `${key} completed`;
       },
-    })
+    }),
   );
 
   nodes = createdNodes;
   runtime = createGraphRuntime(
     createGraph({ nodes: createdNodes }),
-    configuredLimit.value === undefined
-      ? undefined
-      : { maxConcurrentLoads: configuredLimit.value }
+    configuredLimit.value === undefined ? undefined : { maxConcurrentLoads: configuredLimit.value },
   );
 };
 
@@ -141,7 +127,7 @@ const runAll = (): void => {
 };
 
 const completeNext = (): void => {
-  const next = startOrder.value.find(key => completions.has(key));
+  const next = startOrder.value.find((key) => completions.has(key));
   if (next !== undefined) completions.get(next)?.();
 };
 

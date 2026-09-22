@@ -1,17 +1,11 @@
-import type {
-  AnyNodeDefinition,
-  GraphRuntime,
-  NodeRuntimeState,
-} from "../../src/core";
+import type { AnyNodeDefinition, GraphRuntime, NodeRuntimeState } from "../../src/core";
 
 /**
  * Rules every node state must satisfy whenever a listener can observe it.
  * They describe what `status`, `freshness`, `error` and `hasSuccessfulValue`
  * mean together; a violation is a state no transition should ever expose.
  */
-export const stateInvariantViolations = (
-  state: NodeRuntimeState<unknown>,
-): readonly string[] => {
+export const stateInvariantViolations = (state: NodeRuntimeState<unknown>): readonly string[] => {
   const violations: string[] = [];
   if (state.status === "error" && state.error === null) {
     violations.push("status is error but there is no error");
@@ -28,19 +22,13 @@ export const stateInvariantViolations = (
   if (state.status === "refreshing" && !state.hasSuccessfulValue) {
     violations.push("status is refreshing but there is no successful value");
   }
-  if (
-    (state.status === "loading" || state.status === "idle") &&
-    state.hasSuccessfulValue
-  ) {
+  if ((state.status === "loading" || state.status === "idle") && state.hasSuccessfulValue) {
     violations.push(`status is ${state.status} but there is a successful value`);
   }
   if (state.status === "success" && !state.hasSuccessfulValue) {
     violations.push("status is success but there is no successful value");
   }
-  if (
-    state.freshness === "fresh" &&
-    (state.status !== "success" || !state.hasSuccessfulValue)
-  ) {
+  if (state.freshness === "fresh" && (state.status !== "success" || !state.hasSuccessfulValue)) {
     violations.push("freshness is fresh without a successful value");
   }
   return violations;
@@ -57,10 +45,7 @@ const describeState = (state: NodeRuntimeState<unknown>): string =>
  * labelled with the current step, and checks the invariants above on every
  * notification. Only changed nodes are recorded, so the trace stays compact.
  */
-export const createStateTracer = (
-  runtime: GraphRuntime,
-  nodes: readonly AnyNodeDefinition[],
-) => {
+export const createStateTracer = (runtime: GraphRuntime, nodes: readonly AnyNodeDefinition[]) => {
   let step = "init";
   const lines: string[] = [];
   const violations: string[] = [];

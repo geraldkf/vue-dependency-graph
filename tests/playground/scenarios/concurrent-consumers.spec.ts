@@ -34,12 +34,8 @@ describe("ConcurrentConsumersScenario", () => {
 
     expect(screen.getByTestId("status-A").textContent).toContain("success");
     expect(screen.getByTestId("status-B").textContent).toContain("success");
-    expect(screen.getByTestId("data-A").textContent).toContain(
-      "Shared resource data"
-    );
-    expect(screen.getByTestId("data-B").textContent).toContain(
-      "Shared resource data"
-    );
+    expect(screen.getByTestId("data-A").textContent).toContain("Shared resource data");
+    expect(screen.getByTestId("data-B").textContent).toContain("Shared resource data");
 
     // The actual point of this scenario: despite two independent
     // consumers, the underlying load happened once. This is a Vue-layer

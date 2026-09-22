@@ -2,14 +2,11 @@ import { describe, expect, it } from "vitest";
 import { createExecutionConcurrencyLimiter } from "../../src/core/execution/concurrency-limiter";
 
 describe("execution concurrency limiter", () => {
-  it.each([0, -1, Number.NaN])(
-    "rejects an invalid maximum of %s",
-    maxConcurrent => {
-      expect(() => createExecutionConcurrencyLimiter(maxConcurrent)).toThrow(
-        "maxConcurrent must be at least 1"
-      );
-    }
-  );
+  it.each([0, -1, Number.NaN])("rejects an invalid maximum of %s", (maxConcurrent) => {
+    expect(() => createExecutionConcurrencyLimiter(maxConcurrent)).toThrow(
+      "maxConcurrent must be at least 1",
+    );
+  });
 
   it("acquires immediately while capacity is available and queues beyond it", async () => {
     const limiter = createExecutionConcurrencyLimiter(2);

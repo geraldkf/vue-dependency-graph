@@ -35,11 +35,11 @@ describe("node definitions", () => {
     expect(Object.isFrozen(data.dependencies)).toBe(true);
   });
 
-  it.each(["", "   ", "\t\n"])("rejects blank key %j", key => {
+  it.each(["", "   ", "\t\n"])("rejects blank key %j", (key) => {
     expect(() => defineContextNode({ key, initialValue: 0 })).toThrowError(
       expect.objectContaining<Partial<GraphValidationError>>({
         code: "INVALID_NODE_KEY",
-      })
+      }),
     );
   });
 });

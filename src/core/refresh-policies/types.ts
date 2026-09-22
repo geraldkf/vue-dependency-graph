@@ -75,8 +75,6 @@ export interface PollUntilPolicy<TValue> {
 }
 
 export type RefreshPolicy<TValue> =
-  | StaleAfterPolicy
-  | RefreshIntervalPolicy
-  | PollUntilPolicy<TValue>;
+  StaleAfterPolicy | RefreshIntervalPolicy | PollUntilPolicy<TValue>;
 
 export type AnyRefreshPolicy = RefreshPolicy<unknown>;

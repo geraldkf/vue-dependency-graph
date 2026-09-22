@@ -34,9 +34,7 @@ describe("ErrorAndRetryScenario", () => {
 
     expect(screen.getByTestId("status").textContent).toContain("error");
     expect(screen.getByTestId("data").textContent).toContain("(none yet)");
-    expect(screen.getByTestId("error").textContent).toContain(
-      "Mock loader failure"
-    );
+    expect(screen.getByTestId("error").textContent).toContain("Mock loader failure");
   });
 
   it("keeps stale data visible alongside the error when a refresh fails, triggered via the UI toggle", async () => {
@@ -49,9 +47,7 @@ describe("ErrorAndRetryScenario", () => {
 
     await vi.advanceTimersByTimeAsync(600);
     expect(screen.getByTestId("status").textContent).toContain("success");
-    expect(screen.getByTestId("data").textContent).toContain(
-      "Loaded successfully"
-    );
+    expect(screen.getByTestId("data").textContent).toContain("Loaded successfully");
 
     // Toggle failure on through the actual checkbox, not by setting the
     // ref directly — this is the thing that proves the v-model wiring
@@ -64,13 +60,9 @@ describe("ErrorAndRetryScenario", () => {
     await vi.advanceTimersByTimeAsync(600);
 
     expect(screen.getByTestId("status").textContent).toContain("error");
-    expect(screen.getByTestId("error").textContent).toContain(
-      "Mock loader failure"
-    );
+    expect(screen.getByTestId("error").textContent).toContain("Mock loader failure");
     // The actual point of this scenario: the previous successful data
     // stays visible even though the refresh failed.
-    expect(screen.getByTestId("data").textContent).toContain(
-      "Loaded successfully"
-    );
+    expect(screen.getByTestId("data").textContent).toContain("Loaded successfully");
   });
 });

@@ -9,12 +9,7 @@ Immutable node definitions and validated topology may be shared by multiple runt
 Execution status and freshness are separate:
 
 ```ts
-type NodeStatus =
-  | "idle"
-  | "loading"
-  | "success"
-  | "refreshing"
-  | "error";
+type NodeStatus = "idle" | "loading" | "success" | "refreshing" | "error";
 
 type NodeFreshness = "fresh" | "stale";
 ```
@@ -97,7 +92,7 @@ Affected active work is aborted using attempt-scoped controllers. Abort and supe
 
 Aborting ends the attempt; it does not wait for the loader. When the signal aborts, the attempt settles at once as aborted (or discarded, if it was superseded): it leaves the active attempt table, releases its concurrency slot, returns its node to `idle` (or `success` with its value) if it still owns the node's state, and lets the scheduler flush awaiting it complete. Whatever a loader that ignores the signal eventually produces is ignored, and a failure after abandonment is not an unhandled rejection. The runtime cannot stop such a request, only stop waiting for it, so real concurrency can briefly exceed `maxConcurrentLoads` for loaders that ignore their signal. See [ADR-018](../decisions/ADR-018-abort-ends-the-attempt.md).
 
-Flushes overlap, so a load that is still needed and is merely slow no longer holds up unrelated work: a node subscribed while a slow load is in flight starts loading in its own flush at once. A node that *depends on* the slow one still cannot start until its ancestor has a value - the runtime resolves ancestors before invoking a node's own loader - so a dependent's own state is untouched (not "loading") while it waits; see [ADR-019](../decisions/ADR-019-overlapping-scheduler-flushes.md).
+Flushes overlap, so a load that is still needed and is merely slow no longer holds up unrelated work: a node subscribed while a slow load is in flight starts loading in its own flush at once. A node that _depends on_ the slow one still cannot start until its ancestor has a value - the runtime resolves ancestors before invoking a node's own loader - so a dependent's own state is untouched (not "loading") while it waits; see [ADR-019](../decisions/ADR-019-overlapping-scheduler-flushes.md).
 
 ## Branch-scoped failures
 
@@ -130,7 +125,7 @@ Properties:
 - synchronous schedule requests coalesce into one flush
 - flushes do not block one another: work requested while earlier flushes are still executing starts in its own flush at the next microtask, rather than waiting behind them ([ADR-019](../decisions/ADR-019-overlapping-scheduler-flushes.md))
 - a node already being worked on by an earlier flush is never a second flush's target - `executeNode`'s existing per-node reuse (see "In-flight sharing" above) still applies across flushes
-- scheduler errors are captured rather than becoming unhandled rejections, and reflect the most recently *finished* flush - a snapshot of the last outcome, not "any flush has ever failed"
+- scheduler errors are captured rather than becoming unhandled rejections, and reflect the most recently _finished_ flush - a snapshot of the last outcome, not "any flush has ever failed"
 - a failed subscribed node does not enter an automatic retry loop
 - a later context change or new subscription is an explicit retry trigger
 
@@ -212,7 +207,7 @@ Disposal is deliberately narrow. It does not abort in-flight loads, reject later
 ## Transaction sessions
 
 ```ts
-await runtime.transaction(async transaction => {
+await runtime.transaction(async (transaction) => {
   transaction.setContext(JobSeekerId, firstValue);
   await localWork();
   transaction.setContext(JobSeekerId, finalValue);
@@ -226,9 +221,9 @@ There is no ambient transaction group and no notification buffer. Observer notif
 Explicit same-session composition uses the handle:
 
 ```ts
-await runtime.transaction(async transaction => {
+await runtime.transaction(async (transaction) => {
   transaction.setContext(ContextA, valueA);
-  await transaction.transaction(async nested => {
+  await transaction.transaction(async (nested) => {
     nested.setContext(ContextB, valueB);
   });
 });
@@ -252,4 +247,3 @@ Transaction membership is explicit:
 - diagnostic operation and cause IDs remain attached to the owning session.
 
 The transaction model is local to one graph runtime. It does not provide remote, distributed, or cross-service rollback.
-

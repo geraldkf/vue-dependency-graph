@@ -12,9 +12,9 @@ import type {
  * cycle guard needed here that graph.ts hasn't already enforced.
  */
 const computeDepths = (
-  topology: GraphDiagnosticSnapshotV1["topology"]
+  topology: GraphDiagnosticSnapshotV1["topology"],
 ): ReadonlyMap<string, number> => {
-  const byKey = new Map(topology.map(node => [node.key, node]));
+  const byKey = new Map(topology.map((node) => [node.key, node]));
   const depths = new Map<string, number>();
 
   const depthOf = (key: string): number => {
@@ -22,10 +22,7 @@ const computeDepths = (
     if (cached !== undefined) return cached;
     const node = byKey.get(key);
     const dependencyKeys = node?.dependencyKeys ?? [];
-    const depth =
-      dependencyKeys.length === 0
-        ? 0
-        : 1 + Math.max(...dependencyKeys.map(depthOf));
+    const depth = dependencyKeys.length === 0 ? 0 : 1 + Math.max(...dependencyKeys.map(depthOf));
     depths.set(key, depth);
     return depth;
   };
@@ -47,17 +44,13 @@ const computeDepths = (
  * declares them in `invalidatedBy`. They are not part of the dependency
  * depth computation - they have no dependencies of their own.
  */
-export const computeGraphView = (
-  snapshot: GraphDiagnosticSnapshotV1
-): InspectorGraphView => {
+export const computeGraphView = (snapshot: GraphDiagnosticSnapshotV1): InspectorGraphView => {
   const depths = computeDepths(snapshot.topology);
-  const stateByKey = new Map(snapshot.nodes.map(state => [state.key, state]));
+  const stateByKey = new Map(snapshot.nodes.map((state) => [state.key, state]));
   const subscriptionByKey = new Map(
-    snapshot.subscriptions.map(subscription => [subscription.key, subscription])
+    snapshot.subscriptions.map((subscription) => [subscription.key, subscription]),
   );
-  const refreshPolicyKeys = new Set(
-    snapshot.refreshPolicies.map(policy => policy.key)
-  );
+  const refreshPolicyKeys = new Set(snapshot.refreshPolicies.map((policy) => policy.key));
 
   const columns = new Map<number, string[]>();
   for (const node of snapshot.topology) {
@@ -73,7 +66,7 @@ export const computeGraphView = (
     keys.forEach((key, row) => rowByKey.set(key, row));
   }
 
-  const nodes: InspectorGraphNode[] = snapshot.topology.map(topologyNode => {
+  const nodes: InspectorGraphNode[] = snapshot.topology.map((topologyNode) => {
     const state = stateByKey.get(topologyNode.key);
     const subscription = subscriptionByKey.get(topologyNode.key);
     return {
@@ -90,40 +83,33 @@ export const computeGraphView = (
     };
   });
 
-  const eventKeys = [
-    ...new Set(snapshot.topology.flatMap(node => node.eventKeys)),
-  ].sort();
+  const eventKeys = [...new Set(snapshot.topology.flatMap((node) => node.eventKeys))].sort();
   const events: InspectorEventNode[] = eventKeys.map((key, row) => ({
     key,
     column: -1,
     row,
   }));
 
-  const dependencyEdges: InspectorGraphEdge[] = snapshot.topology.flatMap(
-    node =>
-      node.dependencyKeys.map(
-        (dependencyKey): InspectorGraphEdge => ({
-          kind: "dependency",
-          from: dependencyKey,
-          to: node.key,
-        })
-      )
+  const dependencyEdges: InspectorGraphEdge[] = snapshot.topology.flatMap((node) =>
+    node.dependencyKeys.map((dependencyKey): InspectorGraphEdge => ({
+      kind: "dependency",
+      from: dependencyKey,
+      to: node.key,
+    })),
   );
-  const eventEdges: InspectorGraphEdge[] = snapshot.topology.flatMap(node =>
-    node.eventKeys.map(
-      (eventKey): InspectorGraphEdge => ({
-        kind: "event",
-        from: eventKey,
-        to: node.key,
-      })
-    )
+  const eventEdges: InspectorGraphEdge[] = snapshot.topology.flatMap((node) =>
+    node.eventKeys.map((eventKey): InspectorGraphEdge => ({
+      kind: "event",
+      from: eventKey,
+      to: node.key,
+    })),
   );
 
   const columnCount = columns.size === 0 ? 0 : Math.max(...columns.keys()) + 1;
   const maxRowCount = Math.max(
     events.length,
-    ...[...columns.values()].map(keys => keys.length),
-    0
+    ...[...columns.values()].map((keys) => keys.length),
+    0,
   );
 
   return {

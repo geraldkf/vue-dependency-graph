@@ -36,7 +36,7 @@ const createFixture = () => {
     },
   });
   const runtime = createGraphRuntime(
-    createGraph({ nodes: [jobSeekerId, appointments, capabilityStatus] })
+    createGraph({ nodes: [jobSeekerId, appointments, capabilityStatus] }),
   );
 
   return { appointments, capabilityStatus, query, runtime };
@@ -118,9 +118,7 @@ describe("useQuery", () => {
       key: "use-query-failure",
       nodes: { successful, failing },
     });
-    const runtime = createGraphRuntime(
-      createGraph({ nodes: [context, successful, failing] })
-    );
+    const runtime = createGraphRuntime(createGraph({ nodes: [context, successful, failing] }));
 
     let captured: UseQueryResult<typeof query> | undefined;
     const Probe = defineComponent({
@@ -147,7 +145,7 @@ describe("useQuery", () => {
     const { query, runtime } = createFixture();
 
     expect(() => useQuery(query, { runtime })).toThrow(
-      /useQuery\(\) must be called inside setup\(\)/
+      /useQuery\(\) must be called inside setup\(\)/,
     );
   });
 });

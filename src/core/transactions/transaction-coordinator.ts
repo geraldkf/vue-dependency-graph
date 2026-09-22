@@ -13,10 +13,7 @@ export interface RuntimeTransactionCoordinator {
     work: (transaction: GraphTransaction) => T | Promise<T>,
     commitContext: TransactionCommitContext,
   ) => Promise<T>;
-  readonly setContext: <TValue>(
-    node: ContextNodeDefinition<TValue>,
-    value: TValue,
-  ) => void;
+  readonly setContext: <TValue>(node: ContextNodeDefinition<TValue>, value: TValue) => void;
   readonly publish: <TEvent extends AnyEventDefinition>(
     event: TEvent,
     payload: EventPayload<TEvent>,
@@ -46,9 +43,7 @@ export interface RuntimeTransactionCoordinatorDependencies {
   readonly resolveContextNode: <TValue>(
     node: ContextNodeDefinition<TValue>,
   ) => ContextNodeDefinition<TValue>;
-  readonly getContextGeneration: (
-    node: ContextNodeDefinition<unknown>,
-  ) => number;
+  readonly getContextGeneration: (node: ContextNodeDefinition<unknown>) => number;
   readonly commitImmediate: (
     contextChanges: readonly ContextChange[],
     eventPublications: readonly EventPublication[],
@@ -81,9 +76,7 @@ export const createRuntimeTransactionCoordinator = ({
 }: RuntimeTransactionCoordinatorDependencies): RuntimeTransactionCoordinator => {
   const commitSession = (session: TransactionSession): void => {
     const conflicts = [...session.stagedContexts.values()]
-      .filter(({ node, expectedGeneration }) =>
-        getContextGeneration(node) !== expectedGeneration,
-      )
+      .filter(({ node, expectedGeneration }) => getContextGeneration(node) !== expectedGeneration)
       .map(({ node }) => node.key);
     if (conflicts.length > 0) {
       throw new GraphTransactionConflictError(conflicts);
@@ -123,9 +116,7 @@ export const createRuntimeTransactionCoordinator = ({
     session.stagedEvents.push({ event, payload });
   };
 
-  const createGraphTransaction = (
-    session: TransactionSession,
-  ): GraphTransaction => {
+  const createGraphTransaction = (session: TransactionSession): GraphTransaction => {
     const assertActive = (): void => {
       if (session.settled) {
         throw new Error("Graph transaction is no longer active.");
@@ -133,10 +124,7 @@ export const createRuntimeTransactionCoordinator = ({
     };
 
     return Object.freeze({
-      setContext: <TValue>(
-        node: ContextNodeDefinition<TValue>,
-        value: TValue,
-      ): void => {
+      setContext: <TValue>(node: ContextNodeDefinition<TValue>, value: TValue): void => {
         assertActive();
         stageContext(session, node, value);
       },
@@ -147,9 +135,7 @@ export const createRuntimeTransactionCoordinator = ({
         assertActive();
         stagePublication(session, event, payload);
       },
-      transaction: <T>(
-        work: (transaction: GraphTransaction) => T | Promise<T>,
-      ): Promise<T> => {
+      transaction: <T>(work: (transaction: GraphTransaction) => T | Promise<T>): Promise<T> => {
         assertActive();
         // Deliberately the same `session` -- no new commit boundary, no
         // new session. This is an ordinary awaited nested call: if `work`
@@ -190,10 +176,7 @@ export const createRuntimeTransactionCoordinator = ({
     }
   };
 
-  const setContext = <TValue>(
-    node: ContextNodeDefinition<TValue>,
-    value: TValue,
-  ): void => {
+  const setContext = <TValue>(node: ContextNodeDefinition<TValue>, value: TValue): void => {
     const registered = resolveContextNode(node);
     const change: ContextChange = {
       node: registered as ContextNodeDefinition<unknown>,

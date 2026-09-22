@@ -10,7 +10,11 @@ import {
 describe("runtime context updates", () => {
   it("invalidates transitive descendants once and preserves their data", async () => {
     const context = defineContextNode({ key: "context", initialValue: 1 });
-    const unrelated = defineDataNode({ key: "unrelated", initialValue: "u", load: async () => "loaded-u" });
+    const unrelated = defineDataNode({
+      key: "unrelated",
+      initialValue: "u",
+      load: async () => "loaded-u",
+    });
     const childLoad = vi.fn(async ({ get }) => `child-${get(context)}`);
     const child = defineDataNode({
       key: "child",
@@ -72,7 +76,6 @@ describe("runtime context updates", () => {
     expect(listener).not.toHaveBeenCalled();
   });
 
-
   it("invalidates each descendant once across diamond paths", () => {
     const context = defineContextNode({ key: "context", initialValue: 1 });
     const left = defineDerivedNode({
@@ -90,9 +93,7 @@ describe("runtime context updates", () => {
       dependencies: [left, right] as const,
       derive: ({ get }) => get(left) + get(right),
     });
-    const runtime = createGraphRuntime(
-      createGraph({ nodes: [leaf, right, left, context] })
-    );
+    const runtime = createGraphRuntime(createGraph({ nodes: [leaf, right, left, context] }));
 
     runtime.setContext(context, 2);
 
@@ -100,5 +101,4 @@ describe("runtime context updates", () => {
     expect(runtime.getState(right).generation).toBe(1);
     expect(runtime.getState(leaf).generation).toBe(1);
   });
-
 });

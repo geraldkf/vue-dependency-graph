@@ -35,7 +35,11 @@ describe("graph coordination", () => {
 
   it("scheduler -> subscriptions edge: flushes only directly subscribed nodes", async () => {
     const subscribed = defineDataNode({ key: "subscribed", initialValue: 0, load: async () => 1 });
-    const unsubscribed = defineDataNode({ key: "unsubscribed", initialValue: 0, load: async () => 2 });
+    const unsubscribed = defineDataNode({
+      key: "unsubscribed",
+      initialValue: 0,
+      load: async () => 2,
+    });
     const { coordination, state } = build([subscribed, unsubscribed]);
 
     coordination.subscriptions.subscribeNodes([subscribed]);
@@ -91,8 +95,8 @@ describe("graph coordination", () => {
     coordination.subscriptions.subscribeNodes([node]);
     await coordination.scheduler.whenSettled();
 
-    const added = events().find(event => event.type === "subscription.added");
-    const requested = events().find(event => event.type === "scheduler.requested");
+    const added = events().find((event) => event.type === "subscription.added");
+    const requested = events().find((event) => event.type === "scheduler.requested");
     expect(added?.operationId).toBeTruthy();
     expect(requested).toMatchObject({
       reason: "subscription",

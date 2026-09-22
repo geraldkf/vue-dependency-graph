@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  createGraph,
-  createGraphRuntime,
-  defineContextNode,
-} from "../../src/core";
+import { createGraph, createGraphRuntime, defineContextNode } from "../../src/core";
 import { deferred } from "./test-helpers";
 
 describe("overlapping transaction sessions", () => {
@@ -14,11 +10,11 @@ describe("overlapping transaction sessions", () => {
     const releaseSecond = deferred<void>();
     const runtime = createGraphRuntime(createGraph({ nodes: [first, second] }));
 
-    const firstTransaction = runtime.transaction(async transaction => {
+    const firstTransaction = runtime.transaction(async (transaction) => {
       transaction.setContext(first, 2);
       await releaseFirst.promise;
     });
-    const secondTransaction = runtime.transaction(async transaction => {
+    const secondTransaction = runtime.transaction(async (transaction) => {
       transaction.setContext(second, 20);
       await releaseSecond.promise;
     });
@@ -43,15 +39,13 @@ describe("overlapping transaction sessions", () => {
     });
     const failed = defineContextNode({ key: "overlap-failed", initialValue: 10 });
     const releaseSuccessful = deferred<void>();
-    const runtime = createGraphRuntime(
-      createGraph({ nodes: [successful, failed] }),
-    );
+    const runtime = createGraphRuntime(createGraph({ nodes: [successful, failed] }));
 
-    const successfulTransaction = runtime.transaction(async transaction => {
+    const successfulTransaction = runtime.transaction(async (transaction) => {
       transaction.setContext(successful, 2);
       await releaseSuccessful.promise;
     });
-    const failedTransaction = runtime.transaction(transaction => {
+    const failedTransaction = runtime.transaction((transaction) => {
       transaction.setContext(failed, 20);
       throw new Error("independent failure");
     });
@@ -78,16 +72,14 @@ describe("overlapping transaction sessions", () => {
     });
     const releaseRollback = deferred<void>();
     const releaseCommit = deferred<void>();
-    const runtime = createGraphRuntime(
-      createGraph({ nodes: [rolledBack, committed] }),
-    );
+    const runtime = createGraphRuntime(createGraph({ nodes: [rolledBack, committed] }));
 
-    const rolledBackTransaction = runtime.transaction(async transaction => {
+    const rolledBackTransaction = runtime.transaction(async (transaction) => {
       transaction.setContext(rolledBack, 2);
       await releaseRollback.promise;
       throw new Error("independent rollback");
     });
-    const committedTransaction = runtime.transaction(async transaction => {
+    const committedTransaction = runtime.transaction(async (transaction) => {
       transaction.setContext(committed, 20);
       await releaseCommit.promise;
     });

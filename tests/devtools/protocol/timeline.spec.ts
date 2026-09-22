@@ -33,14 +33,14 @@ describe("computeTimeline", () => {
       expect(timeline[i]!.sequence).toBeGreaterThan(timeline[i - 1]!.sequence);
     }
 
-    const failed = timeline.find(entry => entry.type === "node.load.failed");
+    const failed = timeline.find((entry) => entry.type === "node.load.failed");
     expect(failed).toMatchObject({ category: "execution", nodeKey: "failing", isFailure: true });
     expect(failed?.label).toBe("Node Load Failed - failing");
 
-    const requested = timeline.find(entry => entry.type === "operation.execute.requested");
+    const requested = timeline.find((entry) => entry.type === "operation.execute.requested");
     expect(requested).toMatchObject({ category: "operation", isFailure: false });
 
-    const succeeded = timeline.find(entry => entry.type === "node.execution.reused");
+    const succeeded = timeline.find((entry) => entry.type === "node.execution.reused");
     // (may or may not appear depending on generation reuse; only assert
     // when present, to avoid over-fitting to internal execution details)
     if (succeeded) expect(succeeded.isFailure).toBe(false);

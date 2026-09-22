@@ -9,10 +9,7 @@ import {
   type TimerEnvironment,
 } from "../../core";
 
-export type PollingProgressState =
-  | "running"
-  | "completed"
-  | "failed";
+export type PollingProgressState = "running" | "completed" | "failed";
 
 export interface PollingProgress {
   readonly operationId: string;
@@ -73,7 +70,7 @@ export const createPollingProgressHarness = (): PollingProgressHarness => {
       state.activeRequests += 1;
       state.maximumConcurrentRequests = Math.max(
         state.maximumConcurrentRequests,
-        state.activeRequests
+        state.activeRequests,
       );
       try {
         if (state.failNextRequest) {
@@ -97,8 +94,8 @@ export const createPollingProgressHarness = (): PollingProgressHarness => {
     refresh: pollUntil<PollingProgress>({
       intervalMs: 1_000,
       timeoutMs: 4_000,
-      stopWhen: value => value.state === "completed",
-      failWhen: value => value.state === "failed",
+      stopWhen: (value) => value.state === "completed",
+      failWhen: (value) => value.state === "failed",
       retry: { strategy: "fixed", maxRetries: 2, delayMs: 500 },
     }),
   });
@@ -112,12 +109,12 @@ export const createPollingProgressHarness = (): PollingProgressHarness => {
       timers.set(id, { id, dueAt: now + delayMs, callback });
       return id;
     },
-    clearTimeout: handle => {
+    clearTimeout: (handle) => {
       if (typeof handle === "number") timers.delete(handle);
     },
     random: () => 0.5,
     isPaused: () => paused,
-    onPauseChange: listener => {
+    onPauseChange: (listener) => {
       pauseListeners.add(listener);
       return () => pauseListeners.delete(listener);
     },
@@ -130,11 +127,9 @@ export const createPollingProgressHarness = (): PollingProgressHarness => {
     now += durationMs;
     while (true) {
       const timer = [...timers.values()]
-        .filter(candidate => candidate.dueAt <= now)
+        .filter((candidate) => candidate.dueAt <= now)
         .sort((left, right) =>
-          left.dueAt === right.dueAt
-            ? left.id - right.id
-            : left.dueAt - right.dueAt
+          left.dueAt === right.dueAt ? left.id - right.id : left.dueAt - right.dueAt,
         )[0];
       if (!timer) return;
       timers.delete(timer.id);
@@ -156,9 +151,7 @@ export const createPollingProgressHarness = (): PollingProgressHarness => {
     getActiveRequestCount: () => state.activeRequests,
     getRetryAttempt: () => state.retryAttempt,
     getNextDelay: () => {
-      const next = [...timers.values()].sort(
-        (left, right) => left.dueAt - right.dueAt
-      )[0];
+      const next = [...timers.values()].sort((left, right) => left.dueAt - right.dueAt)[0];
       return next ? next.dueAt - now : undefined;
     },
     getOutstandingTimerCount: () => timers.size,

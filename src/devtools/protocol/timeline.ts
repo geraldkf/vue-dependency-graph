@@ -1,8 +1,5 @@
 import type { GraphDiagnosticEvent } from "../../core";
-import type {
-  InspectorTimelineCategory,
-  InspectorTimelineEntry,
-} from "./types";
+import type { InspectorTimelineCategory, InspectorTimelineEntry } from "./types";
 
 const CATEGORY_BY_PREFIX: readonly (readonly [string, InspectorTimelineCategory])[] = [
   ["operation.", "operation"],
@@ -22,8 +19,7 @@ const CATEGORY_BY_PREFIX: readonly (readonly [string, InspectorTimelineCategory]
 ];
 
 const categoryOf = (type: string): InspectorTimelineCategory =>
-  CATEGORY_BY_PREFIX.find(([prefix]) => type.startsWith(prefix))?.[1] ??
-  "operation";
+  CATEGORY_BY_PREFIX.find(([prefix]) => type.startsWith(prefix))?.[1] ?? "operation";
 
 const FAILURE_SUFFIXES = [
   "failed",
@@ -36,7 +32,7 @@ const FAILURE_SUFFIXES = [
 ];
 
 const isFailureType = (type: string): boolean =>
-  FAILURE_SUFFIXES.some(suffix => type.endsWith(suffix));
+  FAILURE_SUFFIXES.some((suffix) => type.endsWith(suffix));
 
 const readNodeKey = (event: GraphDiagnosticEvent): string | undefined =>
   "nodeKey" in event ? event.nodeKey : undefined;
@@ -44,7 +40,7 @@ const readNodeKey = (event: GraphDiagnosticEvent): string | undefined =>
 const humanise = (type: string): string =>
   type
     .split(/[.-]/)
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
 
 const labelOf = (event: GraphDiagnosticEvent, nodeKey: string | undefined): string =>
@@ -57,7 +53,7 @@ const labelOf = (event: GraphDiagnosticEvent, nodeKey: string | undefined): stri
  * still internally consistent.
  */
 export const computeTimeline = (
-  events: readonly GraphDiagnosticEvent[]
+  events: readonly GraphDiagnosticEvent[],
 ): readonly InspectorTimelineEntry[] =>
   events.map((event): InspectorTimelineEntry => {
     const nodeKey = readNodeKey(event);

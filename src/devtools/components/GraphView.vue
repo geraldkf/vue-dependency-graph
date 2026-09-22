@@ -19,21 +19,22 @@ const PADDING = 20;
 const displayColumn = (column: number): number => column + 1;
 
 const positioned = computed(() => {
-  const nodes = props.view.nodes.map(node => ({
+  const nodes = props.view.nodes.map((node) => ({
     ...node,
     x: PADDING + displayColumn(node.column) * COLUMN_WIDTH,
     y: PADDING + node.row * ROW_HEIGHT,
   }));
-  const events = props.view.events.map(event => ({
+  const events = props.view.events.map((event) => ({
     ...event,
     x: PADDING + displayColumn(event.column) * COLUMN_WIDTH,
     y: PADDING + event.row * ROW_HEIGHT,
   }));
-  const byKey = new Map(
-    [...nodes.map(n => [n.key, n] as const), ...events.map(e => [e.key, e] as const)]
-  );
+  const byKey = new Map([
+    ...nodes.map((n) => [n.key, n] as const),
+    ...events.map((e) => [e.key, e] as const),
+  ]);
 
-  const edges = props.view.edges.flatMap(edge => {
+  const edges = props.view.edges.flatMap((edge) => {
     const from = byKey.get(edge.from);
     const to = byKey.get(edge.to);
     if (!from || !to) return [];
@@ -52,8 +53,7 @@ const positioned = computed(() => {
     ];
   });
 
-  const width =
-    PADDING * 2 + (props.view.columnCount + 1) * COLUMN_WIDTH;
+  const width = PADDING * 2 + (props.view.columnCount + 1) * COLUMN_WIDTH;
   const height = PADDING * 2 + Math.max(props.view.maxRowCount, 1) * ROW_HEIGHT;
 
   return { nodes, events, edges, width, height };
@@ -82,12 +82,7 @@ const positioned = computed(() => {
         :key="`event:${event.key}`"
         :transform="`translate(${event.x}, ${event.y})`"
       >
-        <rect
-          class="gdt-event-node"
-          :width="EVENT_WIDTH"
-          :height="NODE_HEIGHT"
-          rx="2"
-        />
+        <rect class="gdt-event-node" :width="EVENT_WIDTH" :height="NODE_HEIGHT" rx="2" />
         <text class="gdt-event-label" :x="10" :y="NODE_HEIGHT / 2 + 4">
           {{ event.key }}
         </text>
@@ -106,12 +101,7 @@ const positioned = computed(() => {
         @click="emit('select', node.key)"
         @keydown.enter="emit('select', node.key)"
       >
-        <rect
-          class="gdt-node-body"
-          :width="NODE_WIDTH"
-          :height="NODE_HEIGHT"
-          rx="2"
-        />
+        <rect class="gdt-node-body" :width="NODE_WIDTH" :height="NODE_HEIGHT" rx="2" />
         <rect
           class="gdt-node-accent"
           :class="[
@@ -135,7 +125,9 @@ const positioned = computed(() => {
           class="gdt-node-badge"
           :x="NODE_WIDTH - 20"
           :y="NODE_HEIGHT / 2 + 4"
-        >&#8635;</text>
+        >
+          &#8635;
+        </text>
       </g>
     </svg>
     <p v-else class="gdt-empty">No nodes in this graph.</p>
@@ -184,10 +176,18 @@ const positioned = computed(() => {
   stroke: none;
 }
 
-.gdt-status--idle { fill: var(--gdt-color-idle, #5b6b74); }
-.gdt-status--fresh { fill: var(--gdt-color-success, #4fcb86); }
-.gdt-status--stale { fill: var(--gdt-color-stale, #c9a84c); }
-.gdt-status--error { fill: var(--gdt-color-error, #e2604f); }
+.gdt-status--idle {
+  fill: var(--gdt-color-idle, #5b6b74);
+}
+.gdt-status--fresh {
+  fill: var(--gdt-color-success, #4fcb86);
+}
+.gdt-status--stale {
+  fill: var(--gdt-color-stale, #c9a84c);
+}
+.gdt-status--error {
+  fill: var(--gdt-color-error, #e2604f);
+}
 
 .gdt-node-label {
   fill: var(--gdt-color-text, #e4edf1);

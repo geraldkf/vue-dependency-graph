@@ -9,7 +9,11 @@ import {
 describe("node subscription lifecycle", () => {
   it("releases exactly one subscription and is idempotent", () => {
     const root = defineContextNode({ key: "root", initialValue: 1 });
-    const child = defineDerivedNode({ key: "child", dependencies: [root] as const, derive: () => 2 });
+    const child = defineDerivedNode({
+      key: "child",
+      dependencies: [root] as const,
+      derive: () => 2,
+    });
     const runtime = createGraphRuntime(createGraph({ nodes: [child, root] }));
     const first = runtime.subscribeNodes([child]);
     const second = runtime.subscribeNodes([child]);
@@ -62,7 +66,9 @@ describe("node subscription lifecycle", () => {
     const node = defineContextNode({ key: "node", initialValue: 1 });
     const runtime = createGraphRuntime(createGraph({ nodes: [node] }));
     const observed: number[] = [];
-    runtime.onChange(() => { throw new Error("listener failure"); });
+    runtime.onChange(() => {
+      throw new Error("listener failure");
+    });
     runtime.onChange(() => observed.push(runtime.getSubscriptionState(node).total));
 
     const subscription = runtime.subscribeNodes([node, node]);

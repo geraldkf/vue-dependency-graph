@@ -43,7 +43,7 @@ describe("observability regression", () => {
     await runtime.whenSettled();
     runtime.publish(changed, undefined);
     await runtime.whenSettled();
-    await runtime.transaction(transaction => {
+    await runtime.transaction((transaction) => {
       transaction.setContext(context, 3);
       transaction.publish(changed, undefined);
     });
@@ -52,46 +52,48 @@ describe("observability regression", () => {
     subscription.unsubscribe();
 
     const events = normalizeDiagnosticEvents(collector.getEvents());
-    const types = events.map(event => event.type);
+    const types = events.map((event) => event.type);
 
-    expect(types).toEqual(expect.arrayContaining([
-      "runtime.created",
-      "subscription.added",
-      "scheduler.requested",
-      "scheduler.started",
-      "node.load.started",
-      "node.load.succeeded",
-      "context.changed",
-      "node.invalidated",
-      "event.published",
-      "event.matched",
-      "transaction.started",
-      "transaction.committed",
-      "mutation.started",
-      "mutation.remote-started",
-      "mutation.remote-succeeded",
-      "mutation.success-committed",
-      "mutation.completed",
-      "subscription.removed",
-    ]));
+    expect(types).toEqual(
+      expect.arrayContaining([
+        "runtime.created",
+        "subscription.added",
+        "scheduler.requested",
+        "scheduler.started",
+        "node.load.started",
+        "node.load.succeeded",
+        "context.changed",
+        "node.invalidated",
+        "event.published",
+        "event.matched",
+        "transaction.started",
+        "transaction.committed",
+        "mutation.started",
+        "mutation.remote-started",
+        "mutation.remote-succeeded",
+        "mutation.success-committed",
+        "mutation.completed",
+        "subscription.removed",
+      ]),
+    );
 
     const schedulerLoads = events.filter(
-      event => event.type === "node.load.started" && event.origin === "scheduler",
+      (event) => event.type === "node.load.started" && event.origin === "scheduler",
     );
     expect(schedulerLoads.length).toBeGreaterThanOrEqual(3);
-    expect(schedulerLoads.every(event => event.operationId !== undefined)).toBe(true);
+    expect(schedulerLoads.every((event) => event.operationId !== undefined)).toBe(true);
 
     const schedulerStarts = new Map(
       events
-        .filter(event => event.type === "scheduler.started")
-        .map(event => [event.operationId, event.causeId] as const),
+        .filter((event) => event.type === "scheduler.started")
+        .map((event) => [event.operationId, event.causeId] as const),
     );
-    expect(schedulerLoads.every(event =>
-      event.causeId === schedulerStarts.get(event.operationId)
-    )).toBe(true);
+    expect(
+      schedulerLoads.every((event) => event.causeId === schedulerStarts.get(event.operationId)),
+    ).toBe(true);
 
-    expect(events.filter(event => event.type === "transaction.committed")).toHaveLength(1);
-    expect(events.filter(event => event.type === "mutation.completed")).toEqual([
+    expect(events.filter((event) => event.type === "transaction.committed")).toHaveLength(1);
+    expect(events.filter((event) => event.type === "mutation.completed")).toEqual([
       expect.objectContaining({ outcome: "succeeded" }),
     ]);
   });

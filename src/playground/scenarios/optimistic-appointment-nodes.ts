@@ -1,9 +1,5 @@
 import { ref } from "vue";
-import {
-  defineDataNode,
-  defineMutation,
-  type MutationExecuteContext,
-} from "../../core";
+import { defineDataNode, defineMutation, type MutationExecuteContext } from "../../core";
 import { capabilityJobSeekerId } from "./typed-events-nodes";
 
 export interface PlaygroundAppointment {
@@ -45,12 +41,14 @@ interface PendingBooking {
   readonly input: BookAppointmentInput;
 }
 
-const initialAppointments = (): PlaygroundAppointment[] => [{
-  id: 1,
-  clientId: "confirmed-1",
-  jobSeekerId: 101,
-  status: "confirmed",
-}];
+const initialAppointments = (): PlaygroundAppointment[] => [
+  {
+    id: 1,
+    clientId: "confirmed-1",
+    jobSeekerId: 101,
+    status: "confirmed",
+  },
+];
 
 const appointmentRequestCount = ref(0);
 let nextAppointmentId = 2;

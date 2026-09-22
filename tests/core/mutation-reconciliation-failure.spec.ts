@@ -14,16 +14,17 @@ import { deferred, waitForCondition } from "./test-helpers";
 const createValue = (key: string, load: () => Promise<number> = async () => 1) =>
   defineDataNode({ key, initialValue: 0, load });
 
-const createMutation = (key: string) => defineMutation({
-  key,
-  execute: async () => ({ saved: true as const }),
-});
+const createMutation = (key: string) =>
+  defineMutation({
+    key,
+    execute: async () => ({ saved: true as const }),
+  });
 
-const optimisticIncrement = (
-  node: ReturnType<typeof createValue>,
-) => (effects: MutationUpdateEffects): void => {
-  effects.update(node, current => current + 10);
-};
+const optimisticIncrement =
+  (node: ReturnType<typeof createValue>) =>
+  (effects: MutationUpdateEffects): void => {
+    effects.update(node, (current) => current + 10);
+  };
 
 describe("optimistic success reconciliation failure", () => {
   it("retains optimistic state as stale and reports remote success", async () => {
@@ -81,7 +82,7 @@ describe("optimistic success reconciliation failure", () => {
     try {
       await runtime.mutate(mutation, undefined, {
         optimistic: optimisticIncrement(value),
-        onSuccess: effects => {
+        onSuccess: (effects) => {
           effects.update(summary as never, () => 5);
         },
       });
@@ -106,16 +107,20 @@ describe("optimistic success reconciliation failure", () => {
     const runtime = createGraphRuntime(createGraph({ nodes: [value] }));
     await runtime.execute([value]);
 
-    await expect(runtime.mutate(failedMutation, undefined, {
-      optimistic: optimisticIncrement(value),
-      onSuccess: () => {
-        throw new Error("Local reconciliation failed");
-      },
-    })).rejects.toBeInstanceOf(GraphMutationReconciliationError);
+    await expect(
+      runtime.mutate(failedMutation, undefined, {
+        optimistic: optimisticIncrement(value),
+        onSuccess: () => {
+          throw new Error("Local reconciliation failed");
+        },
+      }),
+    ).rejects.toBeInstanceOf(GraphMutationReconciliationError);
 
-    await expect(runtime.mutate(succeedingMutation, undefined, {
-      optimistic: effects => effects.update(value, current => current + 1),
-    })).resolves.toEqual({ saved: true });
+    await expect(
+      runtime.mutate(succeedingMutation, undefined, {
+        optimistic: (effects) => effects.update(value, (current) => current + 1),
+      }),
+    ).resolves.toEqual({ saved: true });
 
     expect(runtime.getState(value).data).toBe(12);
   });
@@ -132,17 +137,16 @@ describe("optimistic success reconciliation failure", () => {
     const subscription = runtime.subscribeNodes([value]);
     await runtime.whenSettled();
 
-    await expect(runtime.mutate(mutation, undefined, {
-      optimistic: optimisticIncrement(value),
-      onSuccess: () => {
-        throw new Error("Local reconciliation failed");
-      },
-    })).rejects.toBeInstanceOf(GraphMutationReconciliationError);
+    await expect(
+      runtime.mutate(mutation, undefined, {
+        optimistic: optimisticIncrement(value),
+        onSuccess: () => {
+          throw new Error("Local reconciliation failed");
+        },
+      }),
+    ).rejects.toBeInstanceOf(GraphMutationReconciliationError);
 
-    await waitForCondition(
-      () => loadCount === 2,
-      "authoritative reconciliation load to start",
-    );
+    await waitForCondition(() => loadCount === 2, "authoritative reconciliation load to start");
     expect(runtime.getState(value)).toMatchObject({
       data: 11,
       freshness: "stale",
@@ -170,17 +174,16 @@ describe("optimistic success reconciliation failure", () => {
       observed.push(`${state.data}:${state.freshness}:${state.generation}`);
     });
 
-    await expect(runtime.mutate(mutation, undefined, {
-      optimistic: optimisticIncrement(value),
-      onSuccess: () => {
-        throw new Error("Local reconciliation failed");
-      },
-    })).rejects.toBeInstanceOf(GraphMutationReconciliationError);
+    await expect(
+      runtime.mutate(mutation, undefined, {
+        optimistic: optimisticIncrement(value),
+        onSuccess: () => {
+          throw new Error("Local reconciliation failed");
+        },
+      }),
+    ).rejects.toBeInstanceOf(GraphMutationReconciliationError);
 
-    expect(observed).toEqual([
-      "11:fresh:1",
-      "11:stale:2",
-    ]);
+    expect(observed).toEqual(["11:fresh:1", "11:stale:2"]);
   });
 
   it("commits no success update when a later success updater fails", async () => {
@@ -191,15 +194,17 @@ describe("optimistic success reconciliation failure", () => {
     const runtime = createGraphRuntime(createGraph({ nodes: [first, second] }));
     await runtime.execute([first, second]);
 
-    await expect(runtime.mutate(mutation, undefined, {
-      optimistic: effects => effects.update(first, current => current + 10),
-      onSuccess: effects => {
-        effects.update(first, () => 100);
-        effects.update(second, () => {
-          throw failure;
-        });
-      },
-    })).rejects.toMatchObject({
+    await expect(
+      runtime.mutate(mutation, undefined, {
+        optimistic: (effects) => effects.update(first, (current) => current + 10),
+        onSuccess: (effects) => {
+          effects.update(first, () => 100);
+          effects.update(second, () => {
+            throw failure;
+          });
+        },
+      }),
+    ).rejects.toMatchObject({
       name: "GraphMutationReconciliationError",
       cause: failure,
     });
@@ -219,26 +224,27 @@ describe("optimistic success reconciliation failure", () => {
     const callbackValue = createValue("reconciliation-failure-async-callback");
     const updaterValue = createValue("reconciliation-failure-async-updater");
     const mutation = createMutation("reconciliation-failure.async");
-    const runtime = createGraphRuntime(
-      createGraph({ nodes: [callbackValue, updaterValue] }),
-    );
+    const runtime = createGraphRuntime(createGraph({ nodes: [callbackValue, updaterValue] }));
     await runtime.execute([callbackValue, updaterValue]);
 
-    await expect(runtime.mutate(mutation, undefined, {
-      optimistic: optimisticIncrement(callbackValue),
-      onSuccess: (async () => undefined) as unknown as () => void,
-    })).rejects.toBeInstanceOf(GraphMutationReconciliationError);
+    await expect(
+      runtime.mutate(mutation, undefined, {
+        optimistic: optimisticIncrement(callbackValue),
+        onSuccess: (async () => undefined) as unknown as () => void,
+      }),
+    ).rejects.toBeInstanceOf(GraphMutationReconciliationError);
     expect(runtime.getState(callbackValue).freshness).toBe("stale");
 
-    await expect(runtime.mutate(mutation, undefined, {
-      optimistic: optimisticIncrement(updaterValue),
-      onSuccess: effects => {
-        effects.update(
-          updaterValue,
-          (() => Promise.resolve(50)) as unknown as (current: number) => number,
-        );
-      },
-    })).rejects.toBeInstanceOf(GraphMutationReconciliationError);
+    await expect(
+      runtime.mutate(mutation, undefined, {
+        optimistic: optimisticIncrement(updaterValue),
+        onSuccess: (effects) => {
+          effects.update(updaterValue, (() => Promise.resolve(50)) as unknown as (
+            current: number,
+          ) => number);
+        },
+      }),
+    ).rejects.toBeInstanceOf(GraphMutationReconciliationError);
     expect(runtime.getState(updaterValue)).toMatchObject({
       data: 11,
       freshness: "stale",
@@ -252,11 +258,13 @@ describe("optimistic success reconciliation failure", () => {
     const runtime = createGraphRuntime(createGraph({ nodes: [value] }));
     await runtime.execute([value]);
 
-    await expect(runtime.mutate(mutation, undefined, {
-      onSuccess: () => {
-        throw failure;
-      },
-    })).rejects.toBe(failure);
+    await expect(
+      runtime.mutate(mutation, undefined, {
+        onSuccess: () => {
+          throw failure;
+        },
+      }),
+    ).rejects.toBe(failure);
 
     expect(runtime.getState(value)).toMatchObject({
       data: 1,

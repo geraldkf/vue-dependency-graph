@@ -45,9 +45,7 @@ describe("Query Groups scenario", () => {
     await fireEvent.click(screen.getByRole("button", { name: "Prefetch page" }));
     await completeLoads();
 
-    expect(screen.getByTestId("query-groups-prefetch-outcome").textContent).toContain(
-      "ready"
-    );
+    expect(screen.getByTestId("query-groups-prefetch-outcome").textContent).toContain("ready");
     expect(queryGroupsAppointmentsLoader.callCount.value).toBe(1);
     expect(queryGroupsCapabilityLoader.callCount.value).toBe(1);
     expect(runtime.getSubscriptionState(queryGroupsAppointments).direct).toBe(0);
@@ -57,14 +55,12 @@ describe("Query Groups scenario", () => {
     await runtime.whenSettled();
 
     expect(screen.getByTestId("query-groups-appointments").textContent).toContain(
-      "Appointment 1 for 101"
+      "Appointment 1 for 101",
     );
     expect(screen.getByTestId("query-groups-capability").textContent).toContain(
-      "Capability request 1 for 101"
+      "Capability request 1 for 101",
     );
-    expect(screen.getByTestId("query-groups-aggregate").textContent).toContain(
-      "success: true"
-    );
+    expect(screen.getByTestId("query-groups-aggregate").textContent).toContain("success: true");
     expect(queryGroupsAppointmentsLoader.callCount.value).toBe(1);
     expect(queryGroupsCapabilityLoader.callCount.value).toBe(1);
   });
@@ -82,14 +78,12 @@ describe("Query Groups scenario", () => {
     expect(queryGroupsAppointmentsLoader.callCount.value).toBe(2);
     expect(queryGroupsCapabilityLoader.callCount.value).toBe(2);
     expect(screen.getByTestId("query-groups-appointments").textContent).toContain(
-      "Appointment 2 for 101"
+      "Appointment 2 for 101",
     );
     expect(screen.getByTestId("query-groups-capability").textContent).toContain(
-      "Capability request 2 for 101"
+      "Capability request 2 for 101",
     );
-    expect(screen.getByTestId("query-groups-refresh-outcome").textContent).toContain(
-      "ready"
-    );
+    expect(screen.getByTestId("query-groups-refresh-outcome").textContent).toContain("ready");
   });
 
   it("releases all query subscription ownership when the consumer unmounts", async () => {

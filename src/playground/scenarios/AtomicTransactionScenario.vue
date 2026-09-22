@@ -2,17 +2,13 @@
   <section aria-labelledby="atomic-transaction-heading">
     <h2 id="atomic-transaction-heading">Atomic Transaction</h2>
     <p>
-      Compare one transaction session's progress with committed runtime state.
-      The runtime continues to expose only committed values until commit. Use
-      Transaction Isolation to compare overlapping top-level sessions.
+      Compare one transaction session's progress with committed runtime state. The runtime continues
+      to expose only committed values until commit. Use Transaction Isolation to compare overlapping
+      top-level sessions.
     </p>
 
-    <p data-testid="transaction-state">
-      Transaction: {{ transactionPhase }}
-    </p>
-    <p data-testid="transaction-outcome">
-      Outcome: {{ transactionOutcome }}
-    </p>
+    <p data-testid="transaction-state">Transaction: {{ transactionPhase }}</p>
+    <p data-testid="transaction-outcome">Outcome: {{ transactionOutcome }}</p>
     <p v-if="transactionError" role="alert" data-testid="transaction-error">
       Error: {{ transactionError }}
     </p>
@@ -22,12 +18,8 @@
       <p data-testid="committed-values">
         Values: {{ firstState.data.value }} + {{ secondState.data.value }}
       </p>
-      <p data-testid="combined-value">
-        Combined result: {{ combinedState.data.value }}
-      </p>
-      <p data-testid="derive-count">
-        Derivation count: {{ deriveCount }}
-      </p>
+      <p data-testid="combined-value">Combined result: {{ combinedState.data.value }}</p>
+      <p data-testid="derive-count">Derivation count: {{ deriveCount }}</p>
     </section>
 
     <section aria-labelledby="transaction-progress-heading">
@@ -36,20 +28,16 @@
         <p data-testid="in-progress-values">
           In-progress values: {{ draft.first }} + {{ draft.second }}
         </p>
-        <p data-testid="preview-result">
-          Preview result: {{ previewResult }}
-        </p>
+        <p data-testid="preview-result">Preview result: {{ previewResult }}</p>
       </template>
-      <p v-else data-testid="in-progress-values">
-        In-progress values: none
-      </p>
+      <p v-else data-testid="in-progress-values">In-progress values: none</p>
     </section>
 
     <section aria-labelledby="unrelated-runtime-heading">
       <h3 id="unrelated-runtime-heading">Unrelated runtime activity</h3>
       <p>
-        A plain runtime context write remains immediate while this transaction
-        is paused and survives transaction rollback.
+        A plain runtime context write remains immediate while this transaction is paused and
+        survives transaction rollback.
       </p>
       <p data-testid="unrelated-context-value">
         Unrelated context: {{ unrelatedState.data.value }}
@@ -57,12 +45,8 @@
       <p data-testid="unrelated-dependent-value">
         Unrelated dependent result: {{ unrelatedDependentState.data.value }}
       </p>
-      <p data-testid="unrelated-load-count">
-        Unrelated load count: {{ unrelatedLoadCount }}
-      </p>
-      <p data-testid="unrelated-update-state">
-        Unrelated update: {{ unrelatedUpdateState }}
-      </p>
+      <p data-testid="unrelated-load-count">Unrelated load count: {{ unrelatedLoadCount }}</p>
+      <p data-testid="unrelated-update-state">Unrelated update: {{ unrelatedUpdateState }}</p>
       <button
         :disabled="!isTransactionActive || unrelatedUpdateApplied || conflictWriteApplied"
         @click="applyUnrelatedRuntimeUpdate"
@@ -74,20 +58,14 @@
     <section aria-labelledby="transaction-conflict-heading">
       <h3 id="transaction-conflict-heading">Same-context conflict</h3>
       <p>
-        Stage the first value, then update that same context directly. Commit
-        detects the changed generation and preserves the immediate value.
+        Stage the first value, then update that same context directly. Commit detects the changed
+        generation and preserves the immediate value.
       </p>
-      <p data-testid="conflict-state">
-        Conflict: {{ conflictState }}
-      </p>
-      <p data-testid="conflict-keys">
-        Conflicting contexts: {{ conflictKeysText }}
-      </p>
+      <p data-testid="conflict-state">Conflict: {{ conflictState }}</p>
+      <p data-testid="conflict-keys">Conflicting contexts: {{ conflictKeysText }}</p>
       <button
         :disabled="
-          transactionPhase !== 'first-staged' ||
-          conflictWriteApplied ||
-          unrelatedUpdateApplied
+          transactionPhase !== 'first-staged' || conflictWriteApplied || unrelatedUpdateApplied
         "
         @click="applyConflictingRuntimeUpdate"
       >
@@ -96,30 +74,17 @@
     </section>
 
     <p>
-      <button :disabled="isTransactionActive" @click="startTransaction">
-        Start transaction
-      </button>
-      <button
-        :disabled="transactionPhase !== 'first-staged'"
-        @click="stageSecondValue"
-      >
+      <button :disabled="isTransactionActive" @click="startTransaction">Start transaction</button>
+      <button :disabled="transactionPhase !== 'first-staged'" @click="stageSecondValue">
         Stage second value
       </button>
-      <button
-        :disabled="transactionPhase !== 'second-staged'"
-        @click="commitTransaction"
-      >
+      <button :disabled="transactionPhase !== 'second-staged'" @click="commitTransaction">
         Commit transaction
       </button>
-      <button
-        :disabled="transactionPhase !== 'second-staged'"
-        @click="rollbackTransaction"
-      >
+      <button :disabled="transactionPhase !== 'second-staged'" @click="rollbackTransaction">
         Rollback with error
       </button>
-      <button :disabled="isTransactionActive" @click="resetScenario">
-        Reset
-      </button>
+      <button :disabled="isTransactionActive" @click="resetScenario">Reset</button>
     </p>
 
     <h3>Committed observer snapshots</h3>
@@ -159,11 +124,7 @@ type TransactionPhase =
   | "conflicted";
 
 type TransactionDecision = "commit" | "rollback";
-type TransactionOutcome =
-  | "none"
-  | "committed"
-  | "rolled back"
-  | "conflict rejected";
+type TransactionOutcome = "none" | "committed" | "rolled back" | "conflict rejected";
 
 const firstValue = defineContextNode({
   key: "atomic-transaction-first",
@@ -200,14 +161,8 @@ const combinedValue = defineDerivedNode({
 
 const runtime = createGraphRuntime(
   createGraph({
-    nodes: [
-      combinedValue,
-      unrelatedDependent,
-      firstValue,
-      secondValue,
-      unrelatedValue,
-    ],
-  })
+    nodes: [combinedValue, unrelatedDependent, firstValue, secondValue, unrelatedValue],
+  }),
 );
 const firstState = useNode(firstValue, { runtime });
 const secondState = useNode(secondValue, { runtime });
@@ -225,17 +180,15 @@ const conflictWriteApplied = ref(false);
 const conflictState = ref("not demonstrated");
 const conflictKeys = ref<readonly string[]>([]);
 const conflictKeysText = computed(() =>
-  conflictKeys.value.length > 0 ? conflictKeys.value.join(", ") : "none"
+  conflictKeys.value.length > 0 ? conflictKeys.value.join(", ") : "none",
 );
-const previewResult = computed(() =>
-  draft.value ? draft.value.first + draft.value.second : null
-);
+const previewResult = computed(() => (draft.value ? draft.value.first + draft.value.second : null));
 const isTransactionActive = computed(
   () =>
     transactionPhase.value === "first-staged" ||
     transactionPhase.value === "second-staged" ||
     transactionPhase.value === "committing" ||
-    transactionPhase.value === "rolling-back"
+    transactionPhase.value === "rolling-back",
 );
 
 let releaseSecondStage: (() => void) | undefined;
@@ -244,8 +197,7 @@ let isMounted = true;
 let lastObservedContextPair = `${runtime.getState(firstValue).data} + ${runtime.getState(secondValue).data}`;
 
 const unsubscribe = runtime.onChange(() => {
-  const contextPair =
-    `${runtime.getState(firstValue).data} + ${runtime.getState(secondValue).data}`;
+  const contextPair = `${runtime.getState(firstValue).data} + ${runtime.getState(secondValue).data}`;
   if (contextPair === lastObservedContextPair) return;
 
   lastObservedContextPair = contextPair;
@@ -261,53 +213,56 @@ const startTransaction = (): void => {
   conflictState.value = "not demonstrated";
   conflictKeys.value = [];
 
-  void runtime.transaction(async transaction => {
-    transaction.setContext(firstValue, 2);
-    draft.value = {
-      first: 2,
-      second: runtime.getState(secondValue).data,
-    };
-    transactionPhase.value = "first-staged";
+  void runtime
+    .transaction(async (transaction) => {
+      transaction.setContext(firstValue, 2);
+      draft.value = {
+        first: 2,
+        second: runtime.getState(secondValue).data,
+      };
+      transactionPhase.value = "first-staged";
 
-    await new Promise<void>(resolve => {
-      releaseSecondStage = resolve;
+      await new Promise<void>((resolve) => {
+        releaseSecondStage = resolve;
+      });
+      if (!isMounted) return;
+
+      transaction.setContext(secondValue, 20);
+      draft.value = { first: 2, second: 20 };
+      transactionPhase.value = "second-staged";
+
+      const decision = await new Promise<TransactionDecision>((resolve) => {
+        resolveDecision = resolve;
+      });
+      if (decision === "rollback") {
+        throw new Error("Playground transaction rollback");
+      }
+    })
+    .then(() => {
+      if (!isMounted) return;
+      transactionPhase.value = "committed";
+      transactionOutcome.value = "committed";
+    })
+    .catch((error: unknown) => {
+      if (!isMounted) return;
+      if (error instanceof GraphTransactionConflictError) {
+        transactionPhase.value = "conflicted";
+        transactionOutcome.value = "conflict rejected";
+        conflictState.value = "detected; immediate value preserved";
+        conflictKeys.value = error.contextKeys;
+        transactionError.value = null;
+        return;
+      }
+
+      transactionPhase.value = "rolled-back";
+      transactionOutcome.value = "rolled back";
+      transactionError.value = error instanceof Error ? error.message : "Transaction failed";
+    })
+    .finally(() => {
+      releaseSecondStage = undefined;
+      resolveDecision = undefined;
+      if (isMounted) draft.value = null;
     });
-    if (!isMounted) return;
-
-    transaction.setContext(secondValue, 20);
-    draft.value = { first: 2, second: 20 };
-    transactionPhase.value = "second-staged";
-
-    const decision = await new Promise<TransactionDecision>(resolve => {
-      resolveDecision = resolve;
-    });
-    if (decision === "rollback") {
-      throw new Error("Playground transaction rollback");
-    }
-  }).then(() => {
-    if (!isMounted) return;
-    transactionPhase.value = "committed";
-    transactionOutcome.value = "committed";
-  }).catch((error: unknown) => {
-    if (!isMounted) return;
-    if (error instanceof GraphTransactionConflictError) {
-      transactionPhase.value = "conflicted";
-      transactionOutcome.value = "conflict rejected";
-      conflictState.value = "detected; immediate value preserved";
-      conflictKeys.value = error.contextKeys;
-      transactionError.value = null;
-      return;
-    }
-
-    transactionPhase.value = "rolled-back";
-    transactionOutcome.value = "rolled back";
-    transactionError.value =
-      error instanceof Error ? error.message : "Transaction failed";
-  }).finally(() => {
-    releaseSecondStage = undefined;
-    resolveDecision = undefined;
-    if (isMounted) draft.value = null;
-  });
 };
 
 const applyConflictingRuntimeUpdate = (): void => {
@@ -341,7 +296,7 @@ const rollbackTransaction = (): void => {
 };
 
 const resetScenario = async (): Promise<void> => {
-  await runtime.transaction(transaction => {
+  await runtime.transaction((transaction) => {
     transaction.setContext(firstValue, 1);
     transaction.setContext(secondValue, 10);
     transaction.setContext(unrelatedValue, 100);
@@ -349,8 +304,7 @@ const resetScenario = async (): Promise<void> => {
   await runtime.whenSettled();
 
   snapshots.value = [];
-  lastObservedContextPair =
-    `${runtime.getState(firstValue).data} + ${runtime.getState(secondValue).data}`;
+  lastObservedContextPair = `${runtime.getState(firstValue).data} + ${runtime.getState(secondValue).data}`;
   deriveCount.value = 0;
   unrelatedLoadCount.value = 0;
   unrelatedUpdateApplied.value = false;

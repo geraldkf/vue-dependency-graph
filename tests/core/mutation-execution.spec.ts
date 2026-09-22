@@ -29,13 +29,11 @@ const createSaveMutation = (
 
 describe("mutation execution", () => {
   it("executes once with the typed input and returns the remote result", async () => {
-    const execute = vi.fn(
-      async ({ input, signal }: MutationExecuteContext<SaveInput>) => {
-        expect(signal).toBeInstanceOf(AbortSignal);
-        expect(signal.aborted).toBe(false);
-        return { id: 42, value: input.value };
-      },
-    );
+    const execute = vi.fn(async ({ input, signal }: MutationExecuteContext<SaveInput>) => {
+      expect(signal).toBeInstanceOf(AbortSignal);
+      expect(signal.aborted).toBe(false);
+      return { id: 42, value: input.value };
+    });
     const mutation = createSaveMutation(execute);
     const runtime = createGraphRuntime(graph);
 
@@ -50,15 +48,11 @@ describe("mutation execution", () => {
     const failure = new Error("Synchronous failure");
     const execute = (() => {
       throw failure;
-    }) as unknown as (
-      context: MutationExecuteContext<SaveInput>,
-    ) => Promise<SaveResult>;
+    }) as unknown as (context: MutationExecuteContext<SaveInput>) => Promise<SaveResult>;
     const mutation = createSaveMutation(execute);
     const runtime = createGraphRuntime(graph);
 
-    await expect(runtime.mutate(mutation, { value: "failed" })).rejects.toBe(
-      failure,
-    );
+    await expect(runtime.mutate(mutation, { value: "failed" })).rejects.toBe(failure);
   });
 
   it("preserves the original remote rejection", async () => {
@@ -68,9 +62,7 @@ describe("mutation execution", () => {
     });
     const runtime = createGraphRuntime(graph);
 
-    await expect(runtime.mutate(mutation, { value: "rejected" })).rejects.toBe(
-      failure,
-    );
+    await expect(runtime.mutate(mutation, { value: "rejected" })).rejects.toBe(failure);
   });
 
   it("does not change graph state or notify observers", async () => {

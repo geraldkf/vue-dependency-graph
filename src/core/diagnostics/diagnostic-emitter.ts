@@ -5,11 +5,7 @@ import type {
   GraphOperationRequestedDiagnosticEvent,
 } from "./types";
 
-type DiagnosticEnvelopeKey =
-  | "schemaVersion"
-  | "sequence"
-  | "timestamp"
-  | "runtimeId";
+type DiagnosticEnvelopeKey = "schemaVersion" | "sequence" | "timestamp" | "runtimeId";
 
 type DiagnosticEventInput = GraphDiagnosticEvent extends infer TEvent
   ? TEvent extends GraphDiagnosticEvent
@@ -97,27 +93,26 @@ export const createRuntimeDiagnosticEmitter = (
 
   const emit = (input: DiagnosticEventInput): void => {
     const event = Object.fromEntries(
-      Object.entries(input).map(([key, value]) => [key, freezeValue(value)])
+      Object.entries(input).map(([key, value]) => [key, freezeValue(value)]),
     ) as unknown as DiagnosticEventInput;
-    dispatch(Object.freeze({
-      schemaVersion: 1,
-      sequence: ++sequence,
-      timestamp: now(),
-      runtimeId,
-      ...event,
-    }) as GraphDiagnosticEvent);
+    dispatch(
+      Object.freeze({
+        schemaVersion: 1,
+        sequence: ++sequence,
+        timestamp: now(),
+        runtimeId,
+        ...event,
+      }) as GraphDiagnosticEvent,
+    );
   };
 
-  const createOperationId = (): string =>
-    `${runtimeId}:operation-${++operationSequence}`;
+  const createOperationId = (): string => `${runtimeId}:operation-${++operationSequence}`;
 
   const emitRuntimeCreated = (nodeKeys: readonly string[]): void => {
     emit({ type: "runtime.created", nodeKeys });
   };
 
-  const emitOperationRequested = (
-    input: OperationRequestedInput,
-  ): string => {
+  const emitOperationRequested = (input: OperationRequestedInput): string => {
     const operationId = createOperationId();
     emit({ ...input, operationId });
     return operationId;
@@ -129,10 +124,11 @@ export const createRuntimeDiagnosticEmitter = (
     createOperationId,
     emit,
     now,
-    toError: (error: Error) => Object.freeze({
-      name: error.name,
-      message: error.message,
-    }),
+    toError: (error: Error) =>
+      Object.freeze({
+        name: error.name,
+        message: error.message,
+      }),
     isEnabled: true,
     runtimeId,
   });

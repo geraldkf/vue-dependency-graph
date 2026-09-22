@@ -54,7 +54,6 @@ void defineDerivedNode<number, readonly [typeof count]>({
   derive: () => "wrong",
 });
 
-
 const appointmentBooked = defineEvent<{
   jobSeekerId: number;
   appointmentId: number;
@@ -74,10 +73,10 @@ const eventInvalidatedData = defineDataNode({
     appointmentBooked,
     {
       event: appointmentBooked,
-      when: ({ payload, get }: EventInvalidationContext<
-        typeof appointmentBooked,
-        readonly [typeof count]
-      >) => {
+      when: ({
+        payload,
+        get,
+      }: EventInvalidationContext<typeof appointmentBooked, readonly [typeof count]>) => {
         const jobSeekerId: number = payload.jobSeekerId;
         const currentCount: number = get(count);
         // @ts-expect-error event predicates can read only declared dependencies

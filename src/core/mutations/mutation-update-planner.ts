@@ -7,10 +7,7 @@ import type {
 import type { NodeStateRecord } from "../state/state";
 import { GraphMutationStateError } from "./errors";
 import type { MutationUpdateEffects } from "./types";
-import {
-  guardMutationUpdaterValue,
-  isMutationValueMutationError,
-} from "./mutation-value-guard";
+import { guardMutationUpdaterValue, isMutationValueMutationError } from "./mutation-value-guard";
 
 export interface MutationUpdateDraft {
   readonly node: AnyNodeDefinition;
@@ -29,16 +26,11 @@ export interface MutationUpdatePlanner {
     work: (effects: MutationUpdateEffects) => void,
     operation: "optimistic" | "success",
   ) => readonly MutationUpdateDraft[];
-  readonly prepare: (
-    drafts: readonly MutationUpdateDraft[],
-  ) => readonly PreparedMutationUpdate[];
+  readonly prepare: (drafts: readonly MutationUpdateDraft[]) => readonly PreparedMutationUpdate[];
 }
 
 export interface MutationUpdatePlannerDependencies {
-  readonly resolveRegisteredNode: (
-    node: AnyNodeDefinition,
-    purpose: string,
-  ) => AnyNodeDefinition;
+  readonly resolveRegisteredNode: (node: AnyNodeDefinition, purpose: string) => AnyNodeDefinition;
   readonly getNodeState: (key: string) => NodeStateRecord;
 }
 
@@ -72,10 +64,7 @@ export const createMutationUpdatePlanner = ({
         if (!acceptingEffects) {
           throw new Error(`Mutation ${operation} effects are no longer active.`);
         }
-        const registered = resolveRegisteredNode(
-          node,
-          `mutation ${operation} update`,
-        );
+        const registered = resolveRegisteredNode(node, `mutation ${operation} update`);
         if (registered.kind !== "data") {
           throw new GraphMutationStateError(
             registered.key,
@@ -110,9 +99,7 @@ export const createMutationUpdatePlanner = ({
     return drafts;
   };
 
-  const prepare = (
-    drafts: readonly MutationUpdateDraft[],
-  ): readonly PreparedMutationUpdate[] => {
+  const prepare = (drafts: readonly MutationUpdateDraft[]): readonly PreparedMutationUpdate[] => {
     const validated = drafts.map(({ node, updater }) => {
       const state = getNodeState(node.key);
       if (!state.hasSuccessfulValue) {

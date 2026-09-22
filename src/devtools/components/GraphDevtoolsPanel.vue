@@ -28,9 +28,7 @@ const activeTab = ref<Tab>("graph");
 const live = useGraphDevtools({ runtime: props.runtime, diagnostics: props.diagnostics });
 const offline = useOfflineDevtoolsSnapshot();
 
-const mode = computed<"live" | "offline">(() =>
-  offline.loaded.value ? "offline" : "live"
-);
+const mode = computed<"live" | "offline">(() => (offline.loaded.value ? "offline" : "live"));
 const active = computed(() => (mode.value === "live" ? live : offline));
 
 const importError = ref<string | undefined>(undefined);
@@ -58,9 +56,7 @@ const onFileChange = async (event: Event): Promise<void> => {
     offline.loadFromJson(await file.text());
   } catch (error) {
     importError.value =
-      error instanceof InvalidDevtoolsExportError
-        ? error.message
-        : "Could not read that file.";
+      error instanceof InvalidDevtoolsExportError ? error.message : "Could not read that file.";
   } finally {
     (event.target as HTMLInputElement).value = "";
   }
@@ -131,7 +127,12 @@ const onReturnToLiveClick = (): void => {
         v-show="activeTab === 'graph'"
         :view="active.graphView.value"
         :selected-node-key="active.selectedNodeKey.value"
-        @select="key => { active.select(key); activeTab = 'node'; }"
+        @select="
+          (key) => {
+            active.select(key);
+            activeTab = 'node';
+          }
+        "
       />
       <NodeInspector
         v-if="activeTab === 'node'"
@@ -142,7 +143,12 @@ const onReturnToLiveClick = (): void => {
         v-if="activeTab === 'timeline'"
         :entries="active.timeline.value"
         :selected-node-key="active.selectedNodeKey.value"
-        @select="key => { active.select(key); activeTab = 'node'; }"
+        @select="
+          (key) => {
+            active.select(key);
+            activeTab = 'node';
+          }
+        "
       />
       <MetricsPanel v-if="activeTab === 'metrics'" :view="active.metricsView.value" />
     </div>

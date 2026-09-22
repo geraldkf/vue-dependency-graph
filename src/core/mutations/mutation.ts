@@ -1,7 +1,4 @@
-import type {
-  DefineMutationOptions,
-  MutationDefinition,
-} from "./types";
+import type { DefineMutationOptions, MutationDefinition } from "./types";
 
 export const defineMutation = <TInput, TResult>(
   options: DefineMutationOptions<TInput, TResult>,

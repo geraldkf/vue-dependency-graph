@@ -77,10 +77,7 @@ describe("dependency-aware execution", () => {
     const runtime = createGraphRuntime(createGraph({ nodes: [total, right, left] }));
 
     const execution = runtime.execute([total]);
-    await waitForCondition(
-      () => started.length === 2,
-      "both independent parent loaders to start"
-    );
+    await waitForCondition(() => started.length === 2, "both independent parent loaders to start");
     expect(started.sort()).toEqual(["left", "right"]);
     expect(runtime.getState(total).status).toBe("idle");
 
@@ -105,5 +102,4 @@ describe("dependency-aware execution", () => {
     expect(load).toHaveBeenCalledOnce();
     expect(otherRuntime.getState(registered).status).toBe("idle");
   });
-
 });

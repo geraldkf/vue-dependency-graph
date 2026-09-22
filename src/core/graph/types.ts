@@ -9,9 +9,7 @@ type NodeDiagnosticRedactor<TValue> = {
 }["bivarianceHack"];
 
 export type NodeDiagnosticValueOptions<TValue> =
-  | "omit"
-  | "include"
-  | NodeDiagnosticRedactor<TValue>;
+  "omit" | "include" | NodeDiagnosticRedactor<TValue>;
 
 export interface NodeDiagnosticsOptions<TValue> {
   readonly value?: NodeDiagnosticValueOptions<TValue>;
@@ -39,12 +37,13 @@ export type NodeValue<TNode extends AnyNodeDefinition> =
 
 export type DependencyList = readonly AnyNodeDefinition[];
 export type DependencySource<TDependencies extends DependencyList> =
-  | TDependencies
-  | (() => TDependencies);
+  TDependencies | (() => TDependencies);
 
 export type GetDependencyValue<TDependencies extends DependencyList> = <
   TNode extends TDependencies[number],
->(node: TNode) => NodeValue<TNode>;
+>(
+  node: TNode,
+) => NodeValue<TNode>;
 
 export interface LoadContext<TDependencies extends DependencyList> {
   readonly get: GetDependencyValue<TDependencies>;
@@ -55,8 +54,11 @@ export interface DeriveContext<TDependencies extends DependencyList> {
   readonly get: GetDependencyValue<TDependencies>;
 }
 
-export interface ContextNodeDefinition<TValue>
-  extends NodeDefinition<TValue, "context", readonly []> {
+export interface ContextNodeDefinition<TValue> extends NodeDefinition<
+  TValue,
+  "context",
+  readonly []
+> {
   readonly initialValue: TValue;
 }
 
@@ -73,9 +75,7 @@ export interface ConditionalEventInvalidation<
   TDependencies extends DependencyList,
 > {
   readonly event: TEvent;
-  readonly when: (
-    context: EventInvalidationContext<TEvent, TDependencies>
-  ) => boolean;
+  readonly when: (context: EventInvalidationContext<TEvent, TDependencies>) => boolean;
 }
 
 export type EventInvalidationDeclaration<

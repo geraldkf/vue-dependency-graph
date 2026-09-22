@@ -11,8 +11,17 @@ describe("prefetch", () => {
   it("loads a target and required ancestors without subscriptions", async () => {
     const context = defineContextNode({ key: "context", initialValue: 2 });
     const load = vi.fn(async ({ get }) => get(context) * 2);
-    const data = defineDataNode({ key: "data", dependencies: [context] as const, initialValue: 0, load });
-    const derived = defineDerivedNode({ key: "derived", dependencies: [data] as const, derive: ({ get }) => get(data) + 1 });
+    const data = defineDataNode({
+      key: "data",
+      dependencies: [context] as const,
+      initialValue: 0,
+      load,
+    });
+    const derived = defineDerivedNode({
+      key: "derived",
+      dependencies: [data] as const,
+      derive: ({ get }) => get(data) + 1,
+    });
     const unrelatedLoad = vi.fn(async () => "unrelated");
     const unrelated = defineDataNode({ key: "unrelated", initialValue: "", load: unrelatedLoad });
     const runtime = createGraphRuntime(createGraph({ nodes: [derived, unrelated, data, context] }));

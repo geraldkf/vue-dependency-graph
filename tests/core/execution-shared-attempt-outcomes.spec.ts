@@ -42,9 +42,7 @@ describe("execution: diamond fan-out and shared-attempt outcomes", () => {
       dependencies: [parent] as const,
       derive: () => "right-never",
     });
-    const runtime = createGraphRuntime(
-      createGraph({ nodes: [left, right, parent] }),
-    );
+    const runtime = createGraphRuntime(createGraph({ nodes: [left, right, parent] }));
 
     try {
       await runtime.execute([left, right]);
@@ -83,17 +81,11 @@ describe("execution: diamond fan-out and shared-attempt outcomes", () => {
 
     const first = runtime.execute([data]);
     const second = runtime.execute([data]);
-    await waitForCondition(
-      () => load.mock.calls.length === 1,
-      "the shared loader to start",
-    );
+    await waitForCondition(() => load.mock.calls.length === 1, "the shared loader to start");
     failure.reject(new Error("shared failure"));
 
     const results = await Promise.allSettled([first, second]);
-    expect(results.map(result => result.status)).toEqual([
-      "rejected",
-      "rejected",
-    ]);
+    expect(results.map((result) => result.status)).toEqual(["rejected", "rejected"]);
     for (const result of results) {
       if (result.status !== "rejected") continue;
       expect(result.reason).toBeInstanceOf(GraphExecutionError);
@@ -127,18 +119,12 @@ describe("execution: diamond fan-out and shared-attempt outcomes", () => {
 
     const first = runtime.execute([data]);
     const second = runtime.execute([data]);
-    await waitForCondition(
-      () => load.mock.calls.length === 1,
-      "the shared loader to start",
-    );
+    await waitForCondition(() => load.mock.calls.length === 1, "the shared loader to start");
     expect(load).toHaveBeenCalledOnce();
 
     runtime.setContext(context, 2);
     const third = runtime.execute([data]);
-    await waitForCondition(
-      () => load.mock.calls.length === 2,
-      "the replacement loader to start",
-    );
+    await waitForCondition(() => load.mock.calls.length === 2, "the replacement loader to start");
 
     results[1]?.resolve(20);
     results[0]?.resolve(10);

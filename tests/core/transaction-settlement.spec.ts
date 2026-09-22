@@ -1,10 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import {
-  createGraph,
-  createGraphRuntime,
-  defineContextNode,
-  defineDataNode,
-} from "../../src/core";
+import { createGraph, createGraphRuntime, defineContextNode, defineDataNode } from "../../src/core";
 import { deferred, waitForCondition } from "./test-helpers";
 
 describe("transaction settlement", () => {
@@ -13,7 +8,7 @@ describe("transaction settlement", () => {
     const releaseTransaction = deferred<void>();
     const runtime = createGraphRuntime(createGraph({ nodes: [context] }));
 
-    const pendingTransaction = runtime.transaction(async transaction => {
+    const pendingTransaction = runtime.transaction(async (transaction) => {
       transaction.setContext(context, 2);
       await releaseTransaction.promise;
     });
@@ -50,14 +45,11 @@ describe("transaction settlement", () => {
     runtime.subscribeNodes([data]);
     await runtime.whenSettled();
 
-    await runtime.transaction(transaction => {
+    await runtime.transaction((transaction) => {
       transaction.setContext(context, 2);
     });
 
-    await waitForCondition(
-      () => loadCount === 2,
-      "commit scheduler execution to start",
-    );
+    await waitForCondition(() => loadCount === 2, "commit scheduler execution to start");
     let settled = false;
     const settlement = runtime.whenSettled().then(() => {
       settled = true;
@@ -87,7 +79,7 @@ describe("transaction settlement", () => {
     load.mockClear();
 
     await expect(
-      runtime.transaction(transaction => {
+      runtime.transaction((transaction) => {
         transaction.setContext(context, 2);
         throw new Error("rollback settlement");
       }),

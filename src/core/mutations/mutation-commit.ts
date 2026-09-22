@@ -14,13 +14,8 @@ export interface MutationCommitter {
     updates: readonly PreparedMutationUpdate[],
     invalidation: CombinedInvalidationPlan,
   ) => void;
-  readonly commitRollback: (
-    session: OptimisticSession,
-    shouldSchedule: boolean,
-  ) => void;
-  readonly commitStaleReconciliation: (
-    session: OptimisticSession,
-  ) => void;
+  readonly commitRollback: (session: OptimisticSession, shouldSchedule: boolean) => void;
+  readonly commitStaleReconciliation: (session: OptimisticSession) => void;
 }
 
 export interface MutationCommitterDependencies {
@@ -31,9 +26,7 @@ export interface MutationCommitterDependencies {
     invalidationRoots: readonly AnyNodeDefinition[],
     preservedRoots: readonly AnyNodeDefinition[],
   ) => CombinedInvalidationPlan;
-  readonly releaseOptimisticSession: (
-    session: OptimisticSession | undefined,
-  ) => void;
+  readonly releaseOptimisticSession: (session: OptimisticSession | undefined) => void;
   readonly notify: () => void;
   readonly schedule: () => void;
 }
@@ -67,8 +60,7 @@ export const createMutationCommitter = ({
     invalidation: CombinedInvalidationPlan,
   ): void => {
     const effectiveUpdates = updates.filter(
-      ({ node, changed }) =>
-        changed || invalidation.affectedPreservedKeys.has(node.key),
+      ({ node, changed }) => changed || invalidation.affectedPreservedKeys.has(node.key),
     );
 
     for (const { node, state, value } of effectiveUpdates) {
@@ -90,10 +82,7 @@ export const createMutationCommitter = ({
     if (invalidation.subscribedNodeChanged) schedule();
   };
 
-  const commitRollback = (
-    session: OptimisticSession,
-    shouldSchedule: boolean,
-  ): void => {
+  const commitRollback = (session: OptimisticSession, shouldSchedule: boolean): void => {
     for (const snapshot of session.snapshots) {
       restoreSnapshot(getNodeState(snapshot.node.key), snapshot);
     }
@@ -106,9 +95,7 @@ export const createMutationCommitter = ({
     if (shouldSchedule) schedule();
   };
 
-  const commitStaleReconciliation = (
-    session: OptimisticSession,
-  ): void => {
+  const commitStaleReconciliation = (session: OptimisticSession): void => {
     const invalidation = prepareCombinedInvalidation([], session.targets, []);
     invalidation.commit();
     releaseOptimisticSession(session);

@@ -21,7 +21,7 @@ describe("transaction event publication", () => {
     });
     const runtime = createGraphRuntime(createGraph({ nodes: [data] }));
     const gate = deferred<void>();
-    const transaction = runtime.transaction(async transaction => {
+    const transaction = runtime.transaction(async (transaction) => {
       transaction.publish(changed, undefined);
       await gate.promise;
     });
@@ -47,10 +47,12 @@ describe("transaction event publication", () => {
     const listener = vi.fn();
     runtime.onChange(listener);
 
-    await expect(runtime.transaction(transaction => {
-      transaction.publish(changed, undefined);
-      throw new Error("rollback");
-    })).rejects.toThrowError("rollback");
+    await expect(
+      runtime.transaction((transaction) => {
+        transaction.publish(changed, undefined);
+        throw new Error("rollback");
+      }),
+    ).rejects.toThrowError("rollback");
 
     expect(runtime.getState(data).generation).toBe(0);
     expect(listener).not.toHaveBeenCalled();
@@ -66,19 +68,22 @@ describe("transaction event publication", () => {
     const data = defineDataNode({
       key: "data",
       dependencies: [jobSeekerId] as const,
-      invalidatedBy: [{
-        event: changed,
-        when: ({ payload, get }: EventInvalidationContext<
-          typeof changed,
-          readonly [typeof jobSeekerId]
-        >) => payload.jobSeekerId === get(jobSeekerId),
-      }] as const,
+      invalidatedBy: [
+        {
+          event: changed,
+          when: ({
+            payload,
+            get,
+          }: EventInvalidationContext<typeof changed, readonly [typeof jobSeekerId]>) =>
+            payload.jobSeekerId === get(jobSeekerId),
+        },
+      ] as const,
       initialValue: 0,
       load: async () => 1,
     });
     const runtime = createGraphRuntime(createGraph({ nodes: [data, jobSeekerId] }));
 
-    await runtime.transaction(transaction => {
+    await runtime.transaction((transaction) => {
       transaction.setContext(jobSeekerId, 2);
       transaction.publish(changed, { jobSeekerId: 2 });
       expect(runtime.getState(jobSeekerId).data).toBe(1);
@@ -107,13 +112,15 @@ describe("transaction event publication", () => {
       dependencies: [target] as const,
       derive: () => 2,
     });
-    const runtime = createGraphRuntime(createGraph({
-      nodes: [descendant, target, context],
-    }));
+    const runtime = createGraphRuntime(
+      createGraph({
+        nodes: [descendant, target, context],
+      }),
+    );
     const listener = vi.fn();
     runtime.onChange(listener);
 
-    await runtime.transaction(transaction => {
+    await runtime.transaction((transaction) => {
       transaction.setContext(context, 2);
       transaction.publish(changed, undefined);
       transaction.publish(changed, undefined);
@@ -130,22 +137,21 @@ describe("transaction event publication", () => {
     const changed = defineEvent<{ sequence: number }>("domain.changed");
     const data = defineDataNode({
       key: "data",
-      invalidatedBy: [{
-        event: changed,
-        when: ({ payload }: EventInvalidationContext<
-          typeof changed,
-          readonly []
-        >) => {
-          order.push(payload.sequence);
-          return true;
+      invalidatedBy: [
+        {
+          event: changed,
+          when: ({ payload }: EventInvalidationContext<typeof changed, readonly []>) => {
+            order.push(payload.sequence);
+            return true;
+          },
         },
-      }] as const,
+      ] as const,
       initialValue: 0,
       load: async () => 1,
     });
     const runtime = createGraphRuntime(createGraph({ nodes: [data] }));
 
-    await runtime.transaction(transaction => {
+    await runtime.transaction((transaction) => {
       transaction.publish(changed, { sequence: 1 });
       transaction.publish(changed, { sequence: 2 });
     });
@@ -160,21 +166,25 @@ describe("transaction event publication", () => {
     const data = defineDataNode({
       key: "data",
       dependencies: [context] as const,
-      invalidatedBy: [{
-        event: changed,
-        when: () => {
-          throw new Error("predicate failed");
+      invalidatedBy: [
+        {
+          event: changed,
+          when: () => {
+            throw new Error("predicate failed");
+          },
         },
-      }] as const,
+      ] as const,
       initialValue: 0,
       load: async () => 1,
     });
     const runtime = createGraphRuntime(createGraph({ nodes: [data, context] }));
 
-    await expect(runtime.transaction(transaction => {
-      transaction.setContext(context, 2);
-      transaction.publish(changed, undefined);
-    })).rejects.toThrowError("predicate failed");
+    await expect(
+      runtime.transaction((transaction) => {
+        transaction.setContext(context, 2);
+        transaction.publish(changed, undefined);
+      }),
+    ).rejects.toThrowError("predicate failed");
 
     expect(runtime.getState(context)).toMatchObject({ data: 1, generation: 0 });
     expect(runtime.getState(data).generation).toBe(0);
@@ -191,8 +201,8 @@ describe("transaction event publication", () => {
     const runtime = createGraphRuntime(createGraph({ nodes: [data] }));
     const nestedGate = deferred<void>();
 
-    const outer = runtime.transaction(async transaction => {
-      const nested = transaction.transaction(async inner => {
+    const outer = runtime.transaction(async (transaction) => {
+      const nested = transaction.transaction(async (inner) => {
         inner.publish(changed, undefined);
         await nestedGate.promise;
       });
@@ -204,16 +214,17 @@ describe("transaction event publication", () => {
     await outer;
     expect(runtime.getState(data).generation).toBe(1);
 
-    await expect(runtime.transaction(async transaction => {
-      await transaction.transaction(inner => {
-        inner.publish(changed, undefined);
-      });
-      throw new Error("outer failed");
-    })).rejects.toThrowError("outer failed");
+    await expect(
+      runtime.transaction(async (transaction) => {
+        await transaction.transaction((inner) => {
+          inner.publish(changed, undefined);
+        });
+        throw new Error("outer failed");
+      }),
+    ).rejects.toThrowError("outer failed");
 
     expect(runtime.getState(data).generation).toBe(1);
   });
-
 
   it("does not abort affected work until the transaction commits", async () => {
     const changed = defineEvent<void>("domain.changed");
@@ -233,7 +244,7 @@ describe("transaction event publication", () => {
     const execution = runtime.execute([data]);
     await waitForCondition(() => signal !== undefined, "active event attempt");
 
-    const transaction = runtime.transaction(async transaction => {
+    const transaction = runtime.transaction(async (transaction) => {
       transaction.publish(changed, undefined);
       await gate.promise;
     });
@@ -255,9 +266,7 @@ describe("transaction event publication", () => {
   it("keeps transaction settlement pending through event-triggered scheduler work", async () => {
     const changed = defineEvent<void>("domain.changed");
     const secondLoad = deferred<number>();
-    const load = vi.fn(async () =>
-      load.mock.calls.length === 1 ? 1 : secondLoad.promise
-    );
+    const load = vi.fn(async () => (load.mock.calls.length === 1 ? 1 : secondLoad.promise));
     const data = defineDataNode({
       key: "data",
       invalidatedBy: [changed] as const,
@@ -268,14 +277,11 @@ describe("transaction event publication", () => {
     runtime.subscribeNodes([data]);
     await runtime.whenSettled();
 
-    await runtime.transaction(transaction => {
+    await runtime.transaction((transaction) => {
       transaction.publish(changed, undefined);
     });
 
-    await waitForCondition(
-      () => load.mock.calls.length === 2,
-      "event-triggered scheduler load"
-    );
+    await waitForCondition(() => load.mock.calls.length === 2, "event-triggered scheduler load");
     let settled = false;
     const transactionSettlement = runtime.whenSettled().then(() => {
       settled = true;

@@ -20,15 +20,11 @@ describe("ConcurrencyLimitScenario", () => {
     await expectActiveCount(2);
     expect(screen.getByTestId("start-order").textContent).toBe("first, second");
     expect(screen.getByTestId("maximum-observed").textContent).toBe("2");
-    expect(screen.getByTestId("loader-state-third").textContent?.trim()).toBe(
-      "waiting"
-    );
+    expect(screen.getByTestId("loader-state-third").textContent?.trim()).toBe("waiting");
 
     await fireEvent.click(screen.getByRole("button", { name: "Complete next" }));
     await waitFor(() => {
-      expect(screen.getByTestId("start-order").textContent).toBe(
-        "first, second, third"
-      );
+      expect(screen.getByTestId("start-order").textContent).toBe("first, second, third");
     });
     expect(screen.getByTestId("maximum-observed").textContent).toBe("2");
   });
@@ -38,15 +34,13 @@ describe("ConcurrencyLimitScenario", () => {
 
     await fireEvent.update(
       screen.getByRole("combobox", { name: "Maximum concurrent loads" }),
-      "unlimited"
+      "unlimited",
     );
     await runAll();
 
     await expectActiveCount(4);
     expect(screen.getByTestId("maximum-observed").textContent).toBe("4");
-    expect(screen.getByTestId("start-order").textContent).toBe(
-      "first, second, third, fourth"
-    );
+    expect(screen.getByTestId("start-order").textContent).toBe("first, second, third, fourth");
   });
 
   it("reset completes running work and restores clean scenario state", async () => {
@@ -60,10 +54,9 @@ describe("ConcurrencyLimitScenario", () => {
       expect(screen.getByTestId("active-count").textContent).toBe("0");
       expect(screen.getByTestId("maximum-observed").textContent).toBe("0");
       expect(screen.getByTestId("start-order").textContent).toBe("None");
-      expect(
-        (screen.getByRole("button", { name: "Run all" }) as HTMLButtonElement)
-          .disabled
-      ).toBe(false);
+      expect((screen.getByRole("button", { name: "Run all" }) as HTMLButtonElement).disabled).toBe(
+        false,
+      );
     });
   });
 });

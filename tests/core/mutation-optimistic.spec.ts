@@ -46,12 +46,9 @@ describe("optimistic mutations", () => {
     });
 
     const result = runtime.mutate(mutation, undefined, {
-      optimistic: effects => {
-        effects.update(appointments, current => [
-          ...current,
-          { id: -1, status: "pending" },
-        ]);
-        effects.update(count, current => current + 1);
+      optimistic: (effects) => {
+        effects.update(appointments, (current) => [...current, { id: -1, status: "pending" }]);
+        effects.update(count, (current) => current + 1);
       },
     });
 
@@ -95,11 +92,8 @@ describe("optimistic mutations", () => {
     const beforeSummary = runtime.getState(summary);
 
     const result = runtime.mutate(mutation, undefined, {
-      optimistic: effects => {
-        effects.update(appointments, current => [
-          ...current,
-          { id: -1, status: "pending" },
-        ]);
+      optimistic: (effects) => {
+        effects.update(appointments, (current) => [...current, { id: -1, status: "pending" }]);
       },
       classifyFailure: () => "rejected",
     });
@@ -128,9 +122,7 @@ describe("optimistic mutations", () => {
     expect(runtime.getState(appointments).generation).toBeGreaterThan(
       beforeAppointments.generation,
     );
-    expect(runtime.getState(summary).generation).toBeGreaterThan(
-      beforeSummary.generation,
-    );
+    expect(runtime.getState(summary).generation).toBeGreaterThan(beforeSummary.generation);
   });
 
   it("advances every restored generation once for a multi-node rollback", async () => {
@@ -151,21 +143,16 @@ describe("optimistic mutations", () => {
       key: "appointment.multi-node-reject",
       execute: async () => request.promise,
     });
-    const runtime = createGraphRuntime(
-      createGraph({ nodes: [summary, count, appointments] }),
-    );
+    const runtime = createGraphRuntime(createGraph({ nodes: [summary, count, appointments] }));
     await runtime.execute([summary]);
     const beforeAppointments = runtime.getState(appointments);
     const beforeCount = runtime.getState(count);
     const beforeSummary = runtime.getState(summary);
 
     const result = runtime.mutate(mutation, undefined, {
-      optimistic: effects => {
-        effects.update(appointments, current => [
-          ...current,
-          { id: -1, status: "pending" },
-        ]);
-        effects.update(count, current => current + 1);
+      optimistic: (effects) => {
+        effects.update(appointments, (current) => [...current, { id: -1, status: "pending" }]);
+        effects.update(count, (current) => current + 1);
       },
       classifyFailure: () => "rejected",
     });
@@ -219,18 +206,12 @@ describe("optimistic mutations", () => {
     await runtime.execute([appointments]);
 
     const refresh = runtime.refresh([appointments]);
-    await waitForCondition(
-      () => loadCount === 2,
-      "ignored-abort refresh to start",
-    );
+    await waitForCondition(() => loadCount === 2, "ignored-abort refresh to start");
     const generationBeforeOptimistic = runtime.getState(appointments).generation;
 
     const result = runtime.mutate(mutation, undefined, {
-      optimistic: effects => {
-        effects.update(appointments, current => [
-          ...current,
-          { id: -1, status: "pending" },
-        ]);
+      optimistic: (effects) => {
+        effects.update(appointments, (current) => [...current, { id: -1, status: "pending" }]);
       },
       classifyFailure: () => "rejected",
     });
@@ -247,9 +228,7 @@ describe("optimistic mutations", () => {
     expect(generationBeforeOptimistic).toBe(1);
     expect(optimisticGeneration).toBe(2);
     expect(rollbackGeneration).toBe(3);
-    expect(runtime.getState(appointments).data).toEqual([
-      { id: 1, status: "confirmed" },
-    ]);
+    expect(runtime.getState(appointments).data).toEqual([{ id: 1, status: "confirmed" }]);
 
     refreshResult.resolve([{ id: 99, status: "confirmed" }]);
     await refresh;
@@ -271,30 +250,23 @@ describe("optimistic mutations", () => {
     await runtime.execute([appointments]);
     const observedIds: number[][] = [];
     runtime.onChange(() => {
-      observedIds.push(runtime.getState(appointments).data.map(item => item.id));
+      observedIds.push(runtime.getState(appointments).data.map((item) => item.id));
     });
 
     const result = runtime.mutate(mutation, undefined, {
-      optimistic: effects => {
-        effects.update(appointments, current => [
-          ...current,
-          { id: -1, status: "pending" },
-        ]);
+      optimistic: (effects) => {
+        effects.update(appointments, (current) => [...current, { id: -1, status: "pending" }]);
       },
       onSuccess: (effects, response) => {
-        effects.update(appointments, current =>
-          current.map(item =>
-            item.id === -1
-              ? { id: response.id, status: "confirmed" }
-              : item,
-          ),
+        effects.update(appointments, (current) =>
+          current.map((item) => (item.id === -1 ? { id: response.id, status: "confirmed" } : item)),
         );
       },
       classifyFailure: () => "rejected",
     });
 
     await waitForCondition(
-      () => runtime.getState(appointments).data.some(item => item.id === -1),
+      () => runtime.getState(appointments).data.some((item) => item.id === -1),
       "pending appointment to appear",
     );
     request.resolve({ id: 2 });
@@ -304,7 +276,10 @@ describe("optimistic mutations", () => {
       { id: 1, status: "confirmed" },
       { id: 2, status: "confirmed" },
     ]);
-    expect(observedIds).toEqual([[1, -1], [1, 2]]);
+    expect(observedIds).toEqual([
+      [1, -1],
+      [1, 2],
+    ]);
     expect(observedIds).not.toContainEqual([1]);
   });
 
@@ -319,22 +294,20 @@ describe("optimistic mutations", () => {
     await runtime.execute([appointments]);
 
     const first = runtime.mutate(firstMutation, undefined, {
-      optimistic: effects => effects.update(appointments, current => [
-        ...current,
-        { id: -1, status: "pending" },
-      ]),
+      optimistic: (effects) =>
+        effects.update(appointments, (current) => [...current, { id: -1, status: "pending" }]),
     });
     await waitForCondition(
       () => runtime.getState(appointments).data.length === 2,
       "first optimistic mutation to own appointments",
     );
 
-    await expect(runtime.mutate(secondMutation, undefined, {
-      optimistic: effects => effects.update(appointments, current => [
-        ...current,
-        { id: -2, status: "pending" },
-      ]),
-    })).rejects.toBeInstanceOf(GraphMutationConflictError);
+    await expect(
+      runtime.mutate(secondMutation, undefined, {
+        optimistic: (effects) =>
+          effects.update(appointments, (current) => [...current, { id: -2, status: "pending" }]),
+      }),
+    ).rejects.toBeInstanceOf(GraphMutationConflictError);
 
     expect(secondExecute).not.toHaveBeenCalled();
     firstRequest.resolve();
@@ -347,9 +320,11 @@ describe("optimistic mutations", () => {
     const mutation = defineMutation({ key: "appointment.unloaded", execute });
     const runtime = createGraphRuntime(createGraph({ nodes: [appointments] }));
 
-    await expect(runtime.mutate(mutation, undefined, {
-      optimistic: effects => effects.update(appointments, () => []),
-    })).rejects.toBeInstanceOf(GraphMutationStateError);
+    await expect(
+      runtime.mutate(mutation, undefined, {
+        optimistic: (effects) => effects.update(appointments, () => []),
+      }),
+    ).rejects.toBeInstanceOf(GraphMutationStateError);
 
     expect(execute).not.toHaveBeenCalled();
     expect(runtime.getState(appointments)).toMatchObject({
@@ -371,12 +346,12 @@ describe("optimistic mutations", () => {
     const runtime = createGraphRuntime(createGraph({ nodes: [appointments] }));
     await runtime.execute([appointments]);
 
-    await expect(runtime.mutate(mutation, undefined, {
-      optimistic: effects => effects.update(appointments, current => [
-        ...current,
-        { id: -1, status: "pending" },
-      ]),
-    })).rejects.toMatchObject({
+    await expect(
+      runtime.mutate(mutation, undefined, {
+        optimistic: (effects) =>
+          effects.update(appointments, (current) => [...current, { id: -1, status: "pending" }]),
+      }),
+    ).rejects.toMatchObject({
       name: "GraphMutationOutcomeUnknownError",
       cause: failure,
       nodeKeys: [appointments.key],

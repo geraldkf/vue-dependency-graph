@@ -1,8 +1,4 @@
-import {
-  defineContextNode,
-  defineDataNode,
-  type NodeValue,
-} from "../../src/core";
+import { defineContextNode, defineDataNode, type NodeValue } from "../../src/core";
 import { useNodes } from "../../src/vue/use-nodes";
 
 // This file is a type-only check (see tests/core/*-types.test.ts for the

@@ -16,7 +16,7 @@ import {
 
 const mountProbe = (
   runtime: GraphRuntime,
-  diagnostics: InMemoryGraphDiagnostics
+  diagnostics: InMemoryGraphDiagnostics,
 ): { captured: UseGraphDevtoolsResult; unmount: () => void } => {
   let captured!: UseGraphDevtoolsResult;
   const Probe = defineComponent({
@@ -34,7 +34,7 @@ describe("useGraphDevtools", () => {
     const runtime = createGraphRuntime(createGraph({ nodes: [] }));
     const diagnostics = createInMemoryGraphDiagnostics({ capacity: 50 });
     expect(() => useGraphDevtools({ runtime, diagnostics })).toThrow(
-      /must be called inside setup\(\)/
+      /must be called inside setup\(\)/,
     );
   });
 
@@ -102,7 +102,7 @@ describe("useGraphDevtools", () => {
     expect(parsed.schemaVersion).toBe(1);
     expect(typeof parsed.exportedAt).toBe("number");
     expect(parsed.snapshot.topology).toEqual(
-      expect.arrayContaining([expect.objectContaining({ key: "gd-export" })])
+      expect.arrayContaining([expect.objectContaining({ key: "gd-export" })]),
     );
     expect(Array.isArray(parsed.events)).toBe(true);
   });

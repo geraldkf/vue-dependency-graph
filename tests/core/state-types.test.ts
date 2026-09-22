@@ -16,8 +16,7 @@ const state = store.getNodeState("node");
 
 // Reads are unrestricted.
 const readData: unknown = state.data;
-const readStatus: "idle" | "loading" | "refreshing" | "success" | "error" =
-  state.status;
+const readStatus: "idle" | "loading" | "refreshing" | "success" | "error" = state.status;
 const readFreshness: "fresh" | "stale" = state.freshness;
 const readError: Error | null = state.error;
 const readGeneration: number = state.generation;

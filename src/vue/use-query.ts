@@ -1,23 +1,19 @@
 import { computed } from "vue";
-import type {
-  AnyNodeDefinition,
-  AnyQueryDefinition,
-  QueryNodes,
-} from "../core";
+import type { AnyNodeDefinition, AnyQueryDefinition, QueryNodes } from "../core";
 import { resolveGraphRuntime, type GraphComposableOptions } from "./composable-options";
 import { assertActiveEffectScope } from "./scope-guard";
 import { useNodes, type UseNodesAggregate } from "./use-nodes";
 import type { UseNodeResult } from "./use-node";
 
 export type UseQueryNodes<TQuery extends AnyQueryDefinition> = {
-  readonly [TAlias in keyof QueryNodes<TQuery>]:
-    QueryNodes<TQuery>[TAlias] extends AnyNodeDefinition
-      ? UseNodeResult<QueryNodes<TQuery>[TAlias]>
-      : never;
+  readonly [
+    TAlias in keyof QueryNodes<TQuery>
+  ]: QueryNodes<TQuery>[TAlias] extends AnyNodeDefinition
+    ? UseNodeResult<QueryNodes<TQuery>[TAlias]>
+    : never;
 };
 
-export interface UseQueryResult<TQuery extends AnyQueryDefinition>
-  extends UseNodesAggregate {
+export interface UseQueryResult<TQuery extends AnyQueryDefinition> extends UseNodesAggregate {
   readonly nodes: UseQueryNodes<TQuery>;
   readonly prefetch: () => Promise<void>;
   readonly refresh: () => Promise<void>;
@@ -33,13 +29,13 @@ export interface UseQueryResult<TQuery extends AnyQueryDefinition>
  */
 export const useQuery = <TQuery extends AnyQueryDefinition>(
   query: TQuery,
-  options?: GraphComposableOptions
+  options?: GraphComposableOptions,
 ): UseQueryResult<TQuery> => {
   assertActiveEffectScope("useQuery");
   const runtime = resolveGraphRuntime(options);
 
   const aliases = Object.keys(query.nodes);
-  const definitions = aliases.map(alias => {
+  const definitions = aliases.map((alias) => {
     const definition = query.nodes[alias];
     if (definition === undefined) {
       throw new Error(`Query is missing a node definition for alias '${alias}'.`);
@@ -65,7 +61,7 @@ export const useQuery = <TQuery extends AnyQueryDefinition>(
           hasSuccessfulValue: computed(() => state.value.hasSuccessfulValue),
         }),
       ];
-    })
+    }),
   ) as unknown as UseQueryNodes<TQuery>;
 
   return {

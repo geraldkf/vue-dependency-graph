@@ -1,9 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import {
-  createGraph,
-  createGraphRuntime,
-  defineContextNode,
-} from "../../src/core";
+import { createGraph, createGraphRuntime, defineContextNode } from "../../src/core";
 import { createRuntimeObserver } from "../../src/core/observation/observer";
 
 describe("runtime observation", () => {
@@ -61,7 +57,7 @@ describe("runtime observation", () => {
     it("isolates a throwing listener and reports it to onListenerError", () => {
       const reported: unknown[] = [];
       const observer = createRuntimeObserver({
-        onListenerError: error => reported.push(error),
+        onListenerError: (error) => reported.push(error),
       });
       const failure = new Error("listener failure");
       const before = vi.fn();
@@ -82,7 +78,7 @@ describe("runtime observation", () => {
     it("reports each failing listener separately", () => {
       const reported: unknown[] = [];
       const observer = createRuntimeObserver({
-        onListenerError: error => reported.push(error),
+        onListenerError: (error) => reported.push(error),
       });
       observer.onChange(() => {
         throw new Error("first");

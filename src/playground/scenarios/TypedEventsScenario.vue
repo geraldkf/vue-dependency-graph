@@ -2,17 +2,13 @@
   <section aria-label="Typed events scenario">
     <h2>Typed Events</h2>
     <p>
-      The Appointments domain publishes a typed event. The Compliance node
-      decides whether its capability status is affected without either domain
-      importing the other's store implementation.
+      The Appointments domain publishes a typed event. The Compliance node decides whether its
+      capability status is affected without either domain importing the other's store
+      implementation.
     </p>
 
-    <p data-testid="typed-events-context">
-      Current job seeker: {{ jobSeekerId.data.value }}
-    </p>
-    <p data-testid="typed-events-status">
-      Capability status: {{ capabilityStatus.data.value }}
-    </p>
+    <p data-testid="typed-events-context">Current job seeker: {{ jobSeekerId.data.value }}</p>
+    <p data-testid="typed-events-status">Capability status: {{ capabilityStatus.data.value }}</p>
     <p data-testid="typed-events-node-state">
       Node: {{ capabilityStatus.status.value }} / {{ capabilityStatus.freshness.value }}
     </p>
@@ -24,9 +20,8 @@
     <section aria-labelledby="typed-events-independent-heading">
       <h3 id="typed-events-independent-heading">Unrelated runtime event</h3>
       <p>
-        The appointment event belongs to its transaction session. This plain
-        runtime publication remains immediate while that session is open and
-        survives its rollback.
+        The appointment event belongs to its transaction session. This plain runtime publication
+        remains immediate while that session is open and survives its rollback.
       </p>
       <p data-testid="typed-events-independent-status">
         Independent status: {{ unrelatedStatus.data.value }}
@@ -65,9 +60,7 @@
       <button @click="resetScenario">Reset</button>
     </p>
 
-    <p data-testid="typed-events-transaction-phase">
-      Transaction: {{ transactionPhase }}
-    </p>
+    <p data-testid="typed-events-transaction-phase">Transaction: {{ transactionPhase }}</p>
     <ol aria-label="Typed event history">
       <li v-for="entry in history" :key="entry.id">{{ entry.message }}</li>
     </ol>
@@ -85,10 +78,7 @@ import {
   unrelatedAppointmentStatus,
   unrelatedEventLoader,
 } from "./typed-events-nodes";
-import {
-  publishAppointmentBooked,
-  unrelatedAppointmentChanged,
-} from "./appointments-domain";
+import { publishAppointmentBooked, unrelatedAppointmentChanged } from "./appointments-domain";
 
 interface HistoryEntry {
   readonly id: number;
@@ -149,33 +139,37 @@ const startTransaction = (): void => {
   unrelatedPublished.value = false;
   unrelatedOutcome.value = "not published";
 
-  void runtime.transaction(async transaction => {
-    publishAppointmentBooked(transaction, {
-      jobSeekerId: runtime.getState(capabilityJobSeekerId).data,
-      appointmentId: nextHistoryId,
-    });
-    record("Staged matching appointment event");
+  void runtime
+    .transaction(async (transaction) => {
+      publishAppointmentBooked(transaction, {
+        jobSeekerId: runtime.getState(capabilityJobSeekerId).data,
+        appointmentId: nextHistoryId,
+      });
+      record("Staged matching appointment event");
 
-    const decision = await new Promise<TransactionDecision>(resolve => {
-      resolveDecision = resolve;
+      const decision = await new Promise<TransactionDecision>((resolve) => {
+        resolveDecision = resolve;
+      });
+      if (decision === "rollback") {
+        throw new Error("Typed event transaction rollback");
+      }
+    })
+    .then(async () => {
+      await waitForRuntime();
+      if (!isMounted) return;
+      transactionPhase.value = "committed";
+      outcome.value = "staged event committed and capability status reloaded";
+      record("Committed staged appointment event");
+    })
+    .catch((error: unknown) => {
+      if (!isMounted) return;
+      transactionPhase.value = "rolled-back";
+      outcome.value = error instanceof Error ? error.message : "Transaction rolled back";
+      record("Rolled back staged appointment event");
+    })
+    .finally(() => {
+      resolveDecision = undefined;
     });
-    if (decision === "rollback") {
-      throw new Error("Typed event transaction rollback");
-    }
-  }).then(async () => {
-    await waitForRuntime();
-    if (!isMounted) return;
-    transactionPhase.value = "committed";
-    outcome.value = "staged event committed and capability status reloaded";
-    record("Committed staged appointment event");
-  }).catch((error: unknown) => {
-    if (!isMounted) return;
-    transactionPhase.value = "rolled-back";
-    outcome.value = error instanceof Error ? error.message : "Transaction rolled back";
-    record("Rolled back staged appointment event");
-  }).finally(() => {
-    resolveDecision = undefined;
-  });
 };
 
 const publishUnrelatedDuringTransaction = async (): Promise<void> => {
@@ -200,14 +194,14 @@ const rollbackTransaction = (): void => {
 const resetScenario = async (): Promise<void> => {
   resolveDecision?.("rollback");
   resolveDecision = undefined;
-  await runtime.transaction(transaction => {
-    transaction.setContext(capabilityJobSeekerId, 101);
-  }).catch(() => {});
+  await runtime
+    .transaction((transaction) => {
+      transaction.setContext(capabilityJobSeekerId, 101);
+    })
+    .catch(() => {});
   capabilityStatusLoader.reset();
   unrelatedEventLoader.reset();
-  await runtime
-    .refresh([capabilityInterviewStatus, unrelatedAppointmentStatus])
-    .catch(() => {});
+  await runtime.refresh([capabilityInterviewStatus, unrelatedAppointmentStatus]).catch(() => {});
   await waitForRuntime();
   eventJobSeekerId.value = 101;
   outcome.value = "ready";

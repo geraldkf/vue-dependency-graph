@@ -35,7 +35,11 @@ describe("manual refresh", () => {
     const load = vi.fn(async () => 2);
     let multiplier = 2;
     const data = defineDataNode({ key: "data", initialValue: 0, load });
-    const derived = defineDerivedNode({ key: "derived", dependencies: [data] as const, derive: ({ get }) => get(data) * multiplier });
+    const derived = defineDerivedNode({
+      key: "derived",
+      dependencies: [data] as const,
+      derive: ({ get }) => get(data) * multiplier,
+    });
     const runtime = createGraphRuntime(createGraph({ nodes: [derived, data] }));
     await runtime.prefetch([derived]);
 
@@ -70,9 +74,7 @@ describe("manual refresh", () => {
       dependencies: [equivalentData] as const,
       derive: () => 99,
     });
-    const runtime = createGraphRuntime(
-      createGraph({ nodes: [registeredDerived, registeredData] })
-    );
+    const runtime = createGraphRuntime(createGraph({ nodes: [registeredDerived, registeredData] }));
 
     await runtime.refresh([equivalentData, equivalentDerived]);
 
@@ -81,8 +83,16 @@ describe("manual refresh", () => {
   });
 
   it("validates the full refresh list before changing generations", () => {
-    const registered = defineDataNode({ key: "data", initialValue: "", load: async () => "loaded" });
-    const missing = defineDataNode({ key: "missing", initialValue: "", load: async () => "missing" });
+    const registered = defineDataNode({
+      key: "data",
+      initialValue: "",
+      load: async () => "loaded",
+    });
+    const missing = defineDataNode({
+      key: "missing",
+      initialValue: "",
+      load: async () => "missing",
+    });
     const runtime = createGraphRuntime(createGraph({ nodes: [registered] }));
 
     expect(() => runtime.refresh([registered, missing])).toThrow("missing");
@@ -98,5 +108,4 @@ describe("manual refresh", () => {
     await expect(runtime.refresh([refreshable])).rejects.toThrow("context");
     expect(runtime.getState(context).generation).toBe(0);
   });
-
 });

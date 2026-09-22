@@ -1,6 +1,6 @@
 # User Guide
 
-This guide walks through the library end to end, building up one running example - a small task board - a piece at a time. For isolated reference on any one function's exact signature, see [`docs/api/01-public-api.md`](../api/01-public-api.md). For *why* the library is shaped the way it is, see [`docs/architecture/`](../architecture/) and [`docs/decisions/`](../decisions/).
+This guide walks through the library end to end, building up one running example - a small task board - a piece at a time. For isolated reference on any one function's exact signature, see [`docs/api/01-public-api.md`](../api/01-public-api.md). For _why_ the library is shaped the way it is, see [`docs/architecture/`](../architecture/) and [`docs/decisions/`](../decisions/).
 
 > This package is `private` and not published to a registry - it's consumed directly within this repository or a workspace that depends on it locally, not via `npm install vue-dependency-graph`. The import paths throughout this guide (`vue-dependency-graph/core`, `vue-dependency-graph/vue`) match `package.json`'s `exports` map and resolve correctly from a workspace consumer; if you're writing code inside this repository itself, equivalent relative imports into `src/core`/`src/vue` work the same way.
 
@@ -45,7 +45,7 @@ It is not a replacement for Pinia, and it does not require Vue at all - `src/cor
 - **Data node** - asynchronous work (a network call). Declares its dependencies and a `load` function.
 - **Derived node** - a synchronous calculation over other nodes' values. No network calls.
 
-A node definition *is* its own typed handle - you pass the object returned by `defineDataNode(...)` around, not a string. The string `key` you give it is used for identity, diagnostics, and error messages, not for lookup.
+A node definition _is_ its own typed handle - you pass the object returned by `defineDataNode(...)` around, not a string. The string `key` you give it is used for identity, diagnostics, and error messages, not for lookup.
 
 **A graph** (`createGraph({ nodes: [...] })`) is the validated, immutable topology built from a set of node definitions: parent/child indexes, cycle detection, duplicate-key detection. Building a graph does not run anything.
 
@@ -92,14 +92,14 @@ export const VisibleTasks = defineDerivedNode({
     const tasks = get(Tasks);
     const filter = get(TaskFilter);
     if (filter === "all") return tasks;
-    return tasks.filter(task => (filter === "done" ? task.done : !task.done));
+    return tasks.filter((task) => (filter === "done" ? task.done : !task.done));
   },
 });
 ```
 
 A few things worth noticing already:
 
-- `Tasks.load` receives `get`, which only accepts handles declared in `dependencies` and returns their *value* type, and `signal`, an `AbortSignal` the runtime manages for you - pass it straight to `fetch` or your API client so an obsolete load is actually cancelled, not just ignored. If your loader ignores the signal, the runtime still stops waiting for an obsolete load (its result is discarded and it does not hold up other loads), but the request itself keeps running.
+- `Tasks.load` receives `get`, which only accepts handles declared in `dependencies` and returns their _value_ type, and `signal`, an `AbortSignal` the runtime manages for you - pass it straight to `fetch` or your API client so an obsolete load is actually cancelled, not just ignored. If your loader ignores the signal, the runtime still stops waiting for an obsolete load (its result is discarded and it does not hold up other loads), but the request itself keeps running.
 - `CurrentUserId` starts `undefined`. That's a real, valid value - `Tasks.load` will run with `get(CurrentUserId)` returning `undefined` the moment something subscribes, unless you guard against that in `api.getTasks` or in the node itself. There's no built-in "wait until defined" - if you need that, make the dependency explicit in your loader logic.
 - `VisibleTasks` never calls `api`. Anything asynchronous belongs in a data node so it shares the one loading/error/cancellation model; a derived node is pure and synchronous.
 
@@ -153,7 +153,7 @@ const [tasksState, filterState] = results;
 // tasksState.value.data -> Task[], filterState.value.data -> "all" | "open" | "done"
 ```
 
-`isLoading` is true while *any* of the nodes is loading or refreshing; `isError`/`errors` aggregate across all of them, while each entry in `results` still holds its own full, independently-readable state (`.data`, `.status`, `.freshness`, `.error`, `.hasSuccessfulValue`) if you need to distinguish which node is the problem.
+`isLoading` is true while _any_ of the nodes is loading or refreshing; `isError`/`errors` aggregate across all of them, while each entry in `results` still holds its own full, independently-readable state (`.data`, `.status`, `.freshness`, `.error`, `.hasSuccessfulValue`) if you need to distinguish which node is the problem.
 
 Remember `status`/`freshness`/`hasSuccessfulValue` are independent facts (see [ADR-007](../decisions/ADR-007-status-freshness-separation.md)): after a failed refresh, `useNode(Tasks)` can report `status: "error"` while `data` still holds the last successful list. Don't treat "there's an error" as "there's no data" - render both, if useful:
 
@@ -204,7 +204,7 @@ A refresh that returns a value equal (via `Object.is`) to the previous one does 
 
 ## 7. Understanding failure
 
-If `Tasks.load` throws, `Tasks` records `status: "error"`. `VisibleTasks`, which depends on it, does not execute at all - it's **blocked**, not failed, because it never got a chance to run. This distinction matters for anything else in the same `execute`/subscription pass that *doesn't* depend on the failure - it keeps loading normally. One broken data source blocks its own descendants, not everything on the page (see [ADR-008](../decisions/ADR-008-branch-scoped-failures.md)).
+If `Tasks.load` throws, `Tasks` records `status: "error"`. `VisibleTasks`, which depends on it, does not execute at all - it's **blocked**, not failed, because it never got a chance to run. This distinction matters for anything else in the same `execute`/subscription pass that _doesn't_ depend on the failure - it keeps loading normally. One broken data source blocks its own descendants, not everything on the page (see [ADR-008](../decisions/ADR-008-branch-scoped-failures.md)).
 
 If you call `runtime.execute(...)`, `runtime.prefetch(...)`, or `runtime.refresh(...)` explicitly and something in the requested set fails, the call rejects with `GraphExecutionError`, which aggregates every failure and every blocked node from that call:
 
@@ -246,13 +246,16 @@ export const CapabilityStatus = defineDataNode({
   key: "capabilityStatus",
   dependencies: [CurrentUserId] as const,
   initialValue: null,
-  invalidatedBy: [{
-    event: AppointmentBooked,
-    when: ({ payload, get }: EventInvalidationContext<
-      typeof AppointmentBooked,
-      readonly [typeof CurrentUserId]
-    >) => payload.userId === get(CurrentUserId),
-  }] as const,
+  invalidatedBy: [
+    {
+      event: AppointmentBooked,
+      when: ({
+        payload,
+        get,
+      }: EventInvalidationContext<typeof AppointmentBooked, readonly [typeof CurrentUserId]>) =>
+        payload.userId === get(CurrentUserId),
+    },
+  ] as const,
   load: ({ get }) => api.getCapabilityStatus(get(CurrentUserId)),
 });
 ```
@@ -262,7 +265,7 @@ export const CapabilityStatus = defineDataNode({
 runtime.publish(AppointmentBooked, { userId, appointmentId });
 ```
 
-The predicate (`when`) is synchronous and side-effect free, and is checked against committed dependency values, not against the event payload alone - here, only a booking for the *currently selected* user invalidates `CapabilityStatus`. A publication that matches nothing is silent; there's no error for "nobody was listening."
+The predicate (`when`) is synchronous and side-effect free, and is checked against committed dependency values, not against the event payload alone - here, only a booking for the _currently selected_ user invalidates `CapabilityStatus`. A publication that matches nothing is silent; there's no error for "nobody was listening."
 
 Note the explicit `EventInvalidationContext<...>` annotation on `when`'s parameters - TypeScript can't reliably infer `payload`'s and `get`'s types from context here, so leaving it off produces confusing type errors elsewhere in the object rather than a clear one on the callback itself. Every `when` predicate in this codebase (and its own tests) types it explicitly for exactly this reason.
 
@@ -296,8 +299,8 @@ export const ExportJobStatus = defineDataNode({
   load: ({ get, signal }) => api.getExportStatus(get(ExportJobId), signal),
   refresh: pollUntil({
     intervalMs: 2_000,
-    stopWhen: result => result?.state === "completed",
-    failWhen: result => result?.state === "failed",
+    stopWhen: (result) => result?.state === "completed",
+    failWhen: (result) => result?.state === "failed",
     timeoutMs: 10 * 60_000,
   }),
 });
@@ -338,7 +341,7 @@ export const ReferenceCatalogue = defineDataNode({
 
 Resolution order: a node's own `release` always wins over the runtime's `releaseAfterMs` default, including `retain()` explicitly opting a node out. A node with neither falls back to the runtime default; a runtime with no default and nodes with no policy of their own behaves exactly as if this feature didn't exist.
 
-The timer starts the moment a node has *no* subscribers at all - not just no direct `useNode` caller, but no other node depending on it either. A node kept alive only because something else still needs it as a dependency is not released; releasing it would just force that other node to reload it immediately. Resubscribing before the timer fires cancels it - the existing value is reused exactly as if nothing had happened, no reload needed.
+The timer starts the moment a node has _no_ subscribers at all - not just no direct `useNode` caller, but no other node depending on it either. A node kept alive only because something else still needs it as a dependency is not released; releasing it would just force that other node to reload it immediately. Resubscribing before the timer fires cancels it - the existing value is reused exactly as if nothing had happened, no reload needed.
 
 When the timer fires, the node resets to exactly the shape it had before it ever loaded - `data` back to `initialValue`, no successful value, `status: "idle"` - so a later subscribe triggers a genuinely fresh `load()`, not a stale cached value. Context and derived nodes can't declare a release policy at all: a context value is caller-provided input, not cache, and releasing it would silently discard state you set rather than just cost a reload.
 
@@ -364,11 +367,11 @@ export const TaskBoardPage = defineQuery({
 ```ts
 const page = useQuery(TaskBoardPage);
 
-page.nodes.tasks.data.value;      // Task[]
-page.nodes.visible.data.value;    // Task[], filtered
-page.isLoading.value;             // true if any aliased node is loading
-page.isError.value;               // true if any aliased node has an error
-page.errors.value;                // the errors, aggregated
+page.nodes.tasks.data.value; // Task[]
+page.nodes.visible.data.value; // Task[], filtered
+page.isLoading.value; // true if any aliased node is loading
+page.isError.value; // true if any aliased node has an error
+page.errors.value; // the errors, aggregated
 page.isSuccess.value;
 
 await page.prefetch();
@@ -391,16 +394,19 @@ import { defineMutation } from "vue-dependency-graph/core";
 
 const CreateTask = defineMutation({
   key: "task.create",
-  execute: ({ input, signal }: { input: { title: string } }) =>
-    api.createTask(input, signal),
+  execute: ({ input, signal }: { input: { title: string } }) => api.createTask(input, signal),
 });
 
 async function onAddTask(title: string) {
-  await runtime.mutate(CreateTask, { title }, {
-    onSuccess: (effects, created) => {
-      effects.update(Tasks, current => [...current, created]);
+  await runtime.mutate(
+    CreateTask,
+    { title },
+    {
+      onSuccess: (effects, created) => {
+        effects.update(Tasks, (current) => [...current, created]);
+      },
     },
-  });
+  );
 }
 ```
 
@@ -409,20 +415,24 @@ async function onAddTask(title: string) {
 Add an optimistic update only once the plain success-reconciliation version works and you've decided the UX benefit is worth it:
 
 ```ts
-await runtime.mutate(CreateTask, { title }, {
-  optimistic: (effects, input) => {
-    effects.update(Tasks, current => [
-      ...current,
-      { id: `pending-${Date.now()}`, title: input.title, done: false },
-    ]);
+await runtime.mutate(
+  CreateTask,
+  { title },
+  {
+    optimistic: (effects, input) => {
+      effects.update(Tasks, (current) => [
+        ...current,
+        { id: `pending-${Date.now()}`, title: input.title, done: false },
+      ]);
+    },
+    onSuccess: (effects, created) => {
+      effects.update(Tasks, (current) =>
+        current.map((task) => (task.id.startsWith("pending-") ? created : task)),
+      );
+    },
+    classifyFailure: (error) => (isValidationError(error) ? "rejected" : "unknown"),
   },
-  onSuccess: (effects, created) => {
-    effects.update(Tasks, current =>
-      current.map(task => (task.id.startsWith("pending-") ? created : task))
-    );
-  },
-  classifyFailure: error => (isValidationError(error) ? "rejected" : "unknown"),
-});
+);
 ```
 
 `classifyFailure` matters: only classify `"rejected"` when you have real evidence the server didn't commit the command (a validation response, an explicit business rejection). Anything ambiguous - a timeout, a dropped connection, a malformed response - must be `"unknown"`, which keeps the optimistic value visible as unconfirmed rather than risking a false rollback of a command that may have actually succeeded. See [the mutation adoption guide](./04-mutation-adoption.md) for the full error-handling reference (`GraphMutationConflictError`, `GraphMutationOutcomeUnknownError`, `GraphMutationRollbackConflictError`, `GraphMutationReconciliationError`, `GraphMutationStateError`).
@@ -432,7 +442,7 @@ await runtime.mutate(CreateTask, { title }, {
 A transaction batches several `setContext`/`publish` calls so observers only ever see the fully-committed result, never an intermediate state:
 
 ```ts
-await runtime.transaction(async transaction => {
+await runtime.transaction(async (transaction) => {
   transaction.setContext(CurrentUserId, nextUserId);
   transaction.setContext(TaskFilter, "all");
   await someLocalValidation();
@@ -441,7 +451,7 @@ await runtime.transaction(async transaction => {
 
 Both context writes above commit together, in one notification and one scheduler pass - no subscribed component sees `CurrentUserId` updated while `TaskFilter` is still the old value. If the callback throws, both staged writes are discarded; nothing was ever visible.
 
-This is local atomicity only - it batches *this runtime's* state, not a backend transaction. A `runtime.mutate(...)` call inside a transaction body is not part of it; don't hold a transaction open around remote work, since mutation success effects already provide their own single synchronous commit.
+This is local atomicity only - it batches _this runtime's_ state, not a backend transaction. A `runtime.mutate(...)` call inside a transaction body is not part of it; don't hold a transaction open around remote work, since mutation success effects already provide their own single synchronous commit.
 
 Plain `runtime.setContext(...)` calls made elsewhere while a transaction is open are unaffected by it - they commit immediately, independent of whatever the transaction eventually does. Two transactions that stage the same context concurrently resolve by first-commit-wins: the second to commit gets `GraphTransactionConflictError`, and its staged work is discarded, not partially applied.
 
@@ -552,7 +562,10 @@ Keep tests independent of real timers and real network calls. For loaders, use d
 function deferred<T>() {
   let resolve!: (value: T) => void;
   let reject!: (error: unknown) => void;
-  const promise = new Promise<T>((res, rej) => { resolve = res; reject = rej; });
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
   return { promise, resolve, reject };
 }
 
@@ -564,13 +577,21 @@ it("shows the newly created task after a successful mutation", async () => {
   });
   const runtime = createGraphRuntime(graph);
 
-  const mutation = runtime.mutate(CreateTask, { title: "Write tests" }, {
-    onSuccess: (effects, task) => effects.update(Tasks, current => [...current, task]),
-  });
+  const mutation = runtime.mutate(
+    CreateTask,
+    { title: "Write tests" },
+    {
+      onSuccess: (effects, task) => effects.update(Tasks, (current) => [...current, task]),
+    },
+  );
   created.resolve({ id: "1", title: "Write tests", done: false });
   await mutation;
 
-  expect(runtime.getState(Tasks).data).toContainEqual({ id: "1", title: "Write tests", done: false });
+  expect(runtime.getState(Tasks).data).toContainEqual({
+    id: "1",
+    title: "Write tests",
+    done: false,
+  });
 });
 ```
 
@@ -633,7 +654,7 @@ For Vue components, use real `createGraph`/`createGraphRuntime` instances (not m
 
 **Derived aggregate state across several nodes.** Prefer one derived node over recomputing the same combination inline in every component that needs it - it gets its own status/error/freshness tracking for free, and other nodes can depend on it too.
 
-**Don't reinterpret `initialValue` as loaded data.** A data node's `initialValue` exists so the node has *something* to render before the first load completes - it is not a cache-primed value. In particular, don't build an optimistic mutation update on top of a node that has never successfully loaded; the guide in [§12](#12-mutations) and the [mutation adoption guide](./04-mutation-adoption.md) call this out explicitly.
+**Don't reinterpret `initialValue` as loaded data.** A data node's `initialValue` exists so the node has _something_ to render before the first load completes - it is not a cache-primed value. In particular, don't build an optimistic mutation update on top of a node that has never successfully loaded; the guide in [§12](#12-mutations) and the [mutation adoption guide](./04-mutation-adoption.md) call this out explicitly.
 
 ## 19. Troubleshooting
 
@@ -641,11 +662,11 @@ For Vue components, use real `createGraph`/`createGraphRuntime` instances (not m
 
 **"A context change didn't reload my derived node."** Confirm the derived node actually declares the context (or an intermediate node depending on it) in its `dependencies`. A dependency the loader/derive function reads via closure instead of through `get(...)` is invisible to the graph - it won't trigger invalidation.
 
-**"Two components load the same data twice."** This shouldn't happen for the same node at the same generation - the runtime deduplicates automatically. If you're seeing duplicate requests, check whether the two components are actually depending on the *same* node handle (imported from the same module) rather than two separately-defined nodes that happen to have the same key - that's a graph validation error (`createGraph` rejects duplicate keys), not silent duplication, so it's more likely two distinct nodes with genuinely different keys.
+**"Two components load the same data twice."** This shouldn't happen for the same node at the same generation - the runtime deduplicates automatically. If you're seeing duplicate requests, check whether the two components are actually depending on the _same_ node handle (imported from the same module) rather than two separately-defined nodes that happen to have the same key - that's a graph validation error (`createGraph` rejects duplicate keys), not silent duplication, so it's more likely two distinct nodes with genuinely different keys.
 
 **"My refresh policy never fires."** Policies only run while the node has a subscriber. If nothing is currently mounted with `useNode`/`useNodes`/`useQuery` on that node, there's no timer running - that's intentional, not a missed edge case.
 
-**"A node reloaded even though a component using it is still mounted."** If that node has a `release` policy (its own, or the runtime's `releaseAfterMs` default), check whether it's still subscribed only *indirectly* - through another node that depends on it, with nothing subscribing to it directly and nothing subscribing to anything that needs it either. Release only fires when a node has no subscribers at all, direct or required, so a reload after release means it genuinely had none for the configured duration - not that the direct/required distinction stopped applying.
+**"A node reloaded even though a component using it is still mounted."** If that node has a `release` policy (its own, or the runtime's `releaseAfterMs` default), check whether it's still subscribed only _indirectly_ - through another node that depends on it, with nothing subscribing to it directly and nothing subscribing to anything that needs it either. Release only fires when a node has no subscribers at all, direct or required, so a reload after release means it genuinely had none for the configured duration - not that the direct/required distinction stopped applying.
 
 **"An optimistic mutation update disappeared without an error."** Check whether newer graph work (a context change, another mutation, a refresh) touched the same node before your mutation settled. A known rejection that arrives after newer state changed rejects with `GraphMutationRollbackConflictError` specifically so this case is visible rather than silently overwriting the newer data - see the [mutation adoption guide](./04-mutation-adoption.md).
 

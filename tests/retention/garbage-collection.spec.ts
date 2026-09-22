@@ -15,16 +15,8 @@ import {
   type GraphRuntime,
   type TimerEnvironment,
 } from "../../src/core";
-import {
-  createBrowserTimerEnvironment,
-  createGraphRuntimePlugin,
-} from "../../src/vue";
-import {
-  expectCollected,
-  expectRetained,
-  makeValue,
-  weakRefTo,
-} from "./gc-helpers";
+import { createBrowserTimerEnvironment, createGraphRuntimePlugin } from "../../src/vue";
+import { expectCollected, expectRetained, makeValue, weakRefTo } from "./gc-helpers";
 
 /**
  * Retention: once the runtime has finished with a value, nothing may keep it
@@ -51,7 +43,7 @@ const fakeClock = () => {
       timers.set(id, { dueAt: now + delayMs, callback });
       return id;
     },
-    clearTimeout: handle => {
+    clearTimeout: (handle) => {
       if (typeof handle === "number") timers.delete(handle);
     },
     random: () => 0.5,
@@ -70,11 +62,13 @@ const fakeClock = () => {
 };
 
 /** A loader whose every result is tracked, and whose latest one is current. */
-const trackedLoader = (tracked: Tracked[], label = "value") => async () => {
-  const value = makeValue(label);
-  tracked.push(weakRefTo(value));
-  return value;
-};
+const trackedLoader =
+  (tracked: Tracked[], label = "value") =>
+  async () => {
+    const value = makeValue(label);
+    tracked.push(weakRefTo(value));
+    return value;
+  };
 
 describe("garbage collection harness", () => {
   it("collects what nothing references and keeps what something does", async () => {
@@ -203,7 +197,7 @@ describe("values are released when the runtime is done with them", () => {
 describe("abandoned and superseded work is not retained", () => {
   it.each(["aborted", "superseded"] as const)(
     "does not keep the late result of an attempt that was %s",
-    async kind => {
+    async (kind) => {
       const ctx = defineContextNode({ key: "ctx", initialValue: 1 });
       let resolveLate: ((value: object) => void) | undefined;
       const node = defineDataNode({
@@ -211,7 +205,7 @@ describe("abandoned and superseded work is not retained", () => {
         dependencies: [ctx] as const,
         initialValue: null as object | null,
         load: () =>
-          new Promise<object>(resolve => {
+          new Promise<object>((resolve) => {
             resolveLate = resolve;
           }),
       });
@@ -226,7 +220,7 @@ describe("abandoned and superseded work is not retained", () => {
               end: () => runtime.setContext(ctx, 2),
               done: runtime.execute([node]).catch(() => undefined),
             };
-      await new Promise(resolve => setTimeout(resolve, 5));
+      await new Promise((resolve) => setTimeout(resolve, 5));
       running.end();
       const late = ((): Tracked => {
         const value = makeValue("late result");
@@ -267,13 +261,15 @@ describe("mutations and transactions leave nothing behind", () => {
     });
 
     await runtime.mutate(succeed, undefined, {
-      optimistic: effects => effects.update(node, () => track("optimistic")),
-      onSuccess: effects => effects.update(node, () => track("confirmed")),
+      optimistic: (effects) => effects.update(node, () => track("optimistic")),
+      onSuccess: (effects) => effects.update(node, () => track("confirmed")),
     });
-    await runtime.mutate(fail, undefined, {
-      optimistic: effects => effects.update(node, () => track("rolled back")),
-      classifyFailure: () => "rejected",
-    }).catch(() => undefined);
+    await runtime
+      .mutate(fail, undefined, {
+        optimistic: (effects) => effects.update(node, () => track("rolled back")),
+        classifyFailure: () => "rejected",
+      })
+      .catch(() => undefined);
 
     await expectCollected(original[0]!, "the value before the mutation");
     await expectCollected(tracked[0]!, "the optimistic value");
@@ -285,20 +281,23 @@ describe("mutations and transactions leave nothing behind", () => {
     const ctx = defineContextNode<object>({ key: "ctx", initialValue: makeValue("initial") });
     const runtime = createGraphRuntime(createGraph({ nodes: [ctx] }));
     const tracked: Tracked[] = [];
-    const stage = (label: string, transaction: { setContext: (node: typeof ctx, value: object) => void }): void => {
+    const stage = (
+      label: string,
+      transaction: { setContext: (node: typeof ctx, value: object) => void },
+    ): void => {
       const value = makeValue(label);
       tracked.push(weakRefTo(value));
       transaction.setContext(ctx, value);
     };
 
-    await runtime.transaction(transaction => stage("committed", transaction));
+    await runtime.transaction((transaction) => stage("committed", transaction));
     await runtime
-      .transaction(transaction => {
+      .transaction((transaction) => {
         stage("discarded", transaction);
         throw new Error("transaction failed");
       })
       .catch(() => undefined);
-    await runtime.transaction(transaction => stage("replacing", transaction));
+    await runtime.transaction((transaction) => stage("replacing", transaction));
 
     await expectCollected(tracked[0]!, "a committed value that was later replaced");
     await expectCollected(tracked[1]!, "a discarded staged value");
@@ -307,9 +306,7 @@ describe("mutations and transactions leave nothing behind", () => {
 });
 
 describe("a runtime's lifetime is bounded by its owner", () => {
-  const loadThroughBrowserEnvironment = async (
-    dispose: boolean,
-  ): Promise<Tracked> => {
+  const loadThroughBrowserEnvironment = async (dispose: boolean): Promise<Tracked> => {
     const tracked: Tracked[] = [];
     const node = defineDataNode({
       key: "node",
@@ -335,7 +332,10 @@ describe("a runtime's lifetime is bounded by its owner", () => {
     // Why disposal matters: the browser environment registers listeners on
     // `document` and `window`, which hold the runtime's policies and through
     // them its state. Nothing but `dispose()` removes them.
-    await expectRetained(await loadThroughBrowserEnvironment(false), "an undisposed runtime's value");
+    await expectRetained(
+      await loadThroughBrowserEnvironment(false),
+      "an undisposed runtime's value",
+    );
   });
 
   it("frees a runtime when the Vue app that installed the plugin unmounts", async () => {

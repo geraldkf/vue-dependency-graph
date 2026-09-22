@@ -19,8 +19,8 @@ const SaveAppointment = defineMutation({
 
 const saved = await runtime.mutate(SaveAppointment, input, {
   onSuccess: (effects, result) => {
-    effects.update(Appointments, current =>
-      current.map(item => item.id === result.id ? result : item)
+    effects.update(Appointments, (current) =>
+      current.map((item) => (item.id === result.id ? result : item)),
     );
     effects.invalidate([AppointmentSummary]);
     effects.publish(AppointmentBooked, {
@@ -41,13 +41,10 @@ Update functions must also be pure. Treat `current` as deeply read-only for appl
 
 ```ts
 // Supported
-effects.update(Appointments, current => [
-  ...current,
-  pendingAppointment,
-]);
+effects.update(Appointments, (current) => [...current, pendingAppointment]);
 
 // Invalid
-effects.update(Appointments, current => {
+effects.update(Appointments, (current) => {
   current.push(pendingAppointment);
   return current;
 });
@@ -62,18 +59,15 @@ Optimistic updates require an existing successful value. They must not reinterpr
 ```ts
 await runtime.mutate(BookAppointment, input, {
   optimistic: (effects, originalInput) => {
-    effects.update(Appointments, current => [
+    effects.update(Appointments, (current) => [
       ...current,
       createPendingAppointment(originalInput),
     ]);
   },
   onSuccess: (effects, saved) => {
-    effects.update(Appointments, current =>
-      replacePendingAppointment(current, saved)
-    );
+    effects.update(Appointments, (current) => replacePendingAppointment(current, saved));
   },
-  classifyFailure: error =>
-    isKnownRejectedResponse(error) ? "rejected" : "unknown",
+  classifyFailure: (error) => (isKnownRejectedResponse(error) ? "rejected" : "unknown"),
 });
 ```
 

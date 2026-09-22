@@ -14,9 +14,7 @@ import {
 import type { NodeRuntimeState } from "../../src/core";
 import { stateInvariantViolations } from "./state-trace-helpers";
 
-const make = (
-  overrides: Partial<NodeStateRecord> = {},
-): NodeStateRecord => ({
+const make = (overrides: Partial<NodeStateRecord> = {}): NodeStateRecord => ({
   data: "data",
   status: "success",
   freshness: "fresh",
@@ -66,9 +64,7 @@ describe("state transitions", () => {
     it("refreshes when there is a value, keeping it and the generation", () => {
       const state = make({ status: "error", freshness: "stale", error: failure });
       beginAttempt(state);
-      expect(state).toEqual(
-        make({ status: "refreshing", freshness: "stale" }),
-      );
+      expect(state).toEqual(make({ status: "refreshing", freshness: "stale" }));
     });
 
     it("loads when there is no value", () => {
@@ -133,9 +129,7 @@ describe("state transitions", () => {
     it("records the error, keeps the value and its flag, and keeps the generation", () => {
       const state = make({ status: "refreshing", freshness: "stale" });
       failAttempt(state, failure);
-      expect(state).toEqual(
-        make({ status: "error", freshness: "stale", error: failure }),
-      );
+      expect(state).toEqual(make({ status: "error", freshness: "stale", error: failure }));
     });
 
     it("leaves a never-loaded node without a value", () => {
@@ -161,12 +155,10 @@ describe("state transitions", () => {
   describe("writeValue", () => {
     it.each(["fresh", "stale"] as const)(
       "writes a %s value, clears any error, and bumps the generation",
-      freshness => {
+      (freshness) => {
         const state = make({ status: "error", freshness: "stale", error: failure });
         writeValue(state, "written", freshness);
-        expect(state).toEqual(
-          make({ data: "written", freshness, generation: 5 }),
-        );
+        expect(state).toEqual(make({ data: "written", freshness, generation: 5 }));
       },
     );
   });
@@ -212,12 +204,12 @@ describe("state transitions", () => {
 
       expect({
         invalidate: generationDelta(invalidate),
-        writeValue: generationDelta(state => writeValue(state, 1, "fresh")),
-        restoreSnapshot: generationDelta(state => restoreSnapshot(state, make())),
-        releaseValue: generationDelta(state => releaseValue(state, 0)),
+        writeValue: generationDelta((state) => writeValue(state, 1, "fresh")),
+        restoreSnapshot: generationDelta((state) => restoreSnapshot(state, make())),
+        releaseValue: generationDelta((state) => releaseValue(state, 0)),
         beginAttempt: generationDelta(beginAttempt),
-        succeedAttempt: generationDelta(state => succeedAttempt(state, 1)),
-        failAttempt: generationDelta(state => failAttempt(state, failure)),
+        succeedAttempt: generationDelta((state) => succeedAttempt(state, 1)),
+        failAttempt: generationDelta((state) => failAttempt(state, failure)),
         abortAttempt: generationDelta(abortAttempt),
       }).toEqual({
         invalidate: 1,
@@ -243,16 +235,14 @@ describe("state transitions", () => {
       for (const freshness of freshnesses) {
         for (const error of errors) {
           for (const hasSuccessfulValue of flags) {
-            allStates.push(
-              make({ status, freshness, error, hasSuccessfulValue }),
-            );
+            allStates.push(make({ status, freshness, error, hasSuccessfulValue }));
           }
         }
       }
     }
     const violations = (state: NodeStateRecord) =>
       stateInvariantViolations(state as unknown as NodeRuntimeState<unknown>);
-    const validStates = allStates.filter(state => violations(state).length === 0);
+    const validStates = allStates.filter((state) => violations(state).length === 0);
 
     it("has a non-trivial set of valid states to start from", () => {
       expect(allStates).toHaveLength(40);
@@ -260,33 +250,27 @@ describe("state transitions", () => {
       expect(validStates.length).toBeLessThan(allStates.length);
     });
 
-    const transitions: readonly (readonly [
-      string,
-      (state: NodeStateRecord) => void,
-    ])[] = [
+    const transitions: readonly (readonly [string, (state: NodeStateRecord) => void])[] = [
       ["invalidate", invalidate],
       ["beginAttempt", beginAttempt],
-      ["succeedAttempt", state => succeedAttempt(state, "value")],
-      ["failAttempt", state => failAttempt(state, failure)],
+      ["succeedAttempt", (state) => succeedAttempt(state, "value")],
+      ["failAttempt", (state) => failAttempt(state, failure)],
       ["abortAttempt", abortAttempt],
-      ["writeValue fresh", state => writeValue(state, "value", "fresh")],
-      ["writeValue stale", state => writeValue(state, "value", "stale")],
-      ["releaseValue", state => releaseValue(state, "initial")],
+      ["writeValue fresh", (state) => writeValue(state, "value", "fresh")],
+      ["writeValue stale", (state) => writeValue(state, "value", "stale")],
+      ["releaseValue", (state) => releaseValue(state, "initial")],
     ];
 
-    it.each(transitions)(
-      "%s leaves every valid state valid",
-      (_name, transition) => {
-        for (const start of validStates) {
-          const state = { ...start };
-          transition(state);
-          expect(
-            violations(state),
-            `from ${start.status}/${start.freshness} value=${start.hasSuccessfulValue} error=${start.error !== null}`,
-          ).toEqual([]);
-        }
-      },
-    );
+    it.each(transitions)("%s leaves every valid state valid", (_name, transition) => {
+      for (const start of validStates) {
+        const state = { ...start };
+        transition(state);
+        expect(
+          violations(state),
+          `from ${start.status}/${start.freshness} value=${start.hasSuccessfulValue} error=${start.error !== null}`,
+        ).toEqual([]);
+      }
+    });
 
     it("restoreSnapshot leaves a state valid when the snapshot is valid", () => {
       for (const start of validStates) {

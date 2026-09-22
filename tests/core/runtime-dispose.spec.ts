@@ -27,12 +27,12 @@ const createTestEnvironment = () => {
       timers.set(id, { id, dueAt: now + delayMs, callback });
       return id;
     },
-    clearTimeout: handle => {
+    clearTimeout: (handle) => {
       if (typeof handle === "number") timers.delete(handle);
     },
     random: () => 0.5,
     isPaused: () => false,
-    onPauseChange: listener => {
+    onPauseChange: (listener) => {
       pauseListeners.add(listener);
       return () => {
         pauseListeners.delete(listener);
@@ -43,7 +43,7 @@ const createTestEnvironment = () => {
     now += durationMs;
     while (true) {
       const next = [...timers.values()]
-        .filter(timer => timer.dueAt <= now)
+        .filter((timer) => timer.dueAt <= now)
         .sort((left, right) =>
           left.dueAt === right.dueAt ? left.id - right.id : left.dueAt - right.dueAt,
         )[0];
@@ -145,10 +145,9 @@ describe("runtime.dispose", () => {
       release: releaseAfter({ durationMs: 1_000 }),
       load: async () => 7,
     });
-    const runtime = createGraphRuntime(
-      createGraph({ nodes: [polled, releasable] }),
-      { timerEnvironment: clock.environment },
-    );
+    const runtime = createGraphRuntime(createGraph({ nodes: [polled, releasable] }), {
+      timerEnvironment: clock.environment,
+    });
     runtime.dispose();
 
     const subscription = runtime.subscribeNodes([polled, releasable]);
@@ -209,10 +208,7 @@ describe("runtime.dispose", () => {
 
     runtime.dispose();
     refreshLoad.resolve(2);
-    await waitForCondition(
-      () => runtime.getState(node).data === 2,
-      "in-flight refresh to commit",
-    );
+    await waitForCondition(() => runtime.getState(node).data === 2, "in-flight refresh to commit");
     // Let the policy refresh's own promise chain (then/catch/finally) drain.
     for (let turn = 0; turn < 10; turn += 1) await Promise.resolve();
 
@@ -239,7 +235,7 @@ describe("runtime.dispose", () => {
     runtime.dispose();
 
     const snapshot = runtime.createDiagnosticSnapshot();
-    expect(snapshot.nodes.map(entry => entry.key)).toContain("snapshot");
+    expect(snapshot.nodes.map((entry) => entry.key)).toContain("snapshot");
     subscription.unsubscribe();
   });
 });

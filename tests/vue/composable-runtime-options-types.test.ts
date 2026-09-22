@@ -1,13 +1,5 @@
-import {
-  createGraph,
-  createGraphRuntime,
-  defineContextNode,
-} from "../../src/core";
-import {
-  useNode,
-  useNodes,
-  type GraphComposableOptions,
-} from "../../src/vue";
+import { createGraph, createGraphRuntime, defineContextNode } from "../../src/core";
+import { useNode, useNodes, type GraphComposableOptions } from "../../src/vue";
 
 const count = defineContextNode({
   key: "runtime-options:type:count",

@@ -1,9 +1,4 @@
-import {
-  defineContextNode,
-  defineDataNode,
-  defineDerivedNode,
-  defineQuery,
-} from "../../core";
+import { defineContextNode, defineDataNode, defineDerivedNode, defineQuery } from "../../core";
 import { createMockLoader } from "../mock-loader";
 
 export const queryGroupsJobSeekerId = defineContextNode({
@@ -31,16 +26,13 @@ export const queryGroupsCapabilityStatus = defineDataNode({
   load: ({ get }) =>
     queryGroupsCapabilityLoader.load(
       () =>
-        `Capability request ${queryGroupsCapabilityLoader.callCount.value} for ${get(queryGroupsJobSeekerId)}`
+        `Capability request ${queryGroupsCapabilityLoader.callCount.value} for ${get(queryGroupsJobSeekerId)}`,
     ),
 });
 
 export const queryGroupsSummary = defineDerivedNode({
   key: "query-groups-summary",
-  dependencies: [
-    queryGroupsAppointments,
-    queryGroupsCapabilityStatus,
-  ] as const,
+  dependencies: [queryGroupsAppointments, queryGroupsCapabilityStatus] as const,
   derive: ({ get }) =>
     `${get(queryGroupsAppointments).length} appointment; ${get(queryGroupsCapabilityStatus)}`,
 });

@@ -66,57 +66,68 @@ const derived = defineDerivedNode({
   derive: ({ get }) => get(data).length,
 });
 
-runtime.mutate(save, { value: "value" }, {
-  optimistic: (effects, mutationInput) => {
-    const value: string = mutationInput.value;
-    void value;
-    effects.update(data, current => [...current, "pending"]);
+runtime.mutate(
+  save,
+  { value: "value" },
+  {
+    optimistic: (effects, mutationInput) => {
+      const value: string = mutationInput.value;
+      void value;
+      effects.update(data, (current) => [...current, "pending"]);
 
-    // @ts-expect-error optimistic updates cannot target context nodes
-    effects.update(context, current => current + 1);
+      // @ts-expect-error optimistic updates cannot target context nodes
+      effects.update(context, (current) => current + 1);
 
-    // @ts-expect-error optimistic updates cannot target derived nodes
-    effects.update(derived, current => current + 1);
+      // @ts-expect-error optimistic updates cannot target derived nodes
+      effects.update(derived, (current) => current + 1);
+    },
+    classifyFailure: (error) => {
+      void error;
+      return "rejected";
+    },
   },
-  classifyFailure: error => {
-    void error;
-    return "rejected";
+);
+
+runtime.mutate(
+  save,
+  { value: "value" },
+  {
+    onSuccess: (effects, remoteResult, mutationInput) => {
+      const id: number = remoteResult.id;
+      const value: string = mutationInput.value;
+      void [id, value];
+
+      effects.update(data, (current) => [...current, remoteResult.value]);
+
+      // @ts-expect-error updater result must match the data-node value
+      effects.update(data, (current) => current.length);
+
+      // @ts-expect-error context nodes cannot be directly reconciled
+      effects.update(context, (current) => current + 1);
+
+      // @ts-expect-error derived nodes cannot be directly reconciled
+      effects.update(derived, (current) => current + 1);
+
+      effects.invalidate([data, derived]);
+      // @ts-expect-error context nodes cannot be invalidated by mutation effects
+      effects.invalidate([context]);
+
+      const saved = defineEvent<{ readonly id: number }>("mutation.saved");
+      effects.publish(saved, { id: remoteResult.id });
+      // @ts-expect-error mutation event payload must match the event definition
+      effects.publish(saved, { id: "invalid" });
+    },
   },
-});
+);
 
-runtime.mutate(save, { value: "value" }, {
-  onSuccess: (effects, remoteResult, mutationInput) => {
-    const id: number = remoteResult.id;
-    const value: string = mutationInput.value;
-    void [id, value];
-
-    effects.update(data, current => [...current, remoteResult.value]);
-
-    // @ts-expect-error updater result must match the data-node value
-    effects.update(data, current => current.length);
-
-    // @ts-expect-error context nodes cannot be directly reconciled
-    effects.update(context, current => current + 1);
-
-    // @ts-expect-error derived nodes cannot be directly reconciled
-    effects.update(derived, current => current + 1);
-
-
-    effects.invalidate([data, derived]);
-    // @ts-expect-error context nodes cannot be invalidated by mutation effects
-    effects.invalidate([context]);
-
-    const saved = defineEvent<{ readonly id: number }>("mutation.saved");
-    effects.publish(saved, { id: remoteResult.id });
-    // @ts-expect-error mutation event payload must match the event definition
-    effects.publish(saved, { id: "invalid" });
+runtime.mutate(
+  save,
+  { value: "value" },
+  {
+    // @ts-expect-error failure classifier must return a supported classification
+    classifyFailure: () => "retry",
   },
-});
-
-runtime.mutate(save, { value: "value" }, {
-  // @ts-expect-error failure classifier must return a supported classification
-  classifyFailure: () => "retry",
-});
+);
 
 void defineMutation<SaveInput, SaveResult>({
   key: "invalid-result",

@@ -1,9 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import type {
-  InspectorTimelineCategory,
-  InspectorTimelineEntry,
-} from "../protocol/types";
+import type { InspectorTimelineCategory, InspectorTimelineEntry } from "../protocol/types";
 
 const props = defineProps<{
   entries: readonly InspectorTimelineEntry[];
@@ -38,12 +35,12 @@ const toggleCategory = (category: InspectorTimelineCategory): void => {
 };
 
 const filtered = computed(() =>
-  props.entries.filter(entry => {
+  props.entries.filter((entry) => {
     if (!activeCategories.value.has(entry.category)) return false;
     if (onlyFailures.value && !entry.isFailure) return false;
     if (onlySelectedNode.value && entry.nodeKey !== props.selectedNodeKey) return false;
     return true;
-  })
+  }),
 );
 
 // Newest first - a live timeline is read top-down for "what just happened".

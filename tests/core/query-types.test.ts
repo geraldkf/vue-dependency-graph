@@ -1,9 +1,4 @@
-import {
-  defineContextNode,
-  defineDataNode,
-  defineQuery,
-  type QueryNodes,
-} from "../../src/core";
+import { defineContextNode, defineDataNode, defineQuery, type QueryNodes } from "../../src/core";
 
 const jobSeekerId = defineContextNode({
   key: "typed-query-job-seeker-id",

@@ -32,6 +32,7 @@ ADR-009 and ADR-010 are reserved numbers without separate files. By the time pol
 # ADR-NNN: Title
 
 ## Status
+
 Proposed | Accepted | Superseded | Rejected
 
 ## Context

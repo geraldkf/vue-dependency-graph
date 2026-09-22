@@ -45,8 +45,6 @@ describe("mutation definitions", () => {
       execute: undefined,
     } as unknown as DefineMutationOptions<SaveInput, SaveResult>;
 
-    expect(() => defineMutation(malformed)).toThrow(
-      "Mutation execute must be a function.",
-    );
+    expect(() => defineMutation(malformed)).toThrow("Mutation execute must be a function.");
   });
 });

@@ -2,26 +2,18 @@
   <section aria-label="Polling progress scenario">
     <h2>Polling Progress</h2>
     <p>
-      Drive a poll-until workflow with deterministic time, responses, retries,
-      and lifecycle controls.
+      Drive a poll-until workflow with deterministic time, responses, retries, and lifecycle
+      controls.
     </p>
 
     <div>
       <button :disabled="mounted" @click="mountConsumer">Mount consumer</button>
-      <button :disabled="!mounted" @click="unmountConsumer">
-        Unmount consumer
-      </button>
-      <button :disabled="!mounted || paused" @click="advanceOnePoll">
-        Advance one poll
-      </button>
+      <button :disabled="!mounted" @click="unmountConsumer">Unmount consumer</button>
+      <button :disabled="!mounted || paused" @click="advanceOnePoll">Advance one poll</button>
       <button :disabled="!mounted" @click="complete">Complete</button>
       <button :disabled="!mounted" @click="fail">Fail</button>
-      <button :disabled="!mounted" @click="triggerTimeout">
-        Trigger timeout
-      </button>
-      <button :disabled="!mounted" @click="failNextRequest">
-        Fail next request
-      </button>
+      <button :disabled="!mounted" @click="triggerTimeout">Trigger timeout</button>
+      <button :disabled="!mounted" @click="failNextRequest">Fail next request</button>
       <button :disabled="paused" @click="pause">Pause</button>
       <button :disabled="!paused" @click="resume">Resume</button>
       <button @click="reset">Reset</button>
@@ -117,7 +109,7 @@ observeRuntime();
 // macrotask. So awaiting a single real setTimeout is sufficient to
 // guarantee every pending .then()/.finally() in the chain above has run.
 const settle = async (): Promise<void> => {
-  await new Promise<void>(resolve => setTimeout(resolve, 0));
+  await new Promise<void>((resolve) => setTimeout(resolve, 0));
   sync();
 };
 

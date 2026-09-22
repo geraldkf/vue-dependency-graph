@@ -7,11 +7,7 @@ import {
   defineContextNode,
   type GraphRuntime,
 } from "../../src/core";
-import {
-  GraphRuntimeKey,
-  createGraphRuntimePlugin,
-  useGraphRuntime,
-} from "../../src/vue/plugin";
+import { GraphRuntimeKey, createGraphRuntimePlugin, useGraphRuntime } from "../../src/vue/plugin";
 
 const makeTestRuntime = (): GraphRuntime => {
   const context = defineContextNode({ key: "probe-context", initialValue: 1 });
@@ -113,9 +109,7 @@ describe("Vue plugin and injection", () => {
 
       const { unmount } = render(Empty, {
         global: {
-          plugins: [
-            createGraphRuntimePlugin(runtime, { disposeOnUnmount: false }),
-          ],
+          plugins: [createGraphRuntimePlugin(runtime, { disposeOnUnmount: false })],
         },
       });
       unmount();
@@ -133,7 +127,7 @@ describe("Vue plugin and injection", () => {
       });
       const Host = defineComponent({
         props: { show: { type: Boolean, default: true } },
-        setup: props => () => (props.show ? h(Probe) : null),
+        setup: (props) => () => (props.show ? h(Probe) : null),
       });
 
       const { rerender, unmount } = render(Host, {

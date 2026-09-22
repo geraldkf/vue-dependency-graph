@@ -36,8 +36,7 @@ describe("computeGraphView", () => {
 
     const view = computeGraphView(runtime.createDiagnosticSnapshot());
 
-    const positionOf = (key: string) =>
-      view.nodes.find(node => node.key === key);
+    const positionOf = (key: string) => view.nodes.find((node) => node.key === key);
     expect(positionOf("userId")).toMatchObject({ column: 0, row: 0 });
     expect(positionOf("profile")).toMatchObject({ column: 1, row: 0 });
     // Alphabetical within a column: "avatarUrl" sorts before "displayName".

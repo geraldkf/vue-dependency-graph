@@ -21,10 +21,7 @@ export interface SchedulerFlush<TContext> {
 
 export interface RuntimeSchedulerDependencies<TContext> {
   readonly getTargetsNeedingWork: () => readonly AnyNodeDefinition[];
-  readonly execute: (
-    targets: readonly AnyNodeDefinition[],
-    context: TContext,
-  ) => Promise<void>;
+  readonly execute: (targets: readonly AnyNodeDefinition[], context: TContext) => Promise<void>;
   readonly notify: () => void;
   readonly onRequested?: () => void;
   /**
@@ -33,9 +30,7 @@ export interface RuntimeSchedulerDependencies<TContext> {
    * callback for how it ends; both are specific to this one flush, never
    * shared with another.
    */
-  readonly beginFlush: (
-    targets: readonly AnyNodeDefinition[],
-  ) => SchedulerFlush<TContext>;
+  readonly beginFlush: (targets: readonly AnyNodeDefinition[]) => SchedulerFlush<TContext>;
 }
 
 /**

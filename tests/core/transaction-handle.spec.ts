@@ -23,13 +23,11 @@ describe("graph transaction handle lifecycle", () => {
     runtime.onChange(listener);
     let captured!: GraphTransaction;
 
-    await runtime.transaction(transaction => {
+    await runtime.transaction((transaction) => {
       captured = transaction;
     });
 
-    expect(() => captured.setContext(context, 2)).toThrow(
-      "Graph transaction is no longer active."
-    );
+    expect(() => captured.setContext(context, 2)).toThrow("Graph transaction is no longer active.");
     expect(runtime.getState(context)).toMatchObject({ data: 1, generation: 0 });
     expect(listener).not.toHaveBeenCalled();
   });
@@ -41,17 +39,15 @@ describe("graph transaction handle lifecycle", () => {
     let captured!: GraphTransaction;
 
     await expect(
-      runtime.transaction(transaction => {
+      runtime.transaction((transaction) => {
         captured = transaction;
         throw new Error("rollback");
-      })
+      }),
     ).rejects.toThrow("rollback");
 
-    expect(() => captured.setContext(context, 2)).toThrow(
-      "Graph transaction is no longer active."
-    );
+    expect(() => captured.setContext(context, 2)).toThrow("Graph transaction is no longer active.");
     expect(() => captured.publish(changed, undefined)).toThrow(
-      "Graph transaction is no longer active."
+      "Graph transaction is no longer active.",
     );
     expect(runtime.getState(context)).toMatchObject({ data: 1, generation: 0 });
   });
@@ -62,9 +58,9 @@ describe("graph transaction handle lifecycle", () => {
     let outerHandle!: GraphTransaction;
     let nestedHandle!: GraphTransaction;
 
-    await runtime.transaction(async transaction => {
+    await runtime.transaction(async (transaction) => {
       outerHandle = transaction;
-      await transaction.transaction(inner => {
+      await transaction.transaction((inner) => {
         nestedHandle = inner;
         inner.setContext(context, 2);
       });
@@ -72,10 +68,10 @@ describe("graph transaction handle lifecycle", () => {
 
     expect(runtime.getState(context).data).toBe(2);
     expect(() => outerHandle.setContext(context, 3)).toThrow(
-      "Graph transaction is no longer active."
+      "Graph transaction is no longer active.",
     );
     expect(() => nestedHandle.setContext(context, 3)).toThrow(
-      "Graph transaction is no longer active."
+      "Graph transaction is no longer active.",
     );
   });
 
@@ -85,9 +81,9 @@ describe("graph transaction handle lifecycle", () => {
       const other = defineContextNode({ key: "other", initialValue: 10 });
       const runtime = createGraphRuntime(createGraph({ nodes: [context, other] }));
 
-      const result = await runtime.transaction(async transaction => {
+      const result = await runtime.transaction(async (transaction) => {
         transaction.setContext(context, 2);
-        const innerResult = await transaction.transaction(inner => {
+        const innerResult = await transaction.transaction((inner) => {
           inner.setContext(other, 20);
           return "inner-done" as const;
         });
@@ -105,13 +101,13 @@ describe("graph transaction handle lifecycle", () => {
       const runtime = createGraphRuntime(createGraph({ nodes: [context, other] }));
 
       await expect(
-        runtime.transaction(async transaction => {
+        runtime.transaction(async (transaction) => {
           transaction.setContext(context, 2);
-          await transaction.transaction(inner => {
+          await transaction.transaction((inner) => {
             inner.setContext(other, 20);
             throw new Error("nested failure");
           });
-        })
+        }),
       ).rejects.toThrow("nested failure");
 
       // The nested call never had its own commit boundary -- both writes
@@ -125,8 +121,8 @@ describe("graph transaction handle lifecycle", () => {
       const context = defineContextNode({ key: "context", initialValue: 1 });
       const runtime = createGraphRuntime(createGraph({ nodes: [context] }));
 
-      const outerTransaction = runtime.transaction(async transaction => {
-        await transaction.transaction(inner => {
+      const outerTransaction = runtime.transaction(async (transaction) => {
+        await transaction.transaction((inner) => {
           inner.setContext(context, 2);
         });
         // An unrelated immediate write changes the generation the nested
@@ -135,7 +131,7 @@ describe("graph transaction handle lifecycle", () => {
       });
 
       await expect(outerTransaction).rejects.toThrow(
-        "Graph transaction conflicted with context changes: context."
+        "Graph transaction conflicted with context changes: context.",
       );
       expect(runtime.getState(context).data).toBe(99);
     });
@@ -144,12 +140,12 @@ describe("graph transaction handle lifecycle", () => {
       const runtime = createGraphRuntime(createGraph({ nodes: [] }));
       let captured!: GraphTransaction;
 
-      await runtime.transaction(transaction => {
+      await runtime.transaction((transaction) => {
         captured = transaction;
       });
 
       expect(() => captured.transaction(() => undefined)).toThrow(
-        "Graph transaction is no longer active."
+        "Graph transaction is no longer active.",
       );
     });
   });

@@ -22,11 +22,7 @@
 // written the way a real consumer of the framework would write it.
 import { useNode } from "../../vue";
 import { useDependencyGraphStore } from "../dependency-graph-store";
-import {
-  selectedUserId,
-  userIds,
-  userProfile,
-} from "./context-switching-nodes";
+import { selectedUserId, userIds, userProfile } from "./context-switching-nodes";
 
 const { runtime } = useDependencyGraphStore();
 const context = useNode(selectedUserId, { runtime });

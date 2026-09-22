@@ -10,7 +10,6 @@ An early wishlist for a single unified explorer UI, written before the playgroun
 
 Graph exploration, metrics, and snapshot export are provided by the reusable devtools panel in `src/devtools`, which can be embedded in any consuming app. The Devtools scenario demonstrates it against this playground's own runtimes.
 
-
 ## Implemented scenarios
 
 ### Concurrency Limit
@@ -72,7 +71,6 @@ Rollback path:
 7. Confirm in-progress values are `none` and committed observer snapshots remain empty.
 8. Select **Reset** and confirm outcome returns to `none` and the error is cleared.
 
-
 ## Typed Events
 
 The **Typed Events** scenario demonstrates cross-domain event invalidation. An appointments-domain publisher emits `appointment.booked`; a capability-status node conditionally matches the payload against its declared job-seeker context dependency.
@@ -90,19 +88,15 @@ Manual validation:
 7. Start another transaction, roll it back, and confirm no reload.
 8. Start a transaction, switch tabs, return, and confirm no suspended transaction or warning.
 
-
 ## Transaction ownership isolation
 
 The Atomic Transaction scenario now demonstrates an unrelated runtime context update while a transaction is paused. The plain `runtime.setContext(...)` update becomes visible immediately, reloads its subscribed dependent before the transaction closes, and remains committed when the staged transaction rolls back. This is intentionally separate from the same-context conflict demonstration planned for TOI-8B.
 
-
 The Atomic Transaction scenario also demonstrates same-context optimistic conflict detection. A transaction stages the first context, a plain runtime write commits `999` to that same context, and transaction commit rejects with `GraphTransactionConflictError`. The UI displays the conflicting context key and confirms the immediate value remains committed while the other staged value is not applied.
-
 
 ## Typed event ownership isolation
 
 The Typed Events scenario now includes an unrelated event target and a **Publish unrelated event now** action while the appointment event transaction is staged. The plain `runtime.publish(...)` publication reloads its target before the transaction closes and remains committed when the staged appointment event rolls back. The appointment event remains invisible and its capability request count does not advance.
-
 
 ## Transaction ownership demonstration flow
 
@@ -174,7 +168,7 @@ Controls:
 
 - **Change user** advances the context, invalidating the data node and its derived descendant.
 - **Book appointment** runs a mutation whose success effect publishes an event, which invalidates the appointments node through its event-invalidation rule (not through the mutation's own effects directly) - a deliberate way to demonstrate the event lane in the Graph tab.
-- **Fail next load** causes the *next* load of the appointments node to fail, for exercising the error state and the Timeline's failure highlighting.
+- **Fail next load** causes the _next_ load of the appointments node to fail, for exercising the error state and the Timeline's failure highlighting.
 
 Manual validation:
 

@@ -40,7 +40,7 @@ const parseDevtoolsExport = (json: string): DevtoolsExport => {
   if (!isRecord(parsed)) throw new InvalidDevtoolsExportError("not a JSON object");
   if (parsed.schemaVersion !== 1) {
     throw new InvalidDevtoolsExportError(
-      `unsupported schemaVersion (got ${JSON.stringify(parsed.schemaVersion)})`
+      `unsupported schemaVersion (got ${JSON.stringify(parsed.schemaVersion)})`,
     );
   }
   if (!isRecord(parsed.snapshot) || !Array.isArray(parsed.events)) {
@@ -79,11 +79,9 @@ export const useOfflineDevtoolsSnapshot = (): UseOfflineDevtoolsSnapshotResult =
   const selectedNodeKey = ref<string | undefined>(undefined);
 
   const snapshot = computed<GraphDiagnosticSnapshotV1>(
-    () => loaded.value?.snapshot ?? emptySnapshot
+    () => loaded.value?.snapshot ?? emptySnapshot,
   );
-  const events = computed<readonly GraphDiagnosticEvent[]>(
-    () => loaded.value?.events ?? []
-  );
+  const events = computed<readonly GraphDiagnosticEvent[]>(() => loaded.value?.events ?? []);
 
   const graphView = computed(() => computeGraphView(snapshot.value));
   const timeline = computed(() => computeTimeline(events.value));
@@ -91,7 +89,7 @@ export const useOfflineDevtoolsSnapshot = (): UseOfflineDevtoolsSnapshotResult =
   const selectedNodeDetail = computed(() =>
     selectedNodeKey.value === undefined
       ? undefined
-      : computeNodeDetail(snapshot.value, selectedNodeKey.value)
+      : computeNodeDetail(snapshot.value, selectedNodeKey.value),
   );
 
   const select = (key: string | undefined): void => {

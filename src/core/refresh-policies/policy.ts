@@ -13,10 +13,7 @@ import type {
   StaleAfterPolicy,
 } from "./types";
 
-const requireObject = (
-  value: unknown,
-  fieldName: string
-): Record<string, unknown> => {
+const requireObject = (value: unknown, fieldName: string): Record<string, unknown> => {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     throw new TypeError(`${fieldName} must be an object.`);
   }
@@ -30,10 +27,7 @@ const requirePositiveFinite = (value: unknown, fieldName: string): number => {
   return value;
 };
 
-const requireNonNegativeInteger = (
-  value: unknown,
-  fieldName: string
-): number => {
+const requireNonNegativeInteger = (value: unknown, fieldName: string): number => {
   if (typeof value !== "number" || !Number.isInteger(value) || value < 0) {
     throw new RangeError(`${fieldName} must be a non-negative integer.`);
   }
@@ -41,19 +35,14 @@ const requireNonNegativeInteger = (
 };
 
 const requireJitterRatio = (value: unknown): number => {
-  if (
-    typeof value !== "number" ||
-    !Number.isFinite(value) ||
-    value < 0 ||
-    value > 1
-  ) {
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0 || value > 1) {
     throw new RangeError("jitterRatio must be a finite number between 0 and 1.");
   }
   return value;
 };
 
 const normalizeFixedRetry = (
-  options: FixedRetryOptions | Record<string, unknown>
+  options: FixedRetryOptions | Record<string, unknown>,
 ): FixedRetryPolicy =>
   Object.freeze({
     strategy: "fixed",
@@ -63,24 +52,15 @@ const normalizeFixedRetry = (
   });
 
 const normalizeExponentialRetry = (
-  options: ExponentialRetryOptions | Record<string, unknown>
+  options: ExponentialRetryOptions | Record<string, unknown>,
 ): ExponentialRetryPolicy => {
-  const initialDelayMs = requirePositiveFinite(
-    options.initialDelayMs,
-    "initialDelayMs"
-  );
+  const initialDelayMs = requirePositiveFinite(options.initialDelayMs, "initialDelayMs");
   const maxDelayMs = requirePositiveFinite(options.maxDelayMs, "maxDelayMs");
   if (maxDelayMs < initialDelayMs) {
-    throw new RangeError(
-      "maxDelayMs must be greater than or equal to initialDelayMs."
-    );
+    throw new RangeError("maxDelayMs must be greater than or equal to initialDelayMs.");
   }
   const multiplier = options.multiplier ?? 2;
-  if (
-    typeof multiplier !== "number" ||
-    !Number.isFinite(multiplier) ||
-    multiplier < 1
-  ) {
+  if (typeof multiplier !== "number" || !Number.isFinite(multiplier) || multiplier < 1) {
     throw new RangeError("multiplier must be a finite number greater than or equal to 1.");
   }
 
@@ -104,9 +84,7 @@ const normalizeRetry = (value: unknown): RetryPolicy | undefined => {
   throw new TypeError('retry.strategy must be "fixed" or "exponential".');
 };
 
-export const staleAfter = (
-  options: StaleAfterOptions
-): StaleAfterPolicy => {
+export const staleAfter = (options: StaleAfterOptions): StaleAfterPolicy => {
   const value = requireObject(options, "staleAfter options");
   return Object.freeze({
     kind: "stale-after",
@@ -114,9 +92,7 @@ export const staleAfter = (
   });
 };
 
-export const refreshInterval = (
-  options: RefreshIntervalOptions
-): RefreshIntervalPolicy => {
+export const refreshInterval = (options: RefreshIntervalOptions): RefreshIntervalPolicy => {
   const value = requireObject(options, "refreshInterval options");
   return Object.freeze({
     kind: "interval",
@@ -125,9 +101,7 @@ export const refreshInterval = (
   });
 };
 
-export const pollUntil = <TValue>(
-  options: PollUntilOptions<TValue>
-): PollUntilPolicy<TValue> => {
+export const pollUntil = <TValue>(options: PollUntilOptions<TValue>): PollUntilPolicy<TValue> => {
   const value = requireObject(options, "pollUntil options");
   if (typeof value.stopWhen !== "function") {
     throw new TypeError("stopWhen must be a function.");
@@ -148,7 +122,7 @@ export const pollUntil = <TValue>(
 
 export function assertValidRefreshPolicy(
   policy: unknown,
-  nodeKey: string
+  nodeKey: string,
 ): asserts policy is AnyRefreshPolicy {
   const value = requireObject(policy, `Refresh policy for node "${nodeKey}"`);
 
@@ -163,8 +137,6 @@ export function assertValidRefreshPolicy(
       pollUntil<unknown>(value as unknown as PollUntilOptions<unknown>);
       return;
     default:
-      throw new TypeError(
-        `Refresh policy for node "${nodeKey}" has an unknown kind.`
-      );
+      throw new TypeError(`Refresh policy for node "${nodeKey}" has an unknown kind.`);
   }
 }

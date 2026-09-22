@@ -57,14 +57,14 @@ describe("transaction diagnostic isolation", () => {
     diagnostics.reset();
     const releaseFirst = deferred<void>();
 
-    const firstTransaction = runtime.transaction(async transaction => {
+    const firstTransaction = runtime.transaction(async (transaction) => {
       transaction.setContext(firstContext, 2);
       transaction.publish(firstEvent, undefined);
       await releaseFirst.promise;
     });
     await Promise.resolve();
 
-    await runtime.transaction(transaction => {
+    await runtime.transaction((transaction) => {
       transaction.setContext(secondContext, 20);
       transaction.publish(secondEvent, undefined);
     });
@@ -76,7 +76,7 @@ describe("transaction diagnostic isolation", () => {
     subscription.unsubscribe();
 
     const events = normalizeDiagnosticEvents(diagnostics.getEvents());
-    const started = events.filter(event => event.type === "transaction.started");
+    const started = events.filter((event) => event.type === "transaction.started");
     expect(started).toHaveLength(2);
     const firstOperationId = started[0]?.operationId;
     const secondOperationId = started[1]?.operationId;
@@ -84,46 +84,60 @@ describe("transaction diagnostic isolation", () => {
     expect(secondOperationId).toBeDefined();
     expect(firstOperationId).not.toBe(secondOperationId);
 
-    expect(events.find(event =>
-      event.type === "context.changed" &&
-      event.contextKeys.includes("transaction-first-context")
-    )).toMatchObject({ operationId: firstOperationId });
-    expect(events.find(event =>
-      event.type === "context.changed" &&
-      event.contextKeys.includes("transaction-second-context")
-    )).toMatchObject({ operationId: secondOperationId });
+    expect(
+      events.find(
+        (event) =>
+          event.type === "context.changed" &&
+          event.contextKeys.includes("transaction-first-context"),
+      ),
+    ).toMatchObject({ operationId: firstOperationId });
+    expect(
+      events.find(
+        (event) =>
+          event.type === "context.changed" &&
+          event.contextKeys.includes("transaction-second-context"),
+      ),
+    ).toMatchObject({ operationId: secondOperationId });
 
-    expect(events.find(event =>
-      event.type === "event.published" &&
-      "eventKey" in event &&
-      event.eventKey === "transaction.first.changed"
-    )).toMatchObject({ operationId: firstOperationId, transactionOwned: true });
-    expect(events.find(event =>
-      event.type === "event.published" &&
-      "eventKey" in event &&
-      event.eventKey === "transaction.second.changed"
-    )).toMatchObject({ operationId: secondOperationId, transactionOwned: true });
+    expect(
+      events.find(
+        (event) =>
+          event.type === "event.published" &&
+          "eventKey" in event &&
+          event.eventKey === "transaction.first.changed",
+      ),
+    ).toMatchObject({ operationId: firstOperationId, transactionOwned: true });
+    expect(
+      events.find(
+        (event) =>
+          event.type === "event.published" &&
+          "eventKey" in event &&
+          event.eventKey === "transaction.second.changed",
+      ),
+    ).toMatchObject({ operationId: secondOperationId, transactionOwned: true });
 
-    expect(events.find(event =>
-      event.type === "transaction.committed" &&
-      event.operationId === firstOperationId
-    )).toBeDefined();
-    expect(events.find(event =>
-      event.type === "transaction.committed" &&
-      event.operationId === secondOperationId
-    )).toBeDefined();
+    expect(
+      events.find(
+        (event) => event.type === "transaction.committed" && event.operationId === firstOperationId,
+      ),
+    ).toBeDefined();
+    expect(
+      events.find(
+        (event) =>
+          event.type === "transaction.committed" && event.operationId === secondOperationId,
+      ),
+    ).toBeDefined();
 
     for (const [nodeKey, causeId] of [
       ["transaction-first-data", firstOperationId],
       ["transaction-second-data", secondOperationId],
     ] as const) {
-      const load = events.find(event =>
-        event.type === "node.load.started" && event.nodeKey === nodeKey
+      const load = events.find(
+        (event) => event.type === "node.load.started" && event.nodeKey === nodeKey,
       );
       expect(load).toMatchObject({ causeId });
-      const scheduler = events.find(event =>
-        event.type === "scheduler.started" &&
-        event.operationId === load?.operationId
+      const scheduler = events.find(
+        (event) => event.type === "scheduler.started" && event.operationId === load?.operationId,
       );
       expect(scheduler).toMatchObject({ causeId });
     }
@@ -153,14 +167,14 @@ describe("transaction diagnostic isolation", () => {
     );
     const releaseRollback = deferred<void>();
 
-    const rolledBackTransaction = runtime.transaction(async transaction => {
+    const rolledBackTransaction = runtime.transaction(async (transaction) => {
       transaction.setContext(rolledBackContext, 2);
       await releaseRollback.promise;
       throw new Error("rollback");
     });
     await Promise.resolve();
 
-    await runtime.transaction(transaction => {
+    await runtime.transaction((transaction) => {
       transaction.setContext(committedContext, 20);
     });
 
@@ -168,26 +182,33 @@ describe("transaction diagnostic isolation", () => {
     await expect(rolledBackTransaction).rejects.toThrow("rollback");
 
     const events = normalizeDiagnosticEvents(diagnostics.getEvents());
-    const started = events.filter(event => event.type === "transaction.started");
+    const started = events.filter((event) => event.type === "transaction.started");
     const rolledBackOperationId = started[0]?.operationId;
     const committedOperationId = started[1]?.operationId;
 
-    expect(events.find(event =>
-      event.type === "context.changed" &&
-      event.contextKeys.includes("transaction-committed-context")
-    )).toMatchObject({ operationId: committedOperationId });
-    expect(events.some(event =>
-      event.type === "context.changed" &&
-      event.operationId === rolledBackOperationId
-    )).toBe(false);
-    expect(events.find(event =>
-      event.type === "transaction.rolled-back" &&
-      event.operationId === rolledBackOperationId
-    )).toBeDefined();
-    expect(events.find(event =>
-      event.type === "transaction.committed" &&
-      event.operationId === committedOperationId
-    )).toBeDefined();
+    expect(
+      events.find(
+        (event) =>
+          event.type === "context.changed" &&
+          event.contextKeys.includes("transaction-committed-context"),
+      ),
+    ).toMatchObject({ operationId: committedOperationId });
+    expect(
+      events.some(
+        (event) => event.type === "context.changed" && event.operationId === rolledBackOperationId,
+      ),
+    ).toBe(false);
+    expect(
+      events.find(
+        (event) =>
+          event.type === "transaction.rolled-back" && event.operationId === rolledBackOperationId,
+      ),
+    ).toBeDefined();
+    expect(
+      events.find(
+        (event) =>
+          event.type === "transaction.committed" && event.operationId === committedOperationId,
+      ),
+    ).toBeDefined();
   });
-
 });

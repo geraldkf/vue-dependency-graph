@@ -44,8 +44,7 @@ const Targets = defineDataNode({
   key: "targets",
   dependencies: [JobSeekerId, PointPeriodId] as const,
   initialValue: [] as Target[],
-  load: ({ get, signal }) =>
-    api.getTargets(get(JobSeekerId), get(PointPeriodId), signal),
+  load: ({ get, signal }) => api.getTargets(get(JobSeekerId), get(PointPeriodId), signal),
 });
 ```
 
@@ -60,8 +59,7 @@ const CanModifyCredit = defineDerivedNode({
   key: "canModifyCredit",
   dependencies: [Permissions, CurrentCredit] as const,
   derive: ({ get }) =>
-    get(Permissions).includes("credit.modify") &&
-    get(CurrentCredit)?.status !== "Finalised",
+    get(Permissions).includes("credit.modify") && get(CurrentCredit)?.status !== "Finalised",
 });
 ```
 
@@ -146,16 +144,16 @@ Unknown keys return `undefined` from `getNode`, `false` from `hasNode`, and empt
 
 A node's runtime state is five fields that only make sense together: `status`, `freshness`, `error`, `hasSuccessfulValue`, and `data`, plus the `generation` counter. Every write to them goes through one of eight named transitions in `src/core/state/transitions.ts`. Each transition sets all the fields that must change together, so a node is never left in a state the fields do not describe.
 
-| Transition | What it means | Generation |
-| --- | --- | --- |
-| `invalidate` | The value is out of date and anything running for the node is superseded. Keeps the value; `success` if there is one, else `idle`; clears the error. Used by context, event, and mutation invalidation and by refresh. | +1 |
-| `beginAttempt` | An execution attempt starts: `refreshing` if a value exists, else `loading`; stale; no error. | - |
-| `succeedAttempt` | An attempt produced a value: stored, `success`, fresh, no error, has a value. | - |
-| `failAttempt` | An attempt, or a policy acting on the node, failed: `error`, stale, error recorded. Keeps the last value and its flag. | - |
-| `abortAttempt` | An attempt ended without a result and nothing superseded the node (aborted because the last subscriber left, or cancelled while queued): not running any more. Keeps any value; `success` if there is one, else `idle`; stale; no error. | - |
-| `writeValue` | A value is written directly: a context write or a mutation's optimistic or success update. Fresh, or stale when the same mutation also invalidates something the value depends on. | +1 |
-| `restoreSnapshot` | A mutation puts back what its optimistic update replaced. | +1 |
-| `releaseValue` | An idle value is dropped: initial value, no successful value, `idle`, stale. | +1 |
+| Transition        | What it means                                                                                                                                                                                                                            | Generation |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| `invalidate`      | The value is out of date and anything running for the node is superseded. Keeps the value; `success` if there is one, else `idle`; clears the error. Used by context, event, and mutation invalidation and by refresh.                   | +1         |
+| `beginAttempt`    | An execution attempt starts: `refreshing` if a value exists, else `loading`; stale; no error.                                                                                                                                            | -          |
+| `succeedAttempt`  | An attempt produced a value: stored, `success`, fresh, no error, has a value.                                                                                                                                                            | -          |
+| `failAttempt`     | An attempt, or a policy acting on the node, failed: `error`, stale, error recorded. Keeps the last value and its flag.                                                                                                                   | -          |
+| `abortAttempt`    | An attempt ended without a result and nothing superseded the node (aborted because the last subscriber left, or cancelled while queued): not running any more. Keeps any value; `success` if there is one, else `idle`; stale; no error. | -          |
+| `writeValue`      | A value is written directly: a context write or a mutation's optimistic or success update. Fresh, or stale when the same mutation also invalidates something the value depends on.                                                       | +1         |
+| `restoreSnapshot` | A mutation puts back what its optimistic update replaced.                                                                                                                                                                                | +1         |
+| `releaseValue`    | An idle value is dropped: initial value, no successful value, `idle`, stale.                                                                                                                                                             | +1         |
 
 **The generation rule.** `generation` counts how many times a node's state has been superseded, and stale in-flight work is compared against it. Transitions that supersede in-flight work bump it (`invalidate`, `writeValue`, `restoreSnapshot`, `releaseValue`). The attempt lifecycle (`beginAttempt`, `succeedAttempt`, `failAttempt`, `abortAttempt`) never does, because it is what the generation check guards. A restore bumps rather than rewinds, so a generation always identifies one committed version of state.
 

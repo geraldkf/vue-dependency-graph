@@ -9,16 +9,11 @@
  */
 export interface TimerEnvironment {
   readonly now: () => number;
-  readonly setTimeout: (
-    callback: () => void,
-    delayMs: number
-  ) => unknown;
+  readonly setTimeout: (callback: () => void, delayMs: number) => unknown;
   readonly clearTimeout: (handle: unknown) => void;
   readonly random: () => number;
   readonly isPaused: () => boolean;
-  readonly onPauseChange: (
-    listener: (paused: boolean) => void
-  ) => () => void;
+  readonly onPauseChange: (listener: (paused: boolean) => void) => () => void;
 }
 
 export const createDefaultTimerEnvironment = (): TimerEnvironment =>

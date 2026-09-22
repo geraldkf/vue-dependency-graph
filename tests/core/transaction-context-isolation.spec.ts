@@ -1,10 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import {
-  createGraph,
-  createGraphRuntime,
-  defineContextNode,
-  defineDataNode,
-} from "../../src/core";
+import { createGraph, createGraphRuntime, defineContextNode, defineDataNode } from "../../src/core";
 import { deferred } from "./test-helpers";
 
 describe("transaction context ownership", () => {
@@ -18,11 +13,9 @@ describe("transaction context ownership", () => {
       initialValue: 10,
     });
     const releaseTransaction = deferred<void>();
-    const runtime = createGraphRuntime(
-      createGraph({ nodes: [stagedContext, immediateContext] }),
-    );
+    const runtime = createGraphRuntime(createGraph({ nodes: [stagedContext, immediateContext] }));
 
-    const pendingTransaction = runtime.transaction(async transaction => {
+    const pendingTransaction = runtime.transaction(async (transaction) => {
       transaction.setContext(stagedContext, 2);
       await releaseTransaction.promise;
     });
@@ -56,11 +49,9 @@ describe("transaction context ownership", () => {
       initialValue: 10,
     });
     const releaseTransaction = deferred<void>();
-    const runtime = createGraphRuntime(
-      createGraph({ nodes: [stagedContext, immediateContext] }),
-    );
+    const runtime = createGraphRuntime(createGraph({ nodes: [stagedContext, immediateContext] }));
 
-    const pendingTransaction = runtime.transaction(async transaction => {
+    const pendingTransaction = runtime.transaction(async (transaction) => {
       transaction.setContext(stagedContext, 2);
       await releaseTransaction.promise;
       throw new Error("rollback");
@@ -111,7 +102,7 @@ describe("transaction context ownership", () => {
     const listener = vi.fn();
     runtime.onChange(listener);
 
-    const pendingTransaction = runtime.transaction(async transaction => {
+    const pendingTransaction = runtime.transaction(async (transaction) => {
       transaction.setContext(stagedContext, 2);
       await releaseTransaction.promise;
     });
@@ -127,5 +118,4 @@ describe("transaction context ownership", () => {
     releaseTransaction.resolve();
     await pendingTransaction;
   });
-
 });

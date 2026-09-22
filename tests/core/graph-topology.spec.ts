@@ -34,7 +34,7 @@ describe("dependency resolution", () => {
 
   it.each(["derived", "data"] as const)(
     "resolves a %s node's dependency resolver once and keeps the result stable",
-    kind => {
+    (kind) => {
       const context = defineContextNode({ key: "context", initialValue: 1 });
       const resolver = vi.fn(() => [context] as const);
       const node =
@@ -85,9 +85,7 @@ describe("dependency resolution", () => {
 
     source.push(defineContextNode({ key: "late", initialValue: 2 }));
 
-    expect(node.dependencies.map(dependency => dependency.key)).toEqual([
-      "context",
-    ]);
+    expect(node.dependencies.map((dependency) => dependency.key)).toEqual(["context"]);
   });
 
   it("supports forward references between definitions", () => {
@@ -158,11 +156,7 @@ describe("graph topology contract", () => {
     const { root, zeta, alpha, leaf } = build();
     const graph = createGraph({ nodes: [leaf, zeta, alpha, root] });
 
-    for (const collection of [
-      graph.getNodes(),
-      graph.getParents(leaf),
-      graph.getChildren(root),
-    ]) {
+    for (const collection of [graph.getNodes(), graph.getParents(leaf), graph.getChildren(root)]) {
       expect(Object.isFrozen(collection)).toBe(true);
     }
     expect(graph.getNodes()).toBe(graph.getNodes());
@@ -176,20 +170,9 @@ describe("graph topology contract", () => {
     const { root, zeta, alpha, leaf } = build();
     const graph = createGraph({ nodes: [leaf, zeta, alpha, root] });
 
-    expect(graph.getNodes().map(node => node.key)).toEqual([
-      "leaf",
-      "zeta",
-      "alpha",
-      "root",
-    ]);
-    expect(graph.getParents(leaf).map(node => node.key)).toEqual([
-      "zeta",
-      "alpha",
-    ]);
-    expect(graph.getChildren(root).map(node => node.key)).toEqual([
-      "alpha",
-      "zeta",
-    ]);
+    expect(graph.getNodes().map((node) => node.key)).toEqual(["leaf", "zeta", "alpha", "root"]);
+    expect(graph.getParents(leaf).map((node) => node.key)).toEqual(["zeta", "alpha"]);
+    expect(graph.getChildren(root).map((node) => node.key)).toEqual(["alpha", "zeta"]);
   });
 
   it("is not affected by mutating the node array passed to createGraph", () => {
@@ -245,7 +228,7 @@ describe("graph topology contract", () => {
     const messageFor = (order: readonly ("first" | "second" | "third")[]) => {
       const nodes = create();
       try {
-        createGraph({ nodes: order.map(name => nodes[name]) });
+        createGraph({ nodes: order.map((name) => nodes[name]) });
       } catch (error) {
         expect(error).toBeInstanceOf(GraphValidationError);
         return (error as Error).message;
@@ -271,18 +254,17 @@ describe("event matching and dependency resolution", () => {
       invalidatedBy: [
         {
           event: changed,
-          when: ({ payload, get }: EventInvalidationContext<
-            typeof changed,
-            readonly [typeof jobSeekerId]
-          >) => payload.jobSeekerId === get(jobSeekerId),
+          when: ({
+            payload,
+            get,
+          }: EventInvalidationContext<typeof changed, readonly [typeof jobSeekerId]>) =>
+            payload.jobSeekerId === get(jobSeekerId),
         },
       ] as const,
       initialValue: 0,
       load: async () => 1,
     });
-    const runtime = createGraphRuntime(
-      createGraph({ nodes: [data, jobSeekerId] }),
-    );
+    const runtime = createGraphRuntime(createGraph({ nodes: [data, jobSeekerId] }));
     const callsAfterConstruction = resolver.mock.calls.length;
 
     runtime.publish(changed, { jobSeekerId: 999 });
@@ -304,18 +286,14 @@ describe("event matching and dependency resolution", () => {
       invalidatedBy: [
         {
           event: changed,
-          when: ({ get }: EventInvalidationContext<
-            typeof changed,
-            readonly [typeof declared]
-          >) => (get as (node: AnyNodeDefinition) => unknown)(undeclared) === 2,
+          when: ({ get }: EventInvalidationContext<typeof changed, readonly [typeof declared]>) =>
+            (get as (node: AnyNodeDefinition) => unknown)(undeclared) === 2,
         },
       ] as const,
       initialValue: 0,
       load: async () => 1,
     });
-    const runtime = createGraphRuntime(
-      createGraph({ nodes: [data, declared, undeclared] }),
-    );
+    const runtime = createGraphRuntime(createGraph({ nodes: [data, declared, undeclared] }));
 
     expect(() => runtime.publish(changed, undefined)).toThrowError(
       'Node "data" event predicate cannot read undeclared dependency "undeclared".',

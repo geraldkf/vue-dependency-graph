@@ -59,7 +59,7 @@ describe("runtime.listener-failed diagnostics", () => {
     runtime.setContext(context, 2);
 
     const events = collector.getEvents();
-    const changed = events.find(event => event.type === "context.changed");
+    const changed = events.find((event) => event.type === "context.changed");
     const [failure] = listenerFailures(events);
     expect(changed?.operationId).toBeTruthy();
     expect(failure?.operationId).toBe(changed?.operationId);
@@ -145,9 +145,7 @@ describe("runtime.listener-failed diagnostics", () => {
       status: "success",
       data: 7,
     });
-    expect(listenerFailures(collector.getEvents())[0]?.error.message).toBe(
-      "timer boom",
-    );
+    expect(listenerFailures(collector.getEvents())[0]?.error.message).toBe("timer boom");
     subscription.unsubscribe();
   });
 

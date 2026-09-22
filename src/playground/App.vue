@@ -118,8 +118,6 @@ type PlaygroundScenarioId = (typeof scenarios)[number]["id"];
 
 const activeScenarioId = ref<PlaygroundScenarioId>(scenarios[0].id);
 const activeScenario = computed(
-  () =>
-    scenarios.find(scenario => scenario.id === activeScenarioId.value) ??
-    scenarios[0]
+  () => scenarios.find((scenario) => scenario.id === activeScenarioId.value) ?? scenarios[0],
 );
 </script>

@@ -33,15 +33,9 @@ describe("AggregateQueryScenario", () => {
     expect(screen.getByTestId("metric-a").textContent).toContain("success");
     expect(screen.getByTestId("metric-b").textContent).toContain("success");
     expect(screen.getByTestId("metric-c").textContent).toContain("success");
-    expect(screen.getByTestId("aggregate-success").textContent).toContain(
-      "true"
-    );
-    expect(screen.getByTestId("aggregate-error").textContent).toContain(
-      "false"
-    );
-    expect(
-      screen.getByTestId("aggregate-errors-count").textContent
-    ).toContain("0");
+    expect(screen.getByTestId("aggregate-success").textContent).toContain("true");
+    expect(screen.getByTestId("aggregate-error").textContent).toContain("false");
+    expect(screen.getByTestId("aggregate-errors-count").textContent).toContain("0");
   });
 
   it("aggregate reflects partial failure while the other metrics stay correct", async () => {
@@ -53,9 +47,7 @@ describe("AggregateQueryScenario", () => {
     });
 
     await vi.advanceTimersByTimeAsync(400);
-    expect(screen.getByTestId("aggregate-success").textContent).toContain(
-      "true"
-    );
+    expect(screen.getByTestId("aggregate-success").textContent).toContain("true");
 
     await fireEvent.click(screen.getByLabelText("Make metric C fail"));
     expect(metricCLoader.shouldFail.value).toBe(true);
@@ -72,24 +64,16 @@ describe("AggregateQueryScenario", () => {
     expect(screen.getByTestId("metric-b").textContent).toContain("17");
     expect(screen.getByTestId("metric-c").textContent).toContain("error");
 
-    expect(screen.getByTestId("aggregate-loading").textContent).toContain(
-      "false"
-    );
-    expect(screen.getByTestId("aggregate-error").textContent).toContain(
-      "true"
-    );
+    expect(screen.getByTestId("aggregate-loading").textContent).toContain("false");
+    expect(screen.getByTestId("aggregate-error").textContent).toContain("true");
     // isSuccess is hasSuccessfulValue-based, not latest-attempt-based (see
     // execution.ts: a failed attempt never clears a prior success) — so
     // it stays true here, correctly, since all three metrics still have
     // displayable data. isSuccess and isError can both be true at once:
     // "there's data for everything" and "something's latest attempt
     // failed" are independent, simultaneously true statements.
-    expect(screen.getByTestId("aggregate-success").textContent).toContain(
-      "true"
-    );
-    expect(
-      screen.getByTestId("aggregate-errors-count").textContent
-    ).toContain("1");
+    expect(screen.getByTestId("aggregate-success").textContent).toContain("true");
+    expect(screen.getByTestId("aggregate-errors-count").textContent).toContain("1");
   });
 
   it("isSuccess is false when a metric has never had a successful value", async () => {
@@ -108,11 +92,7 @@ describe("AggregateQueryScenario", () => {
     // reflects that — unlike the "stale success, fresh failure" case,
     // where isSuccess stays true.
     expect(screen.getByTestId("metric-c").textContent).toContain("error");
-    expect(screen.getByTestId("aggregate-error").textContent).toContain(
-      "true"
-    );
-    expect(screen.getByTestId("aggregate-success").textContent).toContain(
-      "false"
-    );
+    expect(screen.getByTestId("aggregate-error").textContent).toContain("true");
+    expect(screen.getByTestId("aggregate-success").textContent).toContain("false");
   });
 });

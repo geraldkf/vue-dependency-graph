@@ -1,6 +1,4 @@
-export type GraphChangeObservationReason =
-  | "context-invalidation"
-  | "changed-result";
+export type GraphChangeObservationReason = "context-invalidation" | "changed-result";
 
 export interface OperationObservation {
   readonly operationId: string;
@@ -24,26 +22,22 @@ export interface OperationObservationTracker {
    * Runs `fn` with `observation` as the current operation, restoring the
    * previous observation (if any) afterwards - including on throw.
    */
-  readonly runObserved: <T>(
-    observation: OperationObservation,
-    fn: () => T,
-  ) => T;
+  readonly runObserved: <T>(observation: OperationObservation, fn: () => T) => T;
 }
 
-export const createOperationObservationTracker =
-  (): OperationObservationTracker => {
-    let active: OperationObservation | undefined;
+export const createOperationObservationTracker = (): OperationObservationTracker => {
+  let active: OperationObservation | undefined;
 
-    return Object.freeze({
-      current: () => active,
-      runObserved: <T>(observation: OperationObservation, fn: () => T): T => {
-        const previous = active;
-        active = observation;
-        try {
-          return fn();
-        } finally {
-          active = previous;
-        }
-      },
-    });
-  };
+  return Object.freeze({
+    current: () => active,
+    runObserved: <T>(observation: OperationObservation, fn: () => T): T => {
+      const previous = active;
+      active = observation;
+      try {
+        return fn();
+      } finally {
+        active = previous;
+      }
+    },
+  });
+};

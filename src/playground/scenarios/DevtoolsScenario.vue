@@ -2,23 +2,18 @@
   <section aria-labelledby="devtools-heading">
     <h2 id="devtools-heading">Devtools</h2>
     <p>
-      A live graph with a context, a data node with an event-invalidation and
-      a refresh policy, a derived node, and a mutation - enough variety to
-      exercise every tab in the panel below. Use the controls to generate
-      activity, then try Export snapshot followed by Load snapshot to see the
-      offline viewer.
+      A live graph with a context, a data node with an event-invalidation and a refresh policy, a
+      derived node, and a mutation - enough variety to exercise every tab in the panel below. Use
+      the controls to generate activity, then try Export snapshot followed by Load snapshot to see
+      the offline viewer.
     </p>
 
     <div aria-label="Devtools scenario controls">
-      <button data-testid="devtools-change-user" @click="onChangeUser">
-        Change user
-      </button>
+      <button data-testid="devtools-change-user" @click="onChangeUser">Change user</button>
       <button data-testid="devtools-book-appointment" @click="onBookAppointment">
         Book appointment
       </button>
-      <button data-testid="devtools-fail-next" @click="onFailNext">
-        Fail next load
-      </button>
+      <button data-testid="devtools-fail-next" @click="onFailNext">Fail next load</button>
     </div>
     <p data-testid="devtools-last-action">Last action: {{ lastAction }}</p>
 

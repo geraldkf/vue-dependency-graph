@@ -13,7 +13,7 @@ import { getEventInvalidationCandidates } from "../../src/core/events/event-inde
 const expectEventValidation = (
   action: () => unknown,
   code: GraphValidationError["code"],
-  values: readonly string[]
+  values: readonly string[],
 ): void => {
   try {
     action();
@@ -33,9 +33,7 @@ describe("graph event invalidation index", () => {
       key: "jobSeekerId",
       initialValue: 123,
     });
-    const appointmentBooked = defineEvent<{ jobSeekerId: number }>(
-      "appointment.booked"
-    );
+    const appointmentBooked = defineEvent<{ jobSeekerId: number }>("appointment.booked");
     const first = defineDerivedNode({
       key: "first",
       dependencies: [jobSeekerId] as const,
@@ -54,15 +52,9 @@ describe("graph event invalidation index", () => {
       nodes: [second, jobSeekerId, first],
     });
 
-    const candidates = getEventInvalidationCandidates(
-      graph,
-      appointmentBooked
-    );
+    const candidates = getEventInvalidationCandidates(graph, appointmentBooked);
 
-    expect(candidates.map(candidate => candidate.node.key)).toEqual([
-      "second",
-      "first",
-    ]);
+    expect(candidates.map((candidate) => candidate.node.key)).toEqual(["second", "first"]);
     expect(candidates[0]).toMatchObject({
       event: appointmentBooked,
       node: second,
@@ -90,9 +82,7 @@ describe("graph event invalidation index", () => {
     const graph = createGraph({ nodes: [node] });
 
     expect(
-      getEventInvalidationCandidates(graph, equivalent).map(
-        candidate => candidate.node.key
-      )
+      getEventInvalidationCandidates(graph, equivalent).map((candidate) => candidate.node.key),
     ).toEqual(["data"]);
 
     const missing = getEventInvalidationCandidates(graph, unused);
@@ -118,14 +108,10 @@ describe("graph event invalidation index", () => {
     const secondGraph = createGraph({ nodes: [second] });
 
     expect(
-      getEventInvalidationCandidates(firstGraph, event).map(
-        candidate => candidate.node.key
-      )
+      getEventInvalidationCandidates(firstGraph, event).map((candidate) => candidate.node.key),
     ).toEqual(["first"]);
     expect(
-      getEventInvalidationCandidates(secondGraph, event).map(
-        candidate => candidate.node.key
-      )
+      getEventInvalidationCandidates(secondGraph, event).map((candidate) => candidate.node.key),
     ).toEqual(["second"]);
   });
 
@@ -139,11 +125,10 @@ describe("graph event invalidation index", () => {
       load: async () => 1,
     });
 
-    expectEventValidation(
-      () => createGraph({ nodes: [node] }),
-      "DUPLICATE_EVENT_INVALIDATION",
-      ["data", "domain.changed"]
-    );
+    expectEventValidation(() => createGraph({ nodes: [node] }), "DUPLICATE_EVENT_INVALIDATION", [
+      "data",
+      "domain.changed",
+    ]);
   });
 
   it("rejects malformed and blank event declarations from untyped input", () => {
@@ -167,13 +152,11 @@ describe("graph event invalidation index", () => {
     expectEventValidation(
       () => createGraph({ nodes: [malformedNode] }),
       "INVALID_EVENT_DECLARATION",
-      ["malformed", "domain.changed"]
+      ["malformed", "domain.changed"],
     );
-    expectEventValidation(
-      () => createGraph({ nodes: [blankEventNode] }),
-      "INVALID_EVENT_KEY",
-      ["blank-event"]
-    );
+    expectEventValidation(() => createGraph({ nodes: [blankEventNode] }), "INVALID_EVENT_KEY", [
+      "blank-event",
+    ]);
   });
 
   it("rejects event invalidation metadata on context nodes from untyped input", () => {
@@ -186,10 +169,8 @@ describe("graph event invalidation index", () => {
       initialValue: 1,
     }) as unknown as AnyNodeDefinition;
 
-    expectEventValidation(
-      () => createGraph({ nodes: [context] }),
-      "INVALID_EVENT_DECLARATION",
-      ["context"]
-    );
+    expectEventValidation(() => createGraph({ nodes: [context] }), "INVALID_EVENT_DECLARATION", [
+      "context",
+    ]);
   });
 });

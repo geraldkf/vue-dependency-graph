@@ -19,7 +19,6 @@ export type NodeAttemptOutcome =
   | { readonly status: "obsolete" }
   | { readonly status: "failed"; readonly error: Error };
 
-
 export class GraphExecutionError extends Error {
   public readonly failures: readonly NodeExecutionFailure[];
 
@@ -27,13 +26,13 @@ export class GraphExecutionError extends Error {
     super(`Graph execution failed for ${failures.length} node(s).`);
     this.name = "GraphExecutionError";
     this.failures = Object.freeze(
-      failures.map(failure =>
+      failures.map((failure) =>
         Object.freeze(
           failure.blockedBy
             ? { ...failure, blockedBy: Object.freeze([...failure.blockedBy]) }
-            : { ...failure }
-        )
-      )
+            : { ...failure },
+        ),
+      ),
     );
   }
 }

@@ -48,9 +48,9 @@ describe("mutation updater purity", () => {
     await runtime.execute([list, value]);
 
     await runtime.mutate(save, undefined, {
-      onSuccess: effects => {
-        effects.update(list, current => [...current, 3]);
-        effects.update(value, current => ({
+      onSuccess: (effects) => {
+        effects.update(list, (current) => [...current, 3]);
+        effects.update(value, (current) => ({
           ...current,
           nested: { label: "updated" },
         }));
@@ -72,12 +72,15 @@ describe("mutation updater purity", () => {
     const listener = vi.fn();
     runtime.onChange(listener);
 
-    await expect(runtime.mutate(save, undefined, {
-      onSuccess: effects => effects.update(list, current => {
-        current.push(3);
-        return current;
+    await expect(
+      runtime.mutate(save, undefined, {
+        onSuccess: (effects) =>
+          effects.update(list, (current) => {
+            current.push(3);
+            return current;
+          }),
       }),
-    })).rejects.toMatchObject({
+    ).rejects.toMatchObject({
       name: "GraphMutationStateError",
       nodeKey: list.key,
     });
@@ -92,12 +95,15 @@ describe("mutation updater purity", () => {
     await runtime.execute([value]);
     const before = runtime.getState(value);
 
-    await expect(runtime.mutate(save, undefined, {
-      onSuccess: effects => effects.update(value, current => {
-        (current as { count: number }).count = 2;
-        return current;
+    await expect(
+      runtime.mutate(save, undefined, {
+        onSuccess: (effects) =>
+          effects.update(value, (current) => {
+            (current as { count: number }).count = 2;
+            return current;
+          }),
       }),
-    })).rejects.toBeInstanceOf(GraphMutationStateError);
+    ).rejects.toBeInstanceOf(GraphMutationStateError);
 
     expect(runtime.getState(value)).toEqual(before);
   });
@@ -108,12 +114,15 @@ describe("mutation updater purity", () => {
     await runtime.execute([value]);
     const before = runtime.getState(value);
 
-    await expect(runtime.mutate(save, undefined, {
-      onSuccess: effects => effects.update(value, current => {
-        (current.nested as { label: string }).label = "mutated";
-        return current;
+    await expect(
+      runtime.mutate(save, undefined, {
+        onSuccess: (effects) =>
+          effects.update(value, (current) => {
+            (current.nested as { label: string }).label = "mutated";
+            return current;
+          }),
       }),
-    })).rejects.toMatchObject({
+    ).rejects.toMatchObject({
       name: "GraphMutationStateError",
       nodeKey: value.key,
     });
@@ -129,17 +138,19 @@ describe("mutation updater purity", () => {
     const beforeList = runtime.getState(list);
     const beforeValue = runtime.getState(value);
 
-    await expect(runtime.mutate(save, undefined, {
-      onSuccess: effects => {
-        effects.update(list, current => {
-          current.push(3);
-          return current;
-        });
-        effects.update(value, () => {
-          throw new Error("Later updater failed");
-        });
-      },
-    })).rejects.toBeInstanceOf(GraphMutationStateError);
+    await expect(
+      runtime.mutate(save, undefined, {
+        onSuccess: (effects) => {
+          effects.update(list, (current) => {
+            current.push(3);
+            return current;
+          });
+          effects.update(value, () => {
+            throw new Error("Later updater failed");
+          });
+        },
+      }),
+    ).rejects.toBeInstanceOf(GraphMutationStateError);
 
     expect(runtime.getState(list)).toEqual(beforeList);
     expect(runtime.getState(value)).toEqual(beforeValue);
@@ -156,19 +167,24 @@ describe("mutation updater purity", () => {
     await runtime.execute([list]);
     const before = runtime.getState(list);
 
-    await expect(runtime.mutate(mutation, undefined, {
-      optimistic: effects => effects.update(list, current => {
-        current.push(3);
-        return current;
+    await expect(
+      runtime.mutate(mutation, undefined, {
+        optimistic: (effects) =>
+          effects.update(list, (current) => {
+            current.push(3);
+            return current;
+          }),
       }),
-    })).rejects.toBeInstanceOf(GraphMutationStateError);
+    ).rejects.toBeInstanceOf(GraphMutationStateError);
 
     expect(execute).not.toHaveBeenCalled();
     expect(runtime.getState(list)).toEqual(before);
 
-    await expect(runtime.mutate(mutation, undefined, {
-      optimistic: effects => effects.update(list, current => [...current, 3]),
-    })).resolves.toBeUndefined();
+    await expect(
+      runtime.mutate(mutation, undefined, {
+        optimistic: (effects) => effects.update(list, (current) => [...current, 3]),
+      }),
+    ).resolves.toBeUndefined();
     expect(execute).toHaveBeenCalledTimes(1);
   });
 
@@ -180,15 +196,17 @@ describe("mutation updater purity", () => {
     const beforeList = runtime.getState(list);
     const beforeValue = runtime.getState(value);
 
-    await expect(runtime.mutate(save, undefined, {
-      onSuccess: effects => {
-        effects.update(value, current => ({ ...current, count: 2 }));
-        effects.update(list, current => {
-          current.pop();
-          return current;
-        });
-      },
-    })).rejects.toBeInstanceOf(GraphMutationStateError);
+    await expect(
+      runtime.mutate(save, undefined, {
+        onSuccess: (effects) => {
+          effects.update(value, (current) => ({ ...current, count: 2 }));
+          effects.update(list, (current) => {
+            current.pop();
+            return current;
+          });
+        },
+      }),
+    ).rejects.toBeInstanceOf(GraphMutationStateError);
 
     expect(runtime.getState(list)).toEqual(beforeList);
     expect(runtime.getState(value)).toEqual(beforeValue);
@@ -204,15 +222,11 @@ describe("mutation updater purity", () => {
     await runtime.execute([timestamp]);
 
     await runtime.mutate(save, undefined, {
-      onSuccess: effects => effects.update(
-        timestamp,
-        current => new Date(current.getTime() + 1_000),
-      ),
+      onSuccess: (effects) =>
+        effects.update(timestamp, (current) => new Date(current.getTime() + 1_000)),
     });
 
-    expect(runtime.getState(timestamp).data.toISOString()).toBe(
-      "2026-01-01T00:00:01.000Z",
-    );
+    expect(runtime.getState(timestamp).data.toISOString()).toBe("2026-01-01T00:00:01.000Z");
   });
 
   it("does not retain protected nested proxies in replacement values", async () => {
@@ -226,10 +240,11 @@ describe("mutation updater purity", () => {
     await runtime.execute([value]);
 
     const pending = runtime.mutate(mutation, undefined, {
-      optimistic: effects => effects.update(value, current => ({
-        ...current,
-        count: 2,
-      })),
+      optimistic: (effects) =>
+        effects.update(value, (current) => ({
+          ...current,
+          count: 2,
+        })),
     });
     await waitForCondition(
       () => runtime.getState(value).data.count === 2,

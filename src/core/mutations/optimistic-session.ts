@@ -33,15 +33,9 @@ export interface OptimisticSessionManager {
     targets: readonly AnyNodeDefinition[],
     affectedNodes: readonly AnyNodeDefinition[],
   ) => OptimisticSessionStart;
-  readonly captureExpectedGenerations: (
-    session: OptimisticSession,
-  ) => OptimisticSession;
-  readonly getRollbackConflicts: (
-    session: OptimisticSession,
-  ) => readonly string[];
-  readonly shouldScheduleRestoredState: (
-    session: OptimisticSession,
-  ) => boolean;
+  readonly captureExpectedGenerations: (session: OptimisticSession) => OptimisticSession;
+  readonly getRollbackConflicts: (session: OptimisticSession) => readonly string[];
+  readonly shouldScheduleRestoredState: (session: OptimisticSession) => boolean;
   readonly release: (session: OptimisticSession | undefined) => void;
 }
 
@@ -56,12 +50,10 @@ export const createOptimisticSessionManager = ({
 }: OptimisticSessionManagerDependencies): OptimisticSessionManager => {
   const optimisticOwners = new Map<string, symbol>();
 
-  const snapshotNodes = (
-    nodes: readonly AnyNodeDefinition[],
-  ): readonly MutationStateSnapshot[] => {
-    const unique = new Map(nodes.map(node => [node.key, node]));
+  const snapshotNodes = (nodes: readonly AnyNodeDefinition[]): readonly MutationStateSnapshot[] => {
+    const unique = new Map(nodes.map((node) => [node.key, node]));
     return Object.freeze(
-      [...unique.values()].map(node => {
+      [...unique.values()].map((node) => {
         const state = getNodeState(node.key);
         return Object.freeze({
           node,
@@ -81,8 +73,8 @@ export const createOptimisticSessionManager = ({
     affectedNodes: readonly AnyNodeDefinition[],
   ): OptimisticSessionStart => {
     const conflictingKeys = targets
-      .filter(node => optimisticOwners.has(node.key))
-      .map(node => node.key);
+      .filter((node) => optimisticOwners.has(node.key))
+      .map((node) => node.key);
     if (conflictingKeys.length > 0) {
       return Object.freeze({
         started: false as const,
@@ -106,21 +98,18 @@ export const createOptimisticSessionManager = ({
     });
   };
 
-  const captureExpectedGenerations = (
-    session: OptimisticSession,
-  ): OptimisticSession => Object.freeze({
-    ...session,
-    expectedGenerations: new Map(
-      session.snapshots.map(snapshot => [
-        snapshot.node.key,
-        getNodeState(snapshot.node.key).generation,
-      ]),
-    ),
-  });
+  const captureExpectedGenerations = (session: OptimisticSession): OptimisticSession =>
+    Object.freeze({
+      ...session,
+      expectedGenerations: new Map(
+        session.snapshots.map((snapshot) => [
+          snapshot.node.key,
+          getNodeState(snapshot.node.key).generation,
+        ]),
+      ),
+    });
 
-  const getRollbackConflicts = (
-    session: OptimisticSession,
-  ): readonly string[] => {
+  const getRollbackConflicts = (session: OptimisticSession): readonly string[] => {
     const conflictingKeys = new Set<string>();
     for (const target of session.targets) {
       if (optimisticOwners.get(target.key) !== session.token) {
@@ -128,18 +117,16 @@ export const createOptimisticSessionManager = ({
       }
     }
 
-    const targetKeys = new Set(session.targets.map(node => node.key));
+    const targetKeys = new Set(session.targets.map((node) => node.key));
     for (const snapshot of session.snapshots) {
       const state = getNodeState(snapshot.node.key);
       if (
         state.generation !== session.expectedGenerations.get(snapshot.node.key) ||
-        (
-          !targetKeys.has(snapshot.node.key) &&
+        (!targetKeys.has(snapshot.node.key) &&
           snapshot.node.kind === "data" &&
           state.status === "success" &&
           state.freshness === "fresh" &&
-          !Object.is(state.data, snapshot.data)
-        )
+          !Object.is(state.data, snapshot.data))
       ) {
         conflictingKeys.add(snapshot.node.key);
       }
@@ -148,12 +135,10 @@ export const createOptimisticSessionManager = ({
     return Object.freeze([...conflictingKeys].sort());
   };
 
-  const shouldScheduleRestoredState = (
-    session: OptimisticSession,
-  ): boolean => session.snapshots.some(
-    snapshot =>
-      snapshot.freshness === "stale" && hasSubscribers(snapshot.node),
-  );
+  const shouldScheduleRestoredState = (session: OptimisticSession): boolean =>
+    session.snapshots.some(
+      (snapshot) => snapshot.freshness === "stale" && hasSubscribers(snapshot.node),
+    );
 
   const release = (session: OptimisticSession | undefined): void => {
     if (!session) return;

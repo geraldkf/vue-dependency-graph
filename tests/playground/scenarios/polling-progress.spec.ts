@@ -2,8 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/vu
 import { afterEach, describe, expect, it } from "vitest";
 import PollingProgressScenario from "../../../src/playground/scenarios/PollingProgressScenario.vue";
 
-const text = (testId: string): string =>
-  screen.getByTestId(testId).textContent ?? "";
+const text = (testId: string): string => screen.getByTestId(testId).textContent ?? "";
 
 const mountConsumer = async (): Promise<void> => {
   await fireEvent.click(screen.getByRole("button", { name: "Mount consumer" }));
@@ -71,9 +70,7 @@ describe("PollingProgressScenario", () => {
   it("demonstrates retry with a deterministic delay", async () => {
     render(PollingProgressScenario);
     await mountConsumer();
-    await fireEvent.click(
-      screen.getByRole("button", { name: "Fail next request" })
-    );
+    await fireEvent.click(screen.getByRole("button", { name: "Fail next request" }));
 
     await waitFor(() => {
       expect(text("polling-retry-attempt")).toBe("1");
@@ -97,9 +94,7 @@ describe("PollingProgressScenario", () => {
     expect(text("polling-lifecycle")).toBe("paused");
     expect(text("polling-timer-count")).toBe("0");
     expect(
-      screen
-        .getByRole("button", { name: "Advance one poll" })
-        .getAttribute("disabled")
+      screen.getByRole("button", { name: "Advance one poll" }).getAttribute("disabled"),
     ).not.toBeNull();
 
     await fireEvent.click(screen.getByRole("button", { name: "Resume" }));

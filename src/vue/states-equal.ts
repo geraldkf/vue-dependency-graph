@@ -18,10 +18,7 @@ import type { NodeRuntimeState } from "../core";
  * context change that re-runs a derived node to the same result), and
  * comparing it would defeat the whole point of this check.
  */
-export const statesEqual = (
-  a: NodeRuntimeState<unknown>,
-  b: NodeRuntimeState<unknown>
-): boolean =>
+export const statesEqual = (a: NodeRuntimeState<unknown>, b: NodeRuntimeState<unknown>): boolean =>
   a.data === b.data &&
   a.status === b.status &&
   a.freshness === b.freshness &&

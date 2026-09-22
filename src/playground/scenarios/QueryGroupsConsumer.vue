@@ -1,9 +1,7 @@
 <template>
   <section aria-label="Query groups consumer">
     <h3>Page consumer</h3>
-    <p data-testid="query-groups-job-seeker">
-      Job seeker: {{ page.nodes.jobSeeker.data.value }}
-    </p>
+    <p data-testid="query-groups-job-seeker">Job seeker: {{ page.nodes.jobSeeker.data.value }}</p>
     <p data-testid="query-groups-appointments">
       Appointments: {{ page.nodes.appointments.data.value.join(", ") || "(none)" }}
     </p>
@@ -14,15 +12,13 @@
       Summary: {{ page.nodes.summary.data.value ?? "Not calculated" }}
     </p>
     <p data-testid="query-groups-aggregate">
-      Loading: {{ page.isLoading.value }}; error: {{ page.isError.value }};
-      success: {{ page.isSuccess.value }}
+      Loading: {{ page.isLoading.value }}; error: {{ page.isError.value }}; success:
+      {{ page.isSuccess.value }}
     </p>
     <p>
       <button :disabled="busy" @click="handleRefresh">Refresh page</button>
     </p>
-    <p data-testid="query-groups-refresh-outcome">
-      Refresh outcome: {{ refreshOutcome }}
-    </p>
+    <p data-testid="query-groups-refresh-outcome">Refresh outcome: {{ refreshOutcome }}</p>
   </section>
 </template>
 

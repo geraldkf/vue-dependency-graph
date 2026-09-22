@@ -156,7 +156,7 @@ describe("refresh policy definitions", () => {
         intervalMs: 1,
         timeoutMs: 2,
         stopWhen: undefined,
-      } as unknown as Parameters<typeof pollUntil>[0])
+      } as unknown as Parameters<typeof pollUntil>[0]),
     ).toThrowError("stopWhen must be a function.");
 
     expect(() =>
@@ -165,7 +165,7 @@ describe("refresh policy definitions", () => {
         timeoutMs: 2,
         stopWhen: () => false,
         failWhen: "invalid",
-      } as unknown as Parameters<typeof pollUntil>[0])
+      } as unknown as Parameters<typeof pollUntil>[0]),
     ).toThrowError("failWhen must be a function when provided.");
   });
 
@@ -184,7 +184,7 @@ describe("refresh policy definitions", () => {
       expect.objectContaining<Partial<GraphValidationError>>({
         code: "INVALID_REFRESH_POLICY",
         message: expect.stringContaining("forged-data"),
-      })
+      }),
     );
   });
 
@@ -207,8 +207,8 @@ describe("refresh policy definitions", () => {
       expect(() => createGraph({ nodes: [forged] })).toThrowError(
         expect.objectContaining<Partial<GraphValidationError>>({
           code: "INVALID_REFRESH_POLICY",
-        })
+        }),
       );
-    }
+    },
   );
 });

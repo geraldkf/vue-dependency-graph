@@ -1,9 +1,4 @@
-import type {
-  NodeFreshness,
-  NodeRuntimeState,
-  NodeStatus,
-  RuntimeNodeData,
-} from "./types";
+import type { NodeFreshness, NodeRuntimeState, NodeStatus, RuntimeNodeData } from "./types";
 import type {
   AnyNodeDefinition,
   ContextNodeDefinition,
@@ -27,12 +22,7 @@ export interface NodeStateRecord {
   readonly hasSuccessfulValue: boolean;
 }
 
-export type ExecutionOrigin =
-  | "explicit"
-  | "scheduler"
-  | "prefetch"
-  | "refresh"
-  | "refresh-policy";
+export type ExecutionOrigin = "explicit" | "scheduler" | "prefetch" | "refresh" | "refresh-policy";
 
 export interface ActiveAttempt {
   readonly generation: number;
@@ -43,48 +33,29 @@ export interface ActiveAttempt {
 }
 
 export interface RuntimeStateStore {
-  readonly getNodeState: (
-    key: string
-  ) => NodeStateRecord;
+  readonly getNodeState: (key: string) => NodeStateRecord;
 
   readonly getSnapshot: <TNode extends AnyNodeDefinition>(
-    node: TNode
+    node: TNode,
   ) => NodeRuntimeState<RuntimeNodeData<TNode>>;
 
-  readonly getActiveAttempt: (
-    key: string
-  ) => ActiveAttempt | undefined;
+  readonly getActiveAttempt: (key: string) => ActiveAttempt | undefined;
 
-  readonly setActiveAttempt: (
-    key: string,
-    attempt: ActiveAttempt
-  ) => void;
+  readonly setActiveAttempt: (key: string, attempt: ActiveAttempt) => void;
 
-  readonly deleteActiveAttempt: (
-    key: string,
-    token: symbol
-  ) => void;
+  readonly deleteActiveAttempt: (key: string, token: symbol) => void;
 
-  readonly getActiveAttempts: () =>
-    IterableIterator<[string, ActiveAttempt]>;
+  readonly getActiveAttempts: () => IterableIterator<[string, ActiveAttempt]>;
 }
 
-const isContextNode = (
-  node: AnyNodeDefinition
-): node is ContextNodeDefinition<unknown> =>
+const isContextNode = (node: AnyNodeDefinition): node is ContextNodeDefinition<unknown> =>
   node.kind === "context";
 
 const isDataNode = (
-  node: AnyNodeDefinition
-): node is DataNodeDefinition<
-  unknown,
-  readonly AnyNodeDefinition[]
-> =>
-  node.kind === "data";
+  node: AnyNodeDefinition,
+): node is DataNodeDefinition<unknown, readonly AnyNodeDefinition[]> => node.kind === "data";
 
-const createInitialState = (
-  node: AnyNodeDefinition
-): NodeStateRecord => {
+const createInitialState = (node: AnyNodeDefinition): NodeStateRecord => {
   if (isContextNode(node)) {
     return {
       data: node.initialValue,
@@ -97,9 +68,7 @@ const createInitialState = (
   }
 
   return {
-    data: isDataNode(node)
-      ? node.initialValue
-      : undefined,
+    data: isDataNode(node) ? node.initialValue : undefined,
     status: "idle",
     freshness: "stale",
     error: null,
@@ -108,9 +77,7 @@ const createInitialState = (
   };
 };
 
-const snapshotState = <TData>(
-  state: NodeStateRecord
-): NodeRuntimeState<TData> =>
+const snapshotState = <TData>(state: NodeStateRecord): NodeRuntimeState<TData> =>
   Object.freeze({
     data: state.data as TData,
     status: state.status,
@@ -120,65 +87,43 @@ const snapshotState = <TData>(
     hasSuccessfulValue: state.hasSuccessfulValue,
   });
 
-export const createRuntimeStateStore = (
-  graph: Graph
-): RuntimeStateStore => {
-  const states =
-    new Map<string, NodeStateRecord>();
+export const createRuntimeStateStore = (graph: Graph): RuntimeStateStore => {
+  const states = new Map<string, NodeStateRecord>();
 
-  const activeAttempts =
-    new Map<string, ActiveAttempt>();
+  const activeAttempts = new Map<string, ActiveAttempt>();
 
   for (const node of graph.getNodes()) {
     states.set(node.key, createInitialState(node));
   }
 
-  const getNodeState = (
-    key: string
-  ): NodeStateRecord => {
+  const getNodeState = (key: string): NodeStateRecord => {
     const state = states.get(key);
 
     if (!state) {
-      throw new Error(
-        `Runtime state for node "${key}" was not found.`
-      );
+      throw new Error(`Runtime state for node "${key}" was not found.`);
     }
 
     return state;
   };
 
-  const getSnapshot = <
-    TNode extends AnyNodeDefinition,
-  >(
-    node: TNode
+  const getSnapshot = <TNode extends AnyNodeDefinition>(
+    node: TNode,
   ): NodeRuntimeState<RuntimeNodeData<TNode>> =>
-    snapshotState<RuntimeNodeData<TNode>>(
-      getNodeState(node.key)
-    );
+    snapshotState<RuntimeNodeData<TNode>>(getNodeState(node.key));
 
-  const getActiveAttempt = (
-    key: string
-  ): ActiveAttempt | undefined =>
-    activeAttempts.get(key);
+  const getActiveAttempt = (key: string): ActiveAttempt | undefined => activeAttempts.get(key);
 
-  const setActiveAttempt = (
-    key: string,
-    attempt: ActiveAttempt
-  ): void => {
+  const setActiveAttempt = (key: string, attempt: ActiveAttempt): void => {
     activeAttempts.set(key, attempt);
   };
 
-  const deleteActiveAttempt = (
-    key: string,
-    token: symbol
-  ): void => {
+  const deleteActiveAttempt = (key: string, token: symbol): void => {
     if (activeAttempts.get(key)?.token === token) {
       activeAttempts.delete(key);
     }
   };
 
-  const getActiveAttempts = ():
-    IterableIterator<[string, ActiveAttempt]> =>
+  const getActiveAttempts = (): IterableIterator<[string, ActiveAttempt]> =>
     activeAttempts.entries();
 
   return Object.freeze({

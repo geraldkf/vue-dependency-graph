@@ -1,11 +1,5 @@
-import type {
-  NodeSubscription,
-  NodeSubscriptionState,
-} from "./types";
-import type {
-  AnyNodeDefinition,
-  Graph,
-} from "../graph/types";
+import type { NodeSubscription, NodeSubscriptionState } from "./types";
+import type { AnyNodeDefinition, Graph } from "../graph/types";
 
 interface MutableNodeSubscriptionState {
   direct: number;
@@ -13,26 +7,15 @@ interface MutableNodeSubscriptionState {
 }
 
 export interface RuntimeSubscriptionController {
-  readonly subscribeNodes: (
-    nodes: readonly AnyNodeDefinition[]
-  ) => NodeSubscription;
-  readonly getSubscriptionState: (
-    node: AnyNodeDefinition
-  ) => NodeSubscriptionState;
-  readonly hasSubscribers: (
-    node: AnyNodeDefinition
-  ) => boolean;
-  readonly hasDirectSubscribers: (
-    node: AnyNodeDefinition
-  ) => boolean;
+  readonly subscribeNodes: (nodes: readonly AnyNodeDefinition[]) => NodeSubscription;
+  readonly getSubscriptionState: (node: AnyNodeDefinition) => NodeSubscriptionState;
+  readonly hasSubscribers: (node: AnyNodeDefinition) => boolean;
+  readonly hasDirectSubscribers: (node: AnyNodeDefinition) => boolean;
 }
 
 export interface RuntimeSubscriptionDependencies {
   readonly graph: Graph;
-  readonly resolveRegisteredNode: (
-    node: AnyNodeDefinition,
-    purpose: string
-  ) => AnyNodeDefinition;
+  readonly resolveRegisteredNode: (node: AnyNodeDefinition, purpose: string) => AnyNodeDefinition;
   readonly notify: () => void;
   readonly afterSubscribe: () => void;
   readonly afterUnsubscribe: () => void;
@@ -55,32 +38,22 @@ export const createRuntimeSubscriptionController = ({
   onAdded,
   onRemoved,
 }: RuntimeSubscriptionDependencies): RuntimeSubscriptionController => {
-  const subscriptionStates =
-    new Map<string, MutableNodeSubscriptionState>();
+  const subscriptionStates = new Map<string, MutableNodeSubscriptionState>();
 
   for (const node of graph.getNodes()) {
     subscriptionStates.set(node.key, { direct: 0, required: 0 });
   }
 
-  const requireSubscriptionState = (
-    key: string
-  ): MutableNodeSubscriptionState => {
+  const requireSubscriptionState = (key: string): MutableNodeSubscriptionState => {
     const state = subscriptionStates.get(key);
     if (!state) {
-      throw new Error(
-        `Subscription state for node "${key}" was not found.`
-      );
+      throw new Error(`Subscription state for node "${key}" was not found.`);
     }
     return state;
   };
 
-  const getSubscriptionState = (
-    node: AnyNodeDefinition
-  ): NodeSubscriptionState => {
-    const registered = resolveRegisteredNode(
-      node,
-      "subscription inspection"
-    );
+  const getSubscriptionState = (node: AnyNodeDefinition): NodeSubscriptionState => {
+    const registered = resolveRegisteredNode(node, "subscription inspection");
     const state = requireSubscriptionState(registered.key);
     return Object.freeze({
       direct: state.direct,
@@ -89,27 +62,17 @@ export const createRuntimeSubscriptionController = ({
     });
   };
 
-  const hasSubscribers = (
-    node: AnyNodeDefinition
-  ): boolean =>
-    getSubscriptionState(node).total > 0;
+  const hasSubscribers = (node: AnyNodeDefinition): boolean => getSubscriptionState(node).total > 0;
 
-  const hasDirectSubscribers = (
-    node: AnyNodeDefinition
-  ): boolean =>
+  const hasDirectSubscribers = (node: AnyNodeDefinition): boolean =>
     requireSubscriptionState(node.key).direct > 0;
 
-  const subscribeNodes = (
-    requestedNodes: readonly AnyNodeDefinition[]
-  ): NodeSubscription => {
+  const subscribeNodes = (requestedNodes: readonly AnyNodeDefinition[]): NodeSubscription => {
     const directNodes: AnyNodeDefinition[] = [];
     const directKeys = new Set<string>();
 
     for (const requested of requestedNodes) {
-      const registered = resolveRegisteredNode(
-        requested,
-        "node subscription"
-      );
+      const registered = resolveRegisteredNode(requested, "node subscription");
       if (directKeys.has(registered.key)) continue;
       directKeys.add(registered.key);
       directNodes.push(registered);
@@ -125,7 +88,7 @@ export const createRuntimeSubscriptionController = ({
 
     const visitedAncestors = new Set<string>();
     const requiredKeys = new Set<string>();
-    const queue = directNodes.flatMap(node => graph.getParents(node));
+    const queue = directNodes.flatMap((node) => graph.getParents(node));
 
     while (queue.length > 0) {
       const ancestor = queue.shift();
@@ -155,16 +118,12 @@ export const createRuntimeSubscriptionController = ({
 
         for (const key of directKeys) {
           if (requireSubscriptionState(key).direct <= 0) {
-            throw new Error(
-              `Direct subscription for node "${key}" cannot become negative.`
-            );
+            throw new Error(`Direct subscription for node "${key}" cannot become negative.`);
           }
         }
         for (const key of requiredKeys) {
           if (requireSubscriptionState(key).required <= 0) {
-            throw new Error(
-              `Required subscription for node "${key}" cannot become negative.`
-            );
+            throw new Error(`Required subscription for node "${key}" cannot become negative.`);
           }
         }
 

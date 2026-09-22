@@ -24,11 +24,12 @@ const AppointmentBooked = defineEvent<{
 Nodes may declare unconditional invalidation or a synchronous predicate using the typed payload and the node's declared dependencies.
 
 ```ts
-invalidatedBy: [{
-  event: AppointmentBooked,
-  when: ({ payload, get }) =>
-    payload.jobSeekerId === get(JobSeekerId),
-}]
+invalidatedBy: [
+  {
+    event: AppointmentBooked,
+    when: ({ payload, get }) => payload.jobSeekerId === get(JobSeekerId),
+  },
+];
 ```
 
 Event identity is key-based. Graph creation validates declarations and builds an immutable candidate index by event key. Publishing an event with no graph consumers is a silent no-op.
@@ -48,7 +49,7 @@ It evaluates against committed graph state and remains independent while another
 Transaction-owned publication is explicit:
 
 ```ts
-await runtime.transaction(transaction => {
+await runtime.transaction((transaction) => {
   transaction.publish(AppointmentBooked, payload);
 });
 ```

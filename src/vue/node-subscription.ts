@@ -1,10 +1,5 @@
 import { shallowRef, type ShallowRef } from "vue";
-import type {
-  AnyNodeDefinition,
-  GraphRuntime,
-  NodeRuntimeState,
-  RuntimeNodeData,
-} from "../core";
+import type { AnyNodeDefinition, GraphRuntime, NodeRuntimeState, RuntimeNodeData } from "../core";
 import { statesEqual } from "./states-equal";
 
 export interface NodeSubscription<TNode extends AnyNodeDefinition> {
@@ -32,7 +27,7 @@ export interface NodeSubscription<TNode extends AnyNodeDefinition> {
  */
 export const createNodeSubscription = <TNode extends AnyNodeDefinition>(
   runtime: GraphRuntime,
-  node: TNode
+  node: TNode,
 ): NodeSubscription<TNode> => {
   const state = shallowRef(runtime.getState(node));
 

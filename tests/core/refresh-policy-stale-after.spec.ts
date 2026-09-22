@@ -25,7 +25,7 @@ const createTestEnvironment = () => {
       timers.set(id, { id, dueAt: now + delayMs, callback });
       return id;
     },
-    clearTimeout: handle => {
+    clearTimeout: (handle) => {
       if (typeof handle === "number") timers.delete(handle);
     },
     random: () => 0.5,
@@ -36,11 +36,9 @@ const createTestEnvironment = () => {
     now += durationMs;
     while (true) {
       const next = [...timers.values()]
-        .filter(timer => timer.dueAt <= now)
+        .filter((timer) => timer.dueAt <= now)
         .sort((left, right) =>
-          left.dueAt === right.dueAt
-            ? left.id - right.id
-            : left.dueAt - right.dueAt
+          left.dueAt === right.dueAt ? left.id - right.id : left.dueAt - right.dueAt,
         )[0];
       if (!next) return;
       timers.delete(next.id);
@@ -48,9 +46,7 @@ const createTestEnvironment = () => {
     }
   };
   const nextDelay = (): number | undefined => {
-    const next = [...timers.values()].sort(
-      (left, right) => left.dueAt - right.dueAt
-    )[0];
+    const next = [...timers.values()].sort((left, right) => left.dueAt - right.dueAt)[0];
     return next ? next.dueAt - now : undefined;
   };
   return { environment, advanceBy, nextDelay, timerCount: () => timers.size };
@@ -79,13 +75,10 @@ describe("stale-after refresh policy", () => {
     expect(requests).toBe(1);
     clock.advanceBy(1);
     await waitForCondition(() => requests === 2, "policy refresh to start");
-    await waitForCondition(
-      () => runtime.getState(node).data === 2,
-      "policy refresh to commit"
-    );
+    await waitForCondition(() => runtime.getState(node).data === 2, "policy refresh to commit");
     await waitForCondition(
       () => clock.nextDelay() === 1_000,
-      "next stale-after timer after refresh settlement"
+      "next stale-after timer after refresh settlement",
     );
     subscription.unsubscribe();
   });

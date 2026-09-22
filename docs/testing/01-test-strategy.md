@@ -315,8 +315,6 @@ Compile-time tests verify mutation input/result inference, data-node-only direct
 
 Tests must not use real network requests, real delays, or framework-inferred HTTP semantics. Known rejection versus unknown outcome is supplied explicitly by the test classifier.
 
-
 ## Combined validation responsibility
 
 Before release or history deletion, validate the exact combined checkout with boundary checks, strict typechecking, the complete Vitest suite, and the production build. Timer and polling behaviour must remain deterministic in automated tests; manual playground checks supplement but do not replace those suites.
-

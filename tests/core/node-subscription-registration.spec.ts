@@ -11,7 +11,11 @@ describe("node subscription registration", () => {
   it("starts every node at zero subscription counts with independent runtime state", () => {
     const context = defineContextNode({ key: "context", initialValue: 1 });
     const data = defineDataNode({ key: "data", initialValue: "", load: async () => "value" });
-    const derived = defineDerivedNode({ key: "derived", dependencies: [context] as const, derive: () => true });
+    const derived = defineDerivedNode({
+      key: "derived",
+      dependencies: [context] as const,
+      derive: () => true,
+    });
     const graph = createGraph({ nodes: [derived, data, context] });
     const first = createGraphRuntime(graph);
     const second = createGraphRuntime(graph);
@@ -30,7 +34,11 @@ describe("node subscription registration", () => {
   it("supports direct subscriptions for all node kinds and separate subscriptions", () => {
     const context = defineContextNode({ key: "context", initialValue: 1 });
     const data = defineDataNode({ key: "data", initialValue: "", load: async () => "value" });
-    const derived = defineDerivedNode({ key: "derived", dependencies: [] as const, derive: () => true });
+    const derived = defineDerivedNode({
+      key: "derived",
+      dependencies: [] as const,
+      derive: () => true,
+    });
     const runtime = createGraphRuntime(createGraph({ nodes: [context, data, derived] }));
 
     const first = runtime.subscribeNodes([context, data, derived]);
@@ -77,5 +85,4 @@ describe("node subscription registration", () => {
 
     subscription.unsubscribe();
   });
-
 });

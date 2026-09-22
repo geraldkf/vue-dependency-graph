@@ -2,9 +2,9 @@
   <section aria-labelledby="runtime-observability-heading">
     <h2 id="runtime-observability-heading">Runtime Observability</h2>
     <p>
-      Run deterministic graph actions for one transaction at a time and inspect
-      the causal event timeline, metrics, and safely redacted snapshot. Use
-      Transaction Isolation to compare overlapping top-level sessions.
+      Run deterministic graph actions for one transaction at a time and inspect the causal event
+      timeline, metrics, and safely redacted snapshot. Use Transaction Isolation to compare
+      overlapping top-level sessions.
     </p>
 
     <p data-testid="observability-case">Selected case: {{ selectedCase }}</p>
@@ -24,9 +24,7 @@
 
     <section aria-labelledby="observability-metrics-heading">
       <h3 id="observability-metrics-heading">Metrics</h3>
-      <p data-testid="observability-event-count">
-        Events received: {{ metrics.eventCount }}
-      </p>
+      <p data-testid="observability-event-count">Events received: {{ metrics.eventCount }}</p>
       <p data-testid="observability-load-count">
         Successful node attempts: {{ successfulAttempts }}
       </p>
@@ -64,9 +62,7 @@ import {
   type RuntimeObservabilityScenario,
 } from "./runtime-observability-model";
 
-const scenario = ref<RuntimeObservabilityScenario>(
-  createRuntimeObservabilityScenario(),
-);
+const scenario = ref<RuntimeObservabilityScenario>(createRuntimeObservabilityScenario());
 const version = ref(0);
 const lastAction = ref("initial subscription");
 
@@ -95,31 +91,20 @@ const snapshotPreview = computed(() => {
   return scenario.value.getSnapshotPreview();
 });
 const successfulAttempts = computed(() =>
-  metrics.value.nodeAttempts.reduce(
-    (total, attempt) => total + attempt.succeeded,
-    0,
-  ),
+  metrics.value.nodeAttempts.reduce((total, attempt) => total + attempt.succeeded, 0),
 );
 
-const runAction = async (
-  label: string,
-  action: () => Promise<void>,
-): Promise<void> => {
+const runAction = async (label: string, action: () => Promise<void>): Promise<void> => {
   await action();
   lastAction.value = label;
   refreshView();
 };
 
 const changeContext = (): Promise<void> =>
-  runAction("context changed", () =>
-    scenario.value.setSelectedCase("case-200"),
-  );
-const runRefresh = (): Promise<void> =>
-  runAction("explicit refresh", scenario.value.refresh);
-const runFailure = (): Promise<void> =>
-  runAction("request failed", scenario.value.failNextRequest);
-const runRecovery = (): Promise<void> =>
-  runAction("request recovered", scenario.value.recover);
+  runAction("context changed", () => scenario.value.setSelectedCase("case-200"));
+const runRefresh = (): Promise<void> => runAction("explicit refresh", scenario.value.refresh);
+const runFailure = (): Promise<void> => runAction("request failed", scenario.value.failNextRequest);
+const runRecovery = (): Promise<void> => runAction("request recovered", scenario.value.recover);
 const runRollback = (): Promise<void> =>
   runAction("transaction rolled back", scenario.value.runTransactionRollback);
 const runMutation = (): Promise<void> =>

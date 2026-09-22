@@ -3,10 +3,7 @@ import type { NodeStateRecord } from "../state/state";
 import { releaseValue } from "../state/transitions";
 import type { TimerEnvironment } from "../timer-environment";
 
-type ReleasePolicyDataNode = DataNodeDefinition<
-  unknown,
-  readonly AnyNodeDefinition[]
->;
+type ReleasePolicyDataNode = DataNodeDefinition<unknown, readonly AnyNodeDefinition[]>;
 
 interface ReleaseSession {
   timer: unknown | undefined;
@@ -42,14 +39,12 @@ export interface RuntimeReleasePolicyController {
   readonly dispose: () => void;
 }
 
-const isReleaseEligibleDataNode = (
-  node: AnyNodeDefinition
-): node is ReleasePolicyDataNode =>
+const isReleaseEligibleDataNode = (node: AnyNodeDefinition): node is ReleasePolicyDataNode =>
   node.kind === "data" && (node as ReleasePolicyDataNode).release?.kind !== "retain";
 
 const resolveReleaseDurationMs = (
   node: ReleasePolicyDataNode,
-  defaultDurationMs: number | undefined
+  defaultDurationMs: number | undefined,
 ): number | undefined => {
   const policy = node.release;
   if (policy?.kind === "release-after") return policy.durationMs;
@@ -96,7 +91,7 @@ export const createRuntimeReleasePolicyController = ({
     node: ReleasePolicyDataNode,
     session: ReleaseSession,
     scheduledForGeneration: number,
-    scheduledAt: number
+    scheduledAt: number,
   ): void => {
     session.timer = undefined;
     if (disposed) return;
@@ -134,10 +129,7 @@ export const createRuntimeReleasePolicyController = ({
       return;
     }
 
-    if (
-      session.timer !== undefined &&
-      session.scheduledForGeneration === state.generation
-    ) {
+    if (session.timer !== undefined && session.scheduledForGeneration === state.generation) {
       return; // Already scheduled for this exact value - nothing changed.
     }
 

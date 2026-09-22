@@ -35,10 +35,7 @@ export const createRuntimeEventMatcher = ({
     options?: EventMatchOptions,
   ): readonly AnyNodeDefinition[] => {
     const overlayValues = new Map(
-      (options?.valueOverlay ?? []).map(change => [
-        change.node.key,
-        change.value,
-      ]),
+      (options?.valueOverlay ?? []).map((change) => [change.node.key, change.value]),
     );
     const matchedNodes = new Map<string, AnyNodeDefinition>();
 
@@ -47,20 +44,17 @@ export const createRuntimeEventMatcher = ({
         // Topology comes from the graph, which resolved each node's
         // dependencies once at creation; never from the node definition.
         const dependencyKeys = new Set(
-          graph.getParents(candidate.node).map(dependency => dependency.key)
+          graph.getParents(candidate.node).map((dependency) => dependency.key),
         );
         const get = (dependency: AnyNodeDefinition): unknown => {
           if (!dependencyKeys.has(dependency.key)) {
             throw new Error(
-              `Node "${candidate.node.key}" event predicate cannot read undeclared dependency "${dependency.key}".`
+              `Node "${candidate.node.key}" event predicate cannot read undeclared dependency "${dependency.key}".`,
             );
           }
 
           if (options?.prohibitedDependencyKeys?.has(dependency.key)) {
-            throw new EventPredicateDependencyError(
-              candidate.node.key,
-              dependency.key,
-            );
+            throw new EventPredicateDependencyError(candidate.node.key, dependency.key);
           }
 
           if (overlayValues.has(dependency.key)) {
@@ -70,7 +64,7 @@ export const createRuntimeEventMatcher = ({
           const state = getNodeState(dependency.key);
           if (!state.hasSuccessfulValue) {
             throw new Error(
-              `Dependency "${dependency.key}" has no successful value for node "${candidate.node.key}" event predicate.`
+              `Dependency "${dependency.key}" has no successful value for node "${candidate.node.key}" event predicate.`,
             );
           }
           return state.data;

@@ -32,10 +32,7 @@ export interface GraphCoordinationDependencies {
   readonly deleteActiveAttempt: RuntimeStateStore["deleteActiveAttempt"];
   readonly getActiveAttempts: RuntimeStateStore["getActiveAttempts"];
   readonly notify: () => void;
-  readonly requireRegisteredNode: (
-    node: AnyNodeDefinition,
-    purpose: string,
-  ) => AnyNodeDefinition;
+  readonly requireRegisteredNode: (node: AnyNodeDefinition, purpose: string) => AnyNodeDefinition;
   /** Shared with the commit pipeline and the public facade; one per runtime. */
   readonly schedulerRequest: SchedulerRequestTracker;
   /** Shared with the commit pipeline and the public facade; one per runtime. */
@@ -52,9 +49,7 @@ export interface GraphCoordination {
 }
 
 const isAutomaticOnlyAttempt = (attempt: ActiveAttempt): boolean =>
-  [...attempt.origins].every(
-    (origin) => origin === "scheduler" || origin === "refresh-policy",
-  );
+  [...attempt.origins].every((origin) => origin === "scheduler" || origin === "refresh-policy");
 
 /**
  * Builds the four controllers that depend on one another - execution,
@@ -100,10 +95,8 @@ export const createGraphCoordination = ({
   operationObservation,
   maxConcurrentLoads,
 }: GraphCoordinationDependencies): GraphCoordination => {
-  const subscriptionsBinding =
-    createLateBinding<RuntimeSubscriptionController>("subscriptions");
-  const invalidationBinding =
-    createLateBinding<RuntimeInvalidationController>("invalidation");
+  const subscriptionsBinding = createLateBinding<RuntimeSubscriptionController>("subscriptions");
+  const invalidationBinding = createLateBinding<RuntimeInvalidationController>("invalidation");
 
   const schedulerDiagnostics = createSchedulerDiagnostics({
     diagnostics,
@@ -112,9 +105,7 @@ export const createGraphCoordination = ({
 
   const execution = createRuntimeExecutionController({
     graph,
-    concurrencyLimiter: createExecutionConcurrencyLimiter(
-      maxConcurrentLoads ?? Infinity,
-    ),
+    concurrencyLimiter: createExecutionConcurrencyLimiter(maxConcurrentLoads ?? Infinity),
     getNodeState,
     getActiveAttempt,
     setActiveAttempt,
@@ -124,9 +115,8 @@ export const createGraphCoordination = ({
     onChangedRefreshResult: (node, diagnosticContext) => {
       const operationId = diagnosticContext?.operationId ?? "";
       schedulerRequest.request("changed-result", diagnosticContext?.operationId);
-      operationObservation.runObserved(
-        { operationId, reason: "changed-result" },
-        () => invalidationBinding.get().invalidateChangedResultDescendants(node),
+      operationObservation.runObserved({ operationId, reason: "changed-result" }, () =>
+        invalidationBinding.get().invalidateChangedResultDescendants(node),
       );
     },
     diagnostics,
@@ -153,8 +143,7 @@ export const createGraphCoordination = ({
 
   const scheduler = createRuntimeSchedulerController({
     getTargetsNeedingWork: getSubscribedTargetsNeedingWork,
-    execute: (targets, context) =>
-      execution.execute(targets, "scheduler", context),
+    execute: (targets, context) => execution.execute(targets, "scheduler", context),
     notify,
     onRequested: schedulerDiagnostics.onRequested,
     beginFlush: schedulerDiagnostics.beginFlush,
@@ -186,11 +175,7 @@ export const createGraphCoordination = ({
     afterUnsubscribe: () => {
       for (const [key, attempt] of getActiveAttempts()) {
         const node = graph.getNode(key);
-        if (
-          node &&
-          !subscriptions.hasSubscribers(node) &&
-          isAutomaticOnlyAttempt(attempt)
-        ) {
+        if (node && !subscriptions.hasSubscribers(node) && isAutomaticOnlyAttempt(attempt)) {
           attempt.controller.abort();
         }
       }

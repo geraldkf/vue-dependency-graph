@@ -2,8 +2,8 @@
   <section aria-label="Query groups scenario">
     <h2>Query Groups</h2>
     <p>
-      One aliased query definition drives prefetch, component subscription,
-      aggregate state, and refresh.
+      One aliased query definition drives prefetch, component subscription, aggregate state, and
+      refresh.
     </p>
 
     <p>
@@ -13,16 +13,14 @@
       </button>
     </p>
 
-    <p data-testid="query-groups-prefetch-outcome">
-      Prefetch outcome: {{ prefetchOutcome }}
-    </p>
+    <p data-testid="query-groups-prefetch-outcome">Prefetch outcome: {{ prefetchOutcome }}</p>
     <p data-testid="query-groups-request-counts">
-      Requests: appointments {{ queryGroupsAppointmentsLoader.callCount.value }},
-      capability {{ queryGroupsCapabilityLoader.callCount.value }}
+      Requests: appointments {{ queryGroupsAppointmentsLoader.callCount.value }}, capability
+      {{ queryGroupsCapabilityLoader.callCount.value }}
     </p>
     <p data-testid="query-groups-subscriptions">
-      Direct subscriptions: appointments {{ showConsumer ? 1 : 0 }},
-      capability {{ showConsumer ? 1 : 0 }}
+      Direct subscriptions: appointments {{ showConsumer ? 1 : 0 }}, capability
+      {{ showConsumer ? 1 : 0 }}
     </p>
 
     <QueryGroupsConsumer v-if="showConsumer" @busy="isBusy = $event" />

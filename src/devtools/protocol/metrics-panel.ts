@@ -1,7 +1,4 @@
-import type {
-  GraphDurationMetrics,
-  GraphMetricsSnapshot,
-} from "../../core";
+import type { GraphDurationMetrics, GraphMetricsSnapshot } from "../../core";
 import type { InspectorMetricGroup, InspectorMetricsView } from "./types";
 
 const formatDuration = (duration: GraphDurationMetrics): string => {
@@ -17,7 +14,7 @@ const formatDuration = (duration: GraphDurationMetrics): string => {
  * raw milliseconds for the component to reformat.
  */
 export const computeMetricsView = (
-  metrics: GraphMetricsSnapshot | undefined
+  metrics: GraphMetricsSnapshot | undefined,
 ): InspectorMetricsView => {
   if (!metrics) return { groups: [] };
 

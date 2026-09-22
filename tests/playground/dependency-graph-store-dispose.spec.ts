@@ -8,13 +8,11 @@ import { useDependencyGraphStore } from "../../src/playground/dependency-graph-s
 // Everything else on the runtime is the real implementation.
 const created = vi.hoisted(() => [] as GraphRuntime[]);
 
-vi.mock("../../src/core", async importOriginal => {
+vi.mock("../../src/core", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../../src/core")>();
   return {
     ...actual,
-    createGraphRuntime: (
-      ...args: Parameters<typeof actual.createGraphRuntime>
-    ) => {
+    createGraphRuntime: (...args: Parameters<typeof actual.createGraphRuntime>) => {
       const runtime = actual.createGraphRuntime(...args);
       const wrapped = {
         ...runtime,

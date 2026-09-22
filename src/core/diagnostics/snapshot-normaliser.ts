@@ -4,10 +4,7 @@ import type {
   GraphDiagnosticValue,
   GraphSerializedError,
 } from "./snapshot";
-import type {
-  GraphDurationMetrics,
-  GraphMetricsSnapshot,
-} from "./metrics";
+import type { GraphDurationMetrics, GraphMetricsSnapshot } from "./metrics";
 
 export interface GraphDiagnosticExport {
   readonly snapshot: GraphDiagnosticSnapshotV1;
@@ -24,19 +21,16 @@ const deepFreeze = <TValue>(value: TValue): TValue => {
   return Object.freeze(value);
 };
 
-const cloneDiagnosticValue = (
-  value: GraphDiagnosticValue,
-): GraphDiagnosticValue => {
+const cloneDiagnosticValue = (value: GraphDiagnosticValue): GraphDiagnosticValue => {
   if (Array.isArray(value)) {
     return Object.freeze(value.map(cloneDiagnosticValue));
   }
   if (typeof value === "object" && value !== null) {
-    return Object.freeze(Object.fromEntries(
-      Object.entries(value).map(([key, item]) => [
-        key,
-        cloneDiagnosticValue(item),
-      ]),
-    ));
+    return Object.freeze(
+      Object.fromEntries(
+        Object.entries(value).map(([key, item]) => [key, cloneDiagnosticValue(item)]),
+      ),
+    );
   }
   return value;
 };
@@ -53,79 +47,72 @@ const cloneError = (
   });
 };
 
-const normalizeDuration = (
-  duration: GraphDurationMetrics,
-): GraphDurationMetrics => Object.freeze({
-  count: duration.count,
-  totalMs: 0,
-  maximumMs: 0,
-});
+const normalizeDuration = (duration: GraphDurationMetrics): GraphDurationMetrics =>
+  Object.freeze({
+    count: duration.count,
+    totalMs: 0,
+    maximumMs: 0,
+  });
 
-const normalizeMetrics = (
-  metrics: GraphMetricsSnapshot,
-): GraphMetricsSnapshot => deepFreeze({
-  ...metrics,
-  operationCounts: { ...metrics.operationCounts },
-  nodeAttempts: metrics.nodeAttempts.map(attempt => ({
-    ...attempt,
-    duration: normalizeDuration(attempt.duration),
-  })),
-  queueWaitDuration: normalizeDuration(metrics.queueWaitDuration),
-  invalidations: { ...metrics.invalidations },
-  scheduler: { ...metrics.scheduler },
-  refreshPolicies: { ...metrics.refreshPolicies },
-  transactions: {
-    ...metrics.transactions,
-    duration: normalizeDuration(metrics.transactions.duration),
-  },
-  mutations: {
-    ...metrics.mutations,
-    duration: normalizeDuration(metrics.mutations.duration),
-  },
-  subscriptions: { ...metrics.subscriptions },
-});
+const normalizeMetrics = (metrics: GraphMetricsSnapshot): GraphMetricsSnapshot =>
+  deepFreeze({
+    ...metrics,
+    operationCounts: { ...metrics.operationCounts },
+    nodeAttempts: metrics.nodeAttempts.map((attempt) => ({
+      ...attempt,
+      duration: normalizeDuration(attempt.duration),
+    })),
+    queueWaitDuration: normalizeDuration(metrics.queueWaitDuration),
+    invalidations: { ...metrics.invalidations },
+    scheduler: { ...metrics.scheduler },
+    refreshPolicies: { ...metrics.refreshPolicies },
+    transactions: {
+      ...metrics.transactions,
+      duration: normalizeDuration(metrics.transactions.duration),
+    },
+    mutations: {
+      ...metrics.mutations,
+      duration: normalizeDuration(metrics.mutations.duration),
+    },
+    subscriptions: { ...metrics.subscriptions },
+  });
 
 export const normalizeDiagnosticSnapshot = (
   snapshot: GraphDiagnosticSnapshotV1,
-): GraphDiagnosticSnapshotV1 => deepFreeze({
-  schemaVersion: snapshot.schemaVersion,
-  createdAt: 0,
-  runtimeId: NORMALIZED_RUNTIME_ID,
-  topology: snapshot.topology.map(node => ({
-    ...node,
-    dependencyKeys: [...node.dependencyKeys],
-    childKeys: [...node.childKeys],
-    eventKeys: [...node.eventKeys],
-  })),
-  nodes: snapshot.nodes.map(node => ({
-    ...node,
-    error: cloneError(node.error) ?? null,
-    value: {
-      ...node.value,
-      ...(node.value.data === undefined
-        ? {}
-        : { data: cloneDiagnosticValue(node.value.data) }),
-      ...(node.value.error === undefined
-        ? {}
-        : { error: cloneError(node.value.error)! }),
+): GraphDiagnosticSnapshotV1 =>
+  deepFreeze({
+    schemaVersion: snapshot.schemaVersion,
+    createdAt: 0,
+    runtimeId: NORMALIZED_RUNTIME_ID,
+    topology: snapshot.topology.map((node) => ({
+      ...node,
+      dependencyKeys: [...node.dependencyKeys],
+      childKeys: [...node.childKeys],
+      eventKeys: [...node.eventKeys],
+    })),
+    nodes: snapshot.nodes.map((node) => ({
+      ...node,
+      error: cloneError(node.error) ?? null,
+      value: {
+        ...node.value,
+        ...(node.value.data === undefined ? {} : { data: cloneDiagnosticValue(node.value.data) }),
+        ...(node.value.error === undefined ? {} : { error: cloneError(node.value.error)! }),
+      },
+    })),
+    scheduler: {
+      ...snapshot.scheduler,
+      error: cloneError(snapshot.scheduler.error) ?? null,
     },
-  })),
-  scheduler: {
-    ...snapshot.scheduler,
-    error: cloneError(snapshot.scheduler.error) ?? null,
-  },
-  subscriptions: snapshot.subscriptions.map(subscription => ({
-    ...subscription,
-  })),
-  refreshPolicies: snapshot.refreshPolicies.map(policy => ({
-    ...policy,
-    ...(policy.timerDueAt === undefined ? {} : { timerDueAt: 0 }),
-  })),
-  ...(snapshot.metrics === undefined
-    ? {}
-    : { metrics: normalizeMetrics(snapshot.metrics) }),
-  diagnostics: { ...snapshot.diagnostics },
-});
+    subscriptions: snapshot.subscriptions.map((subscription) => ({
+      ...subscription,
+    })),
+    refreshPolicies: snapshot.refreshPolicies.map((policy) => ({
+      ...policy,
+      ...(policy.timerDueAt === undefined ? {} : { timerDueAt: 0 }),
+    })),
+    ...(snapshot.metrics === undefined ? {} : { metrics: normalizeMetrics(snapshot.metrics) }),
+    diagnostics: { ...snapshot.diagnostics },
+  });
 
 interface IdentifierNormaliser {
   readonly normalize: (identifier: string | undefined) => string | undefined;
@@ -159,13 +146,9 @@ const normalizeEvent = (
     runtimeId: NORMALIZED_RUNTIME_ID,
     ...(operationId === undefined ? {} : { operationId }),
     ...(causeId === undefined ? {} : { causeId }),
-    ...("durationMs" in event && event.durationMs !== undefined
-      ? { durationMs: 0 }
-      : {}),
+    ...("durationMs" in event && event.durationMs !== undefined ? { durationMs: 0 } : {}),
     ...("nodeKeys" in event ? { nodeKeys: [...event.nodeKeys] } : {}),
-    ...("requiredNodeKeys" in event
-      ? { requiredNodeKeys: [...event.requiredNodeKeys] }
-      : {}),
+    ...("requiredNodeKeys" in event ? { requiredNodeKeys: [...event.requiredNodeKeys] } : {}),
     ...("affectedNodeKeys" in event && event.affectedNodeKeys !== undefined
       ? { affectedNodeKeys: [...event.affectedNodeKeys] }
       : {}),
@@ -187,7 +170,7 @@ export const normalizeDiagnosticEvents = (
   events: readonly GraphDiagnosticEvent[],
 ): readonly GraphDiagnosticEvent[] => {
   const identifiers = createIdentifierNormaliser();
-  return Object.freeze(events.map(event => normalizeEvent(event, identifiers)));
+  return Object.freeze(events.map((event) => normalizeEvent(event, identifiers)));
 };
 
 export const normalizeDiagnosticExport = (
@@ -196,6 +179,6 @@ export const normalizeDiagnosticExport = (
   const identifiers = createIdentifierNormaliser();
   return deepFreeze({
     snapshot: normalizeDiagnosticSnapshot(diagnosticExport.snapshot),
-    events: diagnosticExport.events.map(event => normalizeEvent(event, identifiers)),
+    events: diagnosticExport.events.map((event) => normalizeEvent(event, identifiers)),
   });
 };

@@ -17,7 +17,7 @@ Graph transactions apply only to local graph state. They cannot provide rollback
 `runtime.transaction(...)` creates one independent transaction session and passes its owner a `GraphTransaction` handle:
 
 ```ts
-await runtime.transaction(async transaction => {
+await runtime.transaction(async (transaction) => {
   transaction.setContext(ContextA, valueA);
   transaction.publish(DomainChanged, payload);
   await localWork();
@@ -61,10 +61,10 @@ Every top-level `runtime.transaction(...)` call creates an independent session, 
 Work joins an existing session only through the transaction handle:
 
 ```ts
-await runtime.transaction(async transaction => {
+await runtime.transaction(async (transaction) => {
   transaction.setContext(ContextA, valueA);
 
-  await transaction.transaction(async nested => {
+  await transaction.transaction(async (nested) => {
     nested.setContext(ContextB, valueB);
     nested.publish(DomainChanged, payload);
   });
@@ -102,7 +102,7 @@ If an independent write changes a context already staged by a transaction, the i
 When commit-triggered scheduler work must finish, await in this order:
 
 ```ts
-await runtime.transaction(transaction => {
+await runtime.transaction((transaction) => {
   transaction.setContext(ContextA, valueA);
 });
 

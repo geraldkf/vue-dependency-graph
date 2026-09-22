@@ -66,7 +66,7 @@ core + vue + devtools <--- playground
 Transaction-owned context changes and event publications use the explicit callback handle:
 
 ```ts
-await runtime.transaction(async transaction => {
+await runtime.transaction(async (transaction) => {
   transaction.setContext(JobSeekerId, 123);
   transaction.publish(AppointmentBooked, payload);
   await localWork();
@@ -86,9 +86,9 @@ They use committed graph state and proceed independently. If a transaction stage
 Each top-level `runtime.transaction(...)` call owns an independent session. To compose work into the same atomic boundary, use the transaction handle explicitly:
 
 ```ts
-await runtime.transaction(async transaction => {
+await runtime.transaction(async (transaction) => {
   transaction.setContext(JobSeekerId, 123);
-  await transaction.transaction(async nested => {
+  await transaction.transaction(async (nested) => {
     nested.publish(AppointmentBooked, payload);
   });
 });

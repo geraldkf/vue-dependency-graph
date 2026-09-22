@@ -1,9 +1,6 @@
 import type { ReleaseAfterOptions, ReleaseAfterPolicy, ReleasePolicy, RetainPolicy } from "./types";
 
-const requireObject = (
-  value: unknown,
-  fieldName: string
-): Record<string, unknown> => {
+const requireObject = (value: unknown, fieldName: string): Record<string, unknown> => {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     throw new TypeError(`${fieldName} must be an object.`);
   }
@@ -17,9 +14,7 @@ const requirePositiveFinite = (value: unknown, fieldName: string): number => {
   return value;
 };
 
-export const releaseAfter = (
-  options: ReleaseAfterOptions
-): ReleaseAfterPolicy => {
+export const releaseAfter = (options: ReleaseAfterOptions): ReleaseAfterPolicy => {
   const value = requireObject(options, "releaseAfter options");
   return Object.freeze({
     kind: "release-after",
@@ -31,7 +26,7 @@ export const retain = (): RetainPolicy => Object.freeze({ kind: "retain" });
 
 export function assertValidReleasePolicy(
   policy: unknown,
-  nodeKey: string
+  nodeKey: string,
 ): asserts policy is ReleasePolicy {
   const value = requireObject(policy, `Release policy for node "${nodeKey}"`);
 
@@ -42,8 +37,6 @@ export function assertValidReleasePolicy(
     case "retain":
       return;
     default:
-      throw new TypeError(
-        `Release policy for node "${nodeKey}" has an unknown kind.`
-      );
+      throw new TypeError(`Release policy for node "${nodeKey}" has an unknown kind.`);
   }
 }

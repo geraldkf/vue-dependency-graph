@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  defineContextNode,
-  defineDataNode,
-  defineQuery,
-} from "../../src/core";
+import { defineContextNode, defineDataNode, defineQuery } from "../../src/core";
 
 const jobSeekerId = defineContextNode({
   key: "query-job-seeker-id",
@@ -57,7 +53,7 @@ describe("query definitions", () => {
       defineQuery({
         key: "   ",
         nodes: { currentJobSeeker: jobSeekerId },
-      })
+      }),
     ).toThrow("Query key must not be blank.");
   });
 
@@ -66,7 +62,7 @@ describe("query definitions", () => {
       defineQuery({
         key: "invalid-alias-query",
         nodes: { " ": jobSeekerId },
-      })
+      }),
     ).toThrow("Query node alias must not be blank.");
   });
 });

@@ -47,7 +47,7 @@ describe("runtime diagnostics foundation", () => {
     const events: GraphDiagnosticEvent[] = [];
     const runtime = createGraphRuntime(fixture.graph, {
       diagnostics: {
-        sink: { emit: event => events.push(event) },
+        sink: { emit: (event) => events.push(event) },
         environment: createEnvironment("test-runtime", [10, 20, 30, 40, 50, 60]),
       },
     });
@@ -58,10 +58,10 @@ describe("runtime diagnostics foundation", () => {
     await runtime.prefetchQuery(fixture.query);
     await runtime.refreshQuery(fixture.query);
 
-    const foundationEvents = events.filter((event) =>
-      event.type === "runtime.created" || event.type.startsWith("operation."),
+    const foundationEvents = events.filter(
+      (event) => event.type === "runtime.created" || event.type.startsWith("operation."),
     );
-    expect(foundationEvents.map(event => event.type)).toEqual([
+    expect(foundationEvents.map((event) => event.type)).toEqual([
       "runtime.created",
       "operation.execute.requested",
       "operation.prefetch.requested",
@@ -69,10 +69,10 @@ describe("runtime diagnostics foundation", () => {
       "operation.query-prefetch.requested",
       "operation.query-refresh.requested",
     ]);
-    expect(foundationEvents.map(event => event.sequence)).toEqual(
-      [...foundationEvents.map(event => event.sequence)].sort((left, right) => left - right),
+    expect(foundationEvents.map((event) => event.sequence)).toEqual(
+      [...foundationEvents.map((event) => event.sequence)].sort((left, right) => left - right),
     );
-    expect(events.every(event => event.runtimeId === "test-runtime")).toBe(true);
+    expect(events.every((event) => event.runtimeId === "test-runtime")).toBe(true);
     expect(events.every(Object.isFrozen)).toBe(true);
 
     const created = events[0];
@@ -99,13 +99,13 @@ describe("runtime diagnostics foundation", () => {
     const secondEvents: GraphDiagnosticEvent[] = [];
     const first = createGraphRuntime(fixture.graph, {
       diagnostics: {
-        sink: { emit: event => firstEvents.push(event) },
+        sink: { emit: (event) => firstEvents.push(event) },
         environment: createEnvironment("first", [1, 2]),
       },
     });
     const second = createGraphRuntime(fixture.graph, {
       diagnostics: {
-        sink: { emit: event => secondEvents.push(event) },
+        sink: { emit: (event) => secondEvents.push(event) },
         environment: createEnvironment("second", [1, 2]),
       },
     });
@@ -113,8 +113,8 @@ describe("runtime diagnostics foundation", () => {
     await first.execute([]);
     await second.execute([]);
 
-    expect(firstEvents.map(event => event.sequence)).toEqual([1, 2]);
-    expect(secondEvents.map(event => event.sequence)).toEqual([1, 2]);
+    expect(firstEvents.map((event) => event.sequence)).toEqual([1, 2]);
+    expect(secondEvents.map((event) => event.sequence)).toEqual([1, 2]);
     expect(firstEvents[1]?.operationId).toBe("first:operation-1");
     expect(secondEvents[1]?.operationId).toBe("second:operation-1");
   });
@@ -126,10 +126,10 @@ describe("runtime diagnostics foundation", () => {
       createGraphRuntime(createGraph({ nodes: [] }), {
         maxConcurrentLoads: 0,
         diagnostics: {
-          sink: { emit: event => events.push(event) },
+          sink: { emit: (event) => events.push(event) },
           environment: createEnvironment("invalid", [1]),
         },
-      })
+      }),
     ).toThrow("maxConcurrent must be at least 1");
 
     expect(events).toEqual([]);

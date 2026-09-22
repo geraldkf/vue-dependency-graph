@@ -11,10 +11,7 @@ import type { GraphExecutionReason } from "../diagnostics/types";
  */
 export interface SchedulerRequestTracker {
   /** Records the reason/cause for the next scheduler flush. */
-  readonly request: (
-    reason: GraphExecutionReason,
-    causeId: string | undefined,
-  ) => void;
+  readonly request: (reason: GraphExecutionReason, causeId: string | undefined) => void;
   /** Reads the current reason/cause without clearing it. */
   readonly peek: () => {
     readonly reason: GraphExecutionReason;

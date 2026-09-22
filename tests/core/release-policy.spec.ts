@@ -30,7 +30,7 @@ const createTestEnvironment = () => {
       timers.set(id, { id, dueAt: now + delayMs, callback });
       return id;
     },
-    clearTimeout: handle => {
+    clearTimeout: (handle) => {
       if (typeof handle === "number") timers.delete(handle);
     },
     random: () => 0.5,
@@ -41,11 +41,9 @@ const createTestEnvironment = () => {
     now += durationMs;
     while (true) {
       const next = [...timers.values()]
-        .filter(timer => timer.dueAt <= now)
+        .filter((timer) => timer.dueAt <= now)
         .sort((left, right) =>
-          left.dueAt === right.dueAt
-            ? left.id - right.id
-            : left.dueAt - right.dueAt
+          left.dueAt === right.dueAt ? left.id - right.id : left.dueAt - right.dueAt,
         )[0];
       if (!next) return;
       timers.delete(next.id);
@@ -183,10 +181,9 @@ describe("release policies", () => {
       dependencies: [Count] as const,
       derive: ({ get }) => get(Count) * 2,
     });
-    const runtime = createGraphRuntime(
-      createGraph({ nodes: [Count, Doubled] }),
-      { timerEnvironment: environment }
-    );
+    const runtime = createGraphRuntime(createGraph({ nodes: [Count, Doubled] }), {
+      timerEnvironment: environment,
+    });
     // Subscribed only to the descendant - Count is a required, not direct, subscriber.
     const subscription = runtime.subscribeNodes([Doubled]);
     await runtime.whenSettled();
@@ -224,7 +221,11 @@ describe("release policies", () => {
     await runtime.whenSettled();
 
     expect(loadCount).toBe(2);
-    expect(runtime.getState(Count)).toMatchObject({ data: 20, hasSuccessfulValue: true, status: "success" });
+    expect(runtime.getState(Count)).toMatchObject({
+      data: 20,
+      hasSuccessfulValue: true,
+      status: "success",
+    });
     second.unsubscribe();
   });
 
@@ -247,9 +248,7 @@ describe("release policies", () => {
 
     advanceBy(250);
 
-    const released = diagnostics
-      .getEvents()
-      .find(event => event.type === "node.value-released");
+    const released = diagnostics.getEvents().find((event) => event.type === "node.value-released");
     expect(released).toMatchObject({ nodeKey: "count", idleMs: 250 });
   });
 

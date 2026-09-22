@@ -8,7 +8,7 @@ import {
 const typed = defineContextNode({
   key: "typed",
   initialValue: { id: 1, secret: "hidden" },
-  diagnostics: { value: value => ({ id: value.id }) },
+  diagnostics: { value: (value) => ({ id: value.id }) },
 });
 const snapshot: GraphDiagnosticSnapshotV1 = createGraphRuntime(
   createGraph({ nodes: [typed] }),

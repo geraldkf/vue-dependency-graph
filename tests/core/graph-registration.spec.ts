@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  createGraph,
-  defineContextNode,
-  defineDerivedNode,
-} from "../../src/core";
+import { createGraph, defineContextNode, defineDerivedNode } from "../../src/core";
 
 const topology = (order: "parent-first" | "child-first" | "mixed") => {
   const root = defineContextNode({ key: "root", initialValue: 1 });
@@ -31,13 +27,13 @@ const topology = (order: "parent-first" | "child-first" | "mixed") => {
   const graph = createGraph({ nodes });
 
   return Object.fromEntries(
-    ["root", "left", "right", "leaf"].map(key => [
+    ["root", "left", "right", "leaf"].map((key) => [
       key,
       {
-        parents: graph.getParents(key).map(node => node.key),
-        children: graph.getChildren(key).map(node => node.key),
+        parents: graph.getParents(key).map((node) => node.key),
+        children: graph.getChildren(key).map((node) => node.key),
       },
-    ])
+    ]),
   );
 };
 
@@ -51,7 +47,11 @@ describe("graph registration", () => {
     const root = defineContextNode({ key: "root", initialValue: 1 });
     const disconnected = defineContextNode({ key: "disconnected", initialValue: 2 });
     const left = defineDerivedNode({ key: "left", dependencies: [root] as const, derive: () => 1 });
-    const right = defineDerivedNode({ key: "right", dependencies: [root] as const, derive: () => 2 });
+    const right = defineDerivedNode({
+      key: "right",
+      dependencies: [root] as const,
+      derive: () => 2,
+    });
     const leaf = defineDerivedNode({
       key: "leaf",
       dependencies: [left, right] as const,
@@ -60,8 +60,8 @@ describe("graph registration", () => {
     const graph = createGraph({ nodes: [leaf, disconnected, right, root, left] });
 
     expect(graph.getParents(root)).toEqual([]);
-    expect(graph.getChildren(root).map(node => node.key)).toEqual(["left", "right"]);
-    expect(graph.getParents(leaf).map(node => node.key)).toEqual(["left", "right"]);
+    expect(graph.getChildren(root).map((node) => node.key)).toEqual(["left", "right"]);
+    expect(graph.getParents(leaf).map((node) => node.key)).toEqual(["left", "right"]);
     expect(graph.getChildren(leaf)).toEqual([]);
     expect(graph.getParents(disconnected)).toEqual([]);
     expect(graph.getChildren(disconnected)).toEqual([]);
@@ -69,10 +69,14 @@ describe("graph registration", () => {
 
   it("preserves registration order and protects returned topology collections", () => {
     const first = defineContextNode({ key: "first", initialValue: 1 });
-    const second = defineDerivedNode({ key: "second", dependencies: [first] as const, derive: () => 2 });
+    const second = defineDerivedNode({
+      key: "second",
+      dependencies: [first] as const,
+      derive: () => 2,
+    });
     const graph = createGraph({ nodes: [second, first] });
 
-    expect(graph.getNodes().map(node => node.key)).toEqual(["second", "first"]);
+    expect(graph.getNodes().map((node) => node.key)).toEqual(["second", "first"]);
     expect(graph.getNode("first")).toBe(first);
     expect(graph.hasNode("missing")).toBe(false);
     expect(graph.getNode("missing")).toBeUndefined();
@@ -83,6 +87,6 @@ describe("graph registration", () => {
     expect(Object.isFrozen(nodes)).toBe(true);
     expect(Object.isFrozen(graph.getParents(second))).toBe(true);
     expect(Object.isFrozen(graph.getChildren(first))).toBe(true);
-    expect(graph.getChildren(first).map(node => node.key)).toEqual(["second"]);
+    expect(graph.getChildren(first).map((node) => node.key)).toEqual(["second"]);
   });
 });

@@ -33,13 +33,13 @@ describe("mutation event predicate derived restrictions", () => {
     const eventTarget = defineDataNode({
       key: "mutation-derived-predicate-target",
       dependencies: [summary] as const,
-      invalidatedBy: [{
-        event: changed,
-        when: ({ get }: EventInvalidationContext<
-          typeof changed,
-          readonly [typeof summary]
-        >) => get(summary) > 0,
-      }] as const,
+      invalidatedBy: [
+        {
+          event: changed,
+          when: ({ get }: EventInvalidationContext<typeof changed, readonly [typeof summary]>) =>
+            get(summary) > 0,
+        },
+      ] as const,
       initialValue: 0,
       load: async () => 10,
     });
@@ -48,9 +48,11 @@ describe("mutation event predicate derived restrictions", () => {
       initialValue: 0,
       load: async () => 20,
     });
-    const runtime = createGraphRuntime(createGraph({
-      nodes: [eventTarget, explicitTarget, summary, source],
-    }));
+    const runtime = createGraphRuntime(
+      createGraph({
+        nodes: [eventTarget, explicitTarget, summary, source],
+      }),
+    );
     await runtime.execute([eventTarget, explicitTarget]);
     const beforeSource = runtime.getState(source);
     const beforeSummary = runtime.getState(summary);
@@ -59,13 +61,15 @@ describe("mutation event predicate derived restrictions", () => {
     const listener = vi.fn();
     runtime.onChange(listener);
 
-    await expect(runtime.mutate(save, undefined, {
-      onSuccess: effects => {
-        effects.update(source, () => 5);
-        effects.invalidate([explicitTarget]);
-        effects.publish(changed, 5);
-      },
-    })).rejects.toMatchObject({
+    await expect(
+      runtime.mutate(save, undefined, {
+        onSuccess: (effects) => {
+          effects.update(source, () => 5);
+          effects.invalidate([explicitTarget]);
+          effects.publish(changed, 5);
+        },
+      }),
+    ).rejects.toMatchObject({
       name: "EventPredicateDependencyError",
       nodeKey: eventTarget.key,
       dependencyKey: summary.key,
@@ -92,23 +96,25 @@ describe("mutation event predicate derived restrictions", () => {
     const target = defineDataNode({
       key: "mutation-derived-predicate-optimistic-target",
       dependencies: [summary] as const,
-      invalidatedBy: [{
-        event: changed,
-        when: ({ get }: EventInvalidationContext<
-          typeof changed,
-          readonly [typeof summary]
-        >) => get(summary) > 0,
-      }] as const,
+      invalidatedBy: [
+        {
+          event: changed,
+          when: ({ get }: EventInvalidationContext<typeof changed, readonly [typeof summary]>) =>
+            get(summary) > 0,
+        },
+      ] as const,
       initialValue: 0,
       load: async () => 10,
     });
     const runtime = createGraphRuntime(createGraph({ nodes: [target, summary, source] }));
     await runtime.execute([target]);
 
-    await expect(runtime.mutate(save, undefined, {
-      optimistic: effects => effects.update(source, current => current + 1),
-      onSuccess: effects => effects.publish(changed, 2),
-    })).rejects.toMatchObject({
+    await expect(
+      runtime.mutate(save, undefined, {
+        optimistic: (effects) => effects.update(source, (current) => current + 1),
+        onSuccess: (effects) => effects.publish(changed, 2),
+      }),
+    ).rejects.toMatchObject({
       name: "GraphMutationReconciliationError",
       mutationKey: save.key,
       remoteSucceeded: true,
@@ -141,13 +147,13 @@ describe("mutation event predicate derived restrictions", () => {
     const target = defineDataNode({
       key: "mutation-derived-predicate-explicit-target",
       dependencies: [summary] as const,
-      invalidatedBy: [{
-        event: changed,
-        when: ({ get }: EventInvalidationContext<
-          typeof changed,
-          readonly [typeof summary]
-        >) => get(summary) === 2,
-      }] as const,
+      invalidatedBy: [
+        {
+          event: changed,
+          when: ({ get }: EventInvalidationContext<typeof changed, readonly [typeof summary]>) =>
+            get(summary) === 2,
+        },
+      ] as const,
       initialValue: 0,
       load: async () => 10,
     });
@@ -157,12 +163,14 @@ describe("mutation event predicate derived restrictions", () => {
     const beforeSummary = runtime.getState(summary);
     const beforeTarget = runtime.getState(target);
 
-    await expect(runtime.mutate(save, undefined, {
-      onSuccess: effects => {
-        effects.invalidate([source]);
-        effects.publish(changed, 2);
-      },
-    })).rejects.toMatchObject({
+    await expect(
+      runtime.mutate(save, undefined, {
+        onSuccess: (effects) => {
+          effects.invalidate([source]);
+          effects.publish(changed, 2);
+        },
+      }),
+    ).rejects.toMatchObject({
       name: "EventPredicateDependencyError",
       dependencyKey: summary.key,
     });
@@ -191,23 +199,27 @@ describe("mutation event predicate derived restrictions", () => {
     const target = defineDataNode({
       key: "mutation-derived-predicate-unaffected-target",
       dependencies: [stableSummary] as const,
-      invalidatedBy: [{
-        event: changed,
-        when: ({ get }: EventInvalidationContext<
-          typeof changed,
-          readonly [typeof stableSummary]
-        >) => get(stableSummary) === 4,
-      }] as const,
+      invalidatedBy: [
+        {
+          event: changed,
+          when: ({
+            get,
+          }: EventInvalidationContext<typeof changed, readonly [typeof stableSummary]>) =>
+            get(stableSummary) === 4,
+        },
+      ] as const,
       initialValue: 0,
       load: async () => 10,
     });
-    const runtime = createGraphRuntime(createGraph({
-      nodes: [target, stableSummary, stable, updated],
-    }));
+    const runtime = createGraphRuntime(
+      createGraph({
+        nodes: [target, stableSummary, stable, updated],
+      }),
+    );
     await runtime.execute([target, updated]);
 
     await runtime.mutate(save, undefined, {
-      onSuccess: effects => {
+      onSuccess: (effects) => {
         effects.update(updated, () => 5);
         effects.publish(changed, 5);
       },
@@ -230,13 +242,16 @@ describe("mutation event predicate derived restrictions", () => {
     const target = defineDataNode({
       key: "mutation-derived-predicate-overlay-target",
       dependencies: [selected] as const,
-      invalidatedBy: [{
-        event: changed,
-        when: ({ payload, get }: EventInvalidationContext<
-          typeof changed,
-          readonly [typeof selected]
-        >) => get(selected) === payload,
-      }] as const,
+      invalidatedBy: [
+        {
+          event: changed,
+          when: ({
+            payload,
+            get,
+          }: EventInvalidationContext<typeof changed, readonly [typeof selected]>) =>
+            get(selected) === payload,
+        },
+      ] as const,
       initialValue: 0,
       load: async () => 10,
     });
@@ -244,7 +259,7 @@ describe("mutation event predicate derived restrictions", () => {
     await runtime.execute([target]);
 
     await runtime.mutate(save, undefined, {
-      onSuccess: effects => {
+      onSuccess: (effects) => {
         effects.update(selected, () => 5);
         effects.publish(changed, 5);
       },
@@ -267,13 +282,13 @@ describe("mutation event predicate derived restrictions", () => {
     const target = defineDataNode({
       key: "mutation-derived-predicate-compat-target",
       dependencies: [summary] as const,
-      invalidatedBy: [{
-        event: changed,
-        when: ({ get }: EventInvalidationContext<
-          typeof changed,
-          readonly [typeof summary]
-        >) => get(summary) === 2,
-      }] as const,
+      invalidatedBy: [
+        {
+          event: changed,
+          when: ({ get }: EventInvalidationContext<typeof changed, readonly [typeof summary]>) =>
+            get(summary) === 2,
+        },
+      ] as const,
       initialValue: 0,
       load: async () => 10,
     });
@@ -284,7 +299,7 @@ describe("mutation event predicate derived restrictions", () => {
     expect(runtime.getState(target).freshness).toBe("stale");
     await runtime.execute([target]);
 
-    await runtime.transaction(transaction => {
+    await runtime.transaction((transaction) => {
       transaction.setContext(context, 2);
       transaction.publish(changed, 2);
     });

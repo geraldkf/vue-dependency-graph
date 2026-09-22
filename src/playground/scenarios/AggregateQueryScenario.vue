@@ -20,23 +20,14 @@
         {{ query.results[1].value.data }}
       </li>
       <li data-testid="metric-c">
-        C: {{ query.results[2].value.status }} —
-        {{ query.results[2].value.data }} —
+        C: {{ query.results[2].value.status }} — {{ query.results[2].value.data }} —
         {{ query.results[2].value.error?.message ?? "(no error)" }}
       </li>
     </ul>
-    <p data-testid="aggregate-loading">
-      Aggregate loading: {{ query.isLoading.value }}
-    </p>
-    <p data-testid="aggregate-error">
-      Aggregate error: {{ query.isError.value }}
-    </p>
-    <p data-testid="aggregate-success">
-      Aggregate success: {{ query.isSuccess.value }}
-    </p>
-    <p data-testid="aggregate-errors-count">
-      Error count: {{ query.errors.value.length }}
-    </p>
+    <p data-testid="aggregate-loading">Aggregate loading: {{ query.isLoading.value }}</p>
+    <p data-testid="aggregate-error">Aggregate error: {{ query.isError.value }}</p>
+    <p data-testid="aggregate-success">Aggregate success: {{ query.isSuccess.value }}</p>
+    <p data-testid="aggregate-errors-count">Error count: {{ query.errors.value.length }}</p>
   </section>
 </template>
 

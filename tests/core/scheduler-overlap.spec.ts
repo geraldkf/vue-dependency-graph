@@ -26,7 +26,7 @@ import { buildCoordination } from "./coordination-harness";
 const abortError = (): Error => new DOMException("aborted", "AbortError");
 
 /** Lets every pending microtask, and anything they schedule, run. */
-const flush = (): Promise<void> => new Promise(resolve => setTimeout(resolve, 0));
+const flush = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
 
 interface Call<T> {
   readonly signal: AbortSignal;
@@ -53,15 +53,14 @@ const controlled = <T>(options?: { readonly ignoresSignal?: boolean }) => {
 
 const failureNodeKeys = (runtime: GraphRuntime): readonly string[] => {
   const error = runtime.getSchedulerState().error as
-    | (Error & { failures?: readonly { nodeKey: string }[] })
-    | null;
-  return error?.failures?.map(failure => failure.nodeKey) ?? [];
+    (Error & { failures?: readonly { nodeKey: string }[] }) | null;
+  return error?.failures?.map((failure) => failure.nodeKey) ?? [];
 };
 
 const eventsOf = (
   events: readonly GraphDiagnosticEvent[],
   type: string,
-): readonly GraphDiagnosticEvent[] => events.filter(event => event.type === type);
+): readonly GraphDiagnosticEvent[] => events.filter((event) => event.type === type);
 
 const build = (nodes: readonly AnyNodeDefinition[], options?: { maxConcurrentLoads?: number }) => {
   const collector = createInMemoryGraphDiagnostics({ capacity: 2_000 });
@@ -156,7 +155,7 @@ describe("independent work is not held up by a slow load", () => {
     expect(fastLoads).toBe(1);
     slow.calls[0]!.resolve(1);
     await runtime.whenSettled();
-    subscriptions.forEach(subscription => subscription.unsubscribe());
+    subscriptions.forEach((subscription) => subscription.unsubscribe());
   });
 
   it("still shows a same-call sibling as soon as it is ready", async () => {
@@ -202,7 +201,10 @@ describe("independent work is not held up by a slow load", () => {
     // runtime resolves ancestors before invoking a node's own loader, so
     // `child` has not been touched yet (still its never-loaded shape),
     // rather than showing a "loading" status with nothing to load from.
-    expect(runtime.getState(childNode)).toMatchObject({ status: "idle", hasSuccessfulValue: false });
+    expect(runtime.getState(childNode)).toMatchObject({
+      status: "idle",
+      hasSuccessfulValue: false,
+    });
     expect(childLoads).toBe(0);
     expect(slow.calls).toHaveLength(1); // reused, not reloaded, by the second flush
 
@@ -240,9 +242,15 @@ describe("independent work is not held up by a slow load", () => {
     // A node blocked by a failed ancestor is never itself executed (existing
     // execution semantics, unrelated to overlapping flushes): its own state
     // is left exactly as it was.
-    expect(runtime.getState(childNode)).toMatchObject({ status: "idle", hasSuccessfulValue: false });
-    const error = runtime.getSchedulerState().error as (Error & { failures?: readonly { nodeKey: string; kind: string }[] }) | null;
-    expect(error?.failures?.some(failure => failure.nodeKey === "child" && failure.kind === "blocked")).toBe(true);
+    expect(runtime.getState(childNode)).toMatchObject({
+      status: "idle",
+      hasSuccessfulValue: false,
+    });
+    const error = runtime.getSchedulerState().error as
+      (Error & { failures?: readonly { nodeKey: string; kind: string }[] }) | null;
+    expect(
+      error?.failures?.some((failure) => failure.nodeKey === "child" && failure.kind === "blocked"),
+    ).toBe(true);
     first.unsubscribe();
     second.unsubscribe();
   });
@@ -378,7 +386,7 @@ describe("work is never started twice", () => {
     expect(loads).toBe(1);
     expect(eventsOf(events(), "scheduler.requested")).toHaveLength(1);
     expect(eventsOf(events(), "scheduler.started")).toHaveLength(1);
-    subscriptions.forEach(subscription => subscription.unsubscribe());
+    subscriptions.forEach((subscription) => subscription.unsubscribe());
   });
 });
 
@@ -386,36 +394,39 @@ describe("invalidation and supersession races", () => {
   it.each([
     ["honours its signal", false],
     ["ignores its signal", true],
-  ])("applies only the newest attempt when a node is invalidated mid-flight and its loader %s", async (_name, ignoresSignal) => {
-    const loader = controlled<number>({ ignoresSignal });
-    const ctx = defineContextNode({ key: "ctx", initialValue: 1 });
-    const node = defineDataNode({
-      key: "node",
-      dependencies: [ctx] as const,
-      initialValue: 0,
-      load: ({ get, signal }) => {
-        const value = get(ctx);
-        return loader.load({ signal }).then(result => result + value);
-      },
-    });
-    const { runtime } = build([ctx, node]);
-    const subscription = runtime.subscribeNodes([node]);
-    await flush();
-    expect(loader.calls).toHaveLength(1);
+  ])(
+    "applies only the newest attempt when a node is invalidated mid-flight and its loader %s",
+    async (_name, ignoresSignal) => {
+      const loader = controlled<number>({ ignoresSignal });
+      const ctx = defineContextNode({ key: "ctx", initialValue: 1 });
+      const node = defineDataNode({
+        key: "node",
+        dependencies: [ctx] as const,
+        initialValue: 0,
+        load: ({ get, signal }) => {
+          const value = get(ctx);
+          return loader.load({ signal }).then((result) => result + value);
+        },
+      });
+      const { runtime } = build([ctx, node]);
+      const subscription = runtime.subscribeNodes([node]);
+      await flush();
+      expect(loader.calls).toHaveLength(1);
 
-    runtime.setContext(ctx, 2);
-    await flush();
-    expect(loader.calls).toHaveLength(2); // the new attempt starts at once
+      runtime.setContext(ctx, 2);
+      await flush();
+      expect(loader.calls).toHaveLength(2); // the new attempt starts at once
 
-    // The old attempt's result arrives last and must be ignored.
-    loader.calls[1]!.resolve(10);
-    await flush();
-    loader.calls[0]!.resolve(1000);
-    await runtime.whenSettled();
+      // The old attempt's result arrives last and must be ignored.
+      loader.calls[1]!.resolve(10);
+      await flush();
+      loader.calls[0]!.resolve(1000);
+      await runtime.whenSettled();
 
-    expect(runtime.getState(node)).toMatchObject({ status: "success", data: 12 });
-    subscription.unsubscribe();
-  });
+      expect(runtime.getState(node)).toMatchObject({ status: "success", data: 12 });
+      subscription.unsubscribe();
+    },
+  );
 
   it("applies only the latest value after a burst of invalidations resolves out of order", async () => {
     const loader = controlled<number>({ ignoresSignal: true });
@@ -465,7 +476,10 @@ describe("invalidation and supersession races", () => {
     await flush();
 
     expect(aborted.calls[0]!.signal.aborted).toBe(true);
-    expect(runtime.getState(abortedNode)).toMatchObject({ status: "idle", hasSuccessfulValue: false });
+    expect(runtime.getState(abortedNode)).toMatchObject({
+      status: "idle",
+      hasSuccessfulValue: false,
+    });
     expect(runtime.getSchedulerState().isRunning).toBe(true); // the slow flush is still going
     slow.calls[0]!.resolve(1);
     await runtime.whenSettled();
@@ -476,23 +490,26 @@ describe("invalidation and supersession races", () => {
   it.each([
     ["honours its signal", false],
     ["ignores its signal", true],
-  ])("reloads a node unsubscribed and resubscribed in the same turn when its loader %s", async (_name, ignoresSignal) => {
-    const loader = controlled<number>({ ignoresSignal });
-    const node = defineDataNode({ key: "node", initialValue: 0, load: loader.load });
-    const { runtime } = build([node]);
-    const first = runtime.subscribeNodes([node]);
-    await flush();
+  ])(
+    "reloads a node unsubscribed and resubscribed in the same turn when its loader %s",
+    async (_name, ignoresSignal) => {
+      const loader = controlled<number>({ ignoresSignal });
+      const node = defineDataNode({ key: "node", initialValue: 0, load: loader.load });
+      const { runtime } = build([node]);
+      const first = runtime.subscribeNodes([node]);
+      await flush();
 
-    first.unsubscribe();
-    const second = runtime.subscribeNodes([node]);
-    await flush();
+      first.unsubscribe();
+      const second = runtime.subscribeNodes([node]);
+      await flush();
 
-    expect(loader.calls).toHaveLength(2);
-    loader.calls[1]!.resolve(42);
-    await runtime.whenSettled();
-    expect(runtime.getState(node)).toMatchObject({ status: "success", data: 42 });
-    second.unsubscribe();
-  });
+      expect(loader.calls).toHaveLength(2);
+      loader.calls[1]!.resolve(42);
+      await runtime.whenSettled();
+      expect(runtime.getState(node)).toMatchObject({ status: "success", data: 42 });
+      second.unsubscribe();
+    },
+  );
 
   it("coalesces a subscription and a context change made in the same turn into one flush", async () => {
     const ctx = defineContextNode({ key: "ctx", initialValue: 1 });
@@ -608,35 +625,38 @@ describe("whenSettled and scheduler state across overlapping flushes", () => {
   it.each([
     ["the failing flush finishes first", "failFirst"],
     ["the failing flush finishes last", "failLast"],
-  ] as const)("reports the most recently finished flush's outcome when %s", async (_name, order) => {
-    const bad = controlled<number>();
-    const good = controlled<number>();
-    const badNode = defineDataNode({ key: "bad", initialValue: 0, load: bad.load });
-    const goodNode = defineDataNode({ key: "good", initialValue: 0, load: good.load });
-    const { runtime } = build([badNode, goodNode]);
-    const first = runtime.subscribeNodes([badNode]);
-    await flush();
-    const second = runtime.subscribeNodes([goodNode]);
-    await flush();
+  ] as const)(
+    "reports the most recently finished flush's outcome when %s",
+    async (_name, order) => {
+      const bad = controlled<number>();
+      const good = controlled<number>();
+      const badNode = defineDataNode({ key: "bad", initialValue: 0, load: bad.load });
+      const goodNode = defineDataNode({ key: "good", initialValue: 0, load: good.load });
+      const { runtime } = build([badNode, goodNode]);
+      const first = runtime.subscribeNodes([badNode]);
+      await flush();
+      const second = runtime.subscribeNodes([goodNode]);
+      await flush();
 
-    if (order === "failFirst") {
-      bad.calls[0]!.reject(new Error("bad failed"));
-      await flush();
-      expect(failureNodeKeys(runtime)).toContain("bad");
-      good.calls[0]!.resolve(1);
-      await runtime.whenSettled();
-      expect(runtime.getSchedulerState().error).toBeNull();
-    } else {
-      good.calls[0]!.resolve(1);
-      await flush();
-      expect(runtime.getSchedulerState().error).toBeNull();
-      bad.calls[0]!.reject(new Error("bad failed"));
-      await runtime.whenSettled();
-      expect(failureNodeKeys(runtime)).toContain("bad");
-    }
-    first.unsubscribe();
-    second.unsubscribe();
-  });
+      if (order === "failFirst") {
+        bad.calls[0]!.reject(new Error("bad failed"));
+        await flush();
+        expect(failureNodeKeys(runtime)).toContain("bad");
+        good.calls[0]!.resolve(1);
+        await runtime.whenSettled();
+        expect(runtime.getSchedulerState().error).toBeNull();
+      } else {
+        good.calls[0]!.resolve(1);
+        await flush();
+        expect(runtime.getSchedulerState().error).toBeNull();
+        bad.calls[0]!.reject(new Error("bad failed"));
+        await runtime.whenSettled();
+        expect(failureNodeKeys(runtime)).toContain("bad");
+      }
+      first.unsubscribe();
+      second.unsubscribe();
+    },
+  );
 });
 
 describe("attribution and diagnostics of overlapping flushes", () => {
@@ -662,15 +682,20 @@ describe("attribution and diagnostics of overlapping flushes", () => {
     await runtime.whenSettled();
 
     const completed = eventsOf(events(), "scheduler.completed");
-    const slowFlush = completed.find(event => "reason" in event && event.reason === "subscription");
-    const contextFlush = completed.find(event => "reason" in event && event.reason === "context-invalidation");
+    const slowFlush = completed.find(
+      (event) => "reason" in event && event.reason === "subscription",
+    );
+    const contextFlush = completed.find(
+      (event) => "reason" in event && event.reason === "context-invalidation",
+    );
     expect(slowFlush).toBeDefined();
     expect(contextFlush).toBeDefined();
     // Each flush's cause points at whatever requested *it* - the slow flush's
     // own subscription, the fast flush's own context change - never at the
     // other's. Overlap must not let one flush's request overwrite another's
     // attribution before it starts.
-    const causeOf = (event: typeof slowFlush) => (event && "causeId" in event ? event.causeId : undefined);
+    const causeOf = (event: typeof slowFlush) =>
+      event && "causeId" in event ? event.causeId : undefined;
     expect(causeOf(slowFlush)).toBeTruthy();
     expect(causeOf(contextFlush)).toBeTruthy();
     expect(causeOf(slowFlush)).not.toBe(causeOf(contextFlush));
@@ -692,7 +717,9 @@ describe("attribution and diagnostics of overlapping flushes", () => {
     await runtime.whenSettled();
 
     const idsOf = (type: string) =>
-      eventsOf(events(), type).map(event => event.operationId).sort();
+      eventsOf(events(), type)
+        .map((event) => event.operationId)
+        .sort();
     expect(idsOf("scheduler.requested")).toHaveLength(2);
     expect(idsOf("scheduler.started")).toEqual(idsOf("scheduler.requested"));
     expect(idsOf("scheduler.completed")).toEqual(idsOf("scheduler.requested"));
@@ -714,9 +741,14 @@ describe("attribution and diagnostics of overlapping flushes", () => {
     await runtime.whenSettled();
 
     const startedBy = (nodeKey: string) =>
-      events().find(event => event.type === "node.load.started" && "nodeKey" in event && event.nodeKey === nodeKey)?.operationId;
+      events().find(
+        (event) =>
+          event.type === "node.load.started" && "nodeKey" in event && event.nodeKey === nodeKey,
+      )?.operationId;
     const flushOf = (nodeKey: string) =>
-      eventsOf(events(), "scheduler.started").find(event => "nodeKeys" in event && event.nodeKeys.includes(nodeKey))?.operationId;
+      eventsOf(events(), "scheduler.started").find(
+        (event) => "nodeKeys" in event && event.nodeKeys.includes(nodeKey),
+      )?.operationId;
     expect(startedBy("slow")).toBe(flushOf("slow"));
     expect(startedBy("fast")).toBe(flushOf("fast"));
     expect(startedBy("slow")).not.toBe(startedBy("fast"));
@@ -738,10 +770,12 @@ describe("attribution and diagnostics of overlapping flushes", () => {
 
     const entries = computeTimeline(events());
     const schedulerOperations = new Set(
-      entries.filter(entry => entry.type.startsWith("scheduler.")).map(entry => entry.operationId),
+      entries
+        .filter((entry) => entry.type.startsWith("scheduler."))
+        .map((entry) => entry.operationId),
     );
     expect(schedulerOperations.size).toBe(2);
-    expect(entries.some(entry => entry.isFailure)).toBe(false);
+    expect(entries.some((entry) => entry.isFailure)).toBe(false);
     first.unsubscribe();
     second.unsubscribe();
   });
@@ -885,7 +919,6 @@ describe("aborted attempts are never reused", () => {
     await running;
     expect(state.getNodeState("node")).toMatchObject({ status: "success", data: 5 });
   });
-
 });
 
 describe("scheduler-diagnostics attribution does not leak between flushes", () => {
@@ -894,7 +927,11 @@ describe("scheduler-diagnostics attribution does not leak between flushes", () =
     const diagnostics = createRuntimeDiagnosticEmitter({ sink: collector });
     const schedulerRequest = createSchedulerRequestTracker("subscription");
     const schedulerDiagnostics = createSchedulerDiagnostics({ diagnostics, schedulerRequest });
-    const node: AnyNodeDefinition = defineDataNode({ key: "n", initialValue: 0, load: async () => 1 });
+    const node: AnyNodeDefinition = defineDataNode({
+      key: "n",
+      initialValue: 0,
+      load: async () => 1,
+    });
 
     schedulerRequest.request("context-invalidation", "cause-a");
     schedulerDiagnostics.onRequested();
@@ -908,11 +945,11 @@ describe("scheduler-diagnostics attribution does not leak between flushes", () =
     second.complete(null);
 
     const started = eventsOf(collector.getEvents(), "scheduler.started");
-    expect(started.map(event => ("reason" in event ? event.reason : undefined))).toEqual([
+    expect(started.map((event) => ("reason" in event ? event.reason : undefined))).toEqual([
       "context-invalidation",
       "subscription",
     ]);
-    expect(started.map(event => ("causeId" in event ? event.causeId : undefined))).toEqual([
+    expect(started.map((event) => ("causeId" in event ? event.causeId : undefined))).toEqual([
       "cause-a",
       undefined,
     ]);

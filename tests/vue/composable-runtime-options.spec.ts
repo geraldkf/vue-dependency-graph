@@ -1,11 +1,7 @@
 import { render } from "@testing-library/vue";
 import { defineComponent } from "vue";
 import { describe, expect, it } from "vitest";
-import {
-  createGraph,
-  createGraphRuntime,
-  defineContextNode,
-} from "../../src/core";
+import { createGraph, createGraphRuntime, defineContextNode } from "../../src/core";
 import { createGraphRuntimePlugin } from "../../src/vue/plugin";
 import { useNode } from "../../src/vue/use-node";
 import { useNodes } from "../../src/vue/use-nodes";
@@ -43,9 +39,7 @@ describe("graph composable runtime options", () => {
       key: "options:use-nodes:second",
       initialValue: "two",
     });
-    const runtime = createGraphRuntime(
-      createGraph({ nodes: [first, second] })
-    );
+    const runtime = createGraphRuntime(createGraph({ nodes: [first, second] }));
 
     const Probe = defineComponent({
       setup() {

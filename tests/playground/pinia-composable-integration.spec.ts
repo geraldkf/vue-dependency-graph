@@ -70,9 +70,7 @@ describe("Pinia-owned runtime composable integration", () => {
       global: { plugins: [pinia] },
     });
 
-    expect(
-      graphStore.runtime.getSubscriptionState(sharedResource).direct
-    ).toBe(2);
+    expect(graphStore.runtime.getSubscriptionState(sharedResource).direct).toBe(2);
 
     await vi.advanceTimersByTimeAsync(600);
 

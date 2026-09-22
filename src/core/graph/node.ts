@@ -17,7 +17,7 @@ const validateKey = (key: string): void => {
   if (key.trim().length === 0) {
     throw new GraphValidationError(
       "INVALID_NODE_KEY",
-      "Node key must contain at least one non-whitespace character."
+      "Node key must contain at least one non-whitespace character.",
     );
   }
 };
@@ -35,12 +35,10 @@ const validateKey = (key: string): void => {
  *   the failure propagates and the next access tries again.
  */
 const createDependencyAccessor = <TDependencies extends DependencyList>(
-  source: DependencySource<TDependencies> | undefined
+  source: DependencySource<TDependencies> | undefined,
 ): (() => TDependencies) => {
   if (typeof source !== "function") {
-    const dependencies = Object.freeze([
-      ...(source ?? []),
-    ]) as unknown as TDependencies;
+    const dependencies = Object.freeze([...(source ?? [])]) as unknown as TDependencies;
     return () => dependencies;
   }
 
@@ -53,19 +51,17 @@ const createDependencyAccessor = <TDependencies extends DependencyList>(
   };
 };
 
-
 const freezeDiagnostics = <TValue>(
   diagnostics: import("./types").NodeDiagnosticsOptions<TValue> | undefined,
 ): import("./types").NodeDiagnosticsOptions<TValue> =>
   Object.freeze({ value: diagnostics?.value ?? "omit" });
 
 const freezeInvalidatedBy = <TInvalidatedBy extends readonly unknown[]>(
-  invalidatedBy: TInvalidatedBy | undefined
-): TInvalidatedBy =>
-  Object.freeze([...(invalidatedBy ?? [])]) as unknown as TInvalidatedBy;
+  invalidatedBy: TInvalidatedBy | undefined,
+): TInvalidatedBy => Object.freeze([...(invalidatedBy ?? [])]) as unknown as TInvalidatedBy;
 
 export const defineContextNode = <TValue>(
-  options: ContextNodeOptions<TValue>
+  options: ContextNodeOptions<TValue>,
 ): ContextNodeDefinition<TValue> => {
   validateKey(options.key);
 
@@ -83,7 +79,7 @@ export const defineDataNode = <
   const TDependencies extends DependencyList = readonly [],
   const TInvalidatedBy extends EventInvalidationList<TDependencies> = readonly [],
 >(
-  options: DataNodeOptions<TValue, TDependencies, TInvalidatedBy>
+  options: DataNodeOptions<TValue, TDependencies, TInvalidatedBy>,
 ): DataNodeDefinition<TValue, TDependencies, TInvalidatedBy> => {
   validateKey(options.key);
 
@@ -117,7 +113,7 @@ export const defineDerivedNode = <
   const TDependencies extends DependencyList,
   const TInvalidatedBy extends EventInvalidationList<TDependencies> = readonly [],
 >(
-  options: DerivedNodeOptions<TValue, TDependencies, TInvalidatedBy>
+  options: DerivedNodeOptions<TValue, TDependencies, TInvalidatedBy>,
 ): DerivedNodeDefinition<TValue, TDependencies, TInvalidatedBy> => {
   validateKey(options.key);
 

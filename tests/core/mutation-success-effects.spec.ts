@@ -35,9 +35,7 @@ describe("mutation success effects", () => {
       dependencies: [invalidated] as const,
       derive: ({ get }) => get(invalidated).length,
     });
-    const runtime = createGraphRuntime(
-      createGraph({ nodes: [updated, child, invalidated] }),
-    );
+    const runtime = createGraphRuntime(createGraph({ nodes: [updated, child, invalidated] }));
     await runtime.execute([updated, child]);
     const snapshots: string[] = [];
     runtime.onChange(() => {
@@ -46,12 +44,16 @@ describe("mutation success effects", () => {
       );
     });
 
-    await runtime.mutate(save, { id: 5 }, {
-      onSuccess: (effects, result) => {
-        effects.update(updated, () => result.id);
-        effects.invalidate([invalidated]);
+    await runtime.mutate(
+      save,
+      { id: 5 },
+      {
+        onSuccess: (effects, result) => {
+          effects.update(updated, () => result.id);
+          effects.invalidate([invalidated]);
+        },
       },
-    });
+    );
 
     expect(runtime.getState(updated)).toMatchObject({
       data: 5,
@@ -83,12 +85,16 @@ describe("mutation success effects", () => {
     const runtime = createGraphRuntime(createGraph({ nodes: [value] }));
     await runtime.execute([value]);
 
-    await runtime.mutate(save, { id: 5 }, {
-      onSuccess: (effects, result) => {
-        effects.update(value, () => result.id);
-        effects.invalidate([value]);
+    await runtime.mutate(
+      save,
+      { id: 5 },
+      {
+        onSuccess: (effects, result) => {
+          effects.update(value, () => result.id);
+          effects.invalidate([value]);
+        },
       },
-    });
+    );
 
     expect(runtime.getState(value)).toMatchObject({
       data: 5,
@@ -109,11 +115,15 @@ describe("mutation success effects", () => {
     const runtime = createGraphRuntime(createGraph({ nodes: [target] }));
     await runtime.execute([target]);
 
-    await runtime.mutate(save, { id: 5 }, {
-      onSuccess: (effects, result) => {
-        effects.publish(CompleteSave, { id: result.id });
+    await runtime.mutate(
+      save,
+      { id: 5 },
+      {
+        onSuccess: (effects, result) => {
+          effects.publish(CompleteSave, { id: result.id });
+        },
       },
-    });
+    );
 
     expect(runtime.getState(target)).toMatchObject({
       data: "loaded",
@@ -131,25 +141,32 @@ describe("mutation success effects", () => {
     const target = defineDataNode({
       key: "success-effects-conditional-target",
       dependencies: [selectedId] as const,
-      invalidatedBy: [{
-        event: CompleteSave,
-        when: ({ payload, get }: EventInvalidationContext<
-          typeof CompleteSave,
-          readonly [typeof selectedId]
-        >) => payload.id === get(selectedId),
-      }] as const,
+      invalidatedBy: [
+        {
+          event: CompleteSave,
+          when: ({
+            payload,
+            get,
+          }: EventInvalidationContext<typeof CompleteSave, readonly [typeof selectedId]>) =>
+            payload.id === get(selectedId),
+        },
+      ] as const,
       initialValue: "initial",
       load: async () => "loaded",
     });
     const runtime = createGraphRuntime(createGraph({ nodes: [target, selectedId] }));
     await runtime.execute([target]);
 
-    await runtime.mutate(save, { id: 5 }, {
-      onSuccess: (effects, result) => {
-        effects.update(selectedId, () => result.id);
-        effects.publish(CompleteSave, { id: result.id });
+    await runtime.mutate(
+      save,
+      { id: 5 },
+      {
+        onSuccess: (effects, result) => {
+          effects.update(selectedId, () => result.id);
+          effects.publish(CompleteSave, { id: result.id });
+        },
       },
-    });
+    );
 
     expect(runtime.getState(selectedId)).toMatchObject({
       data: 5,
@@ -173,12 +190,14 @@ describe("mutation success effects", () => {
     });
     const target = defineDataNode({
       key: "success-effects-predicate-target",
-      invalidatedBy: [{
-        event,
-        when: () => {
-          throw failure;
+      invalidatedBy: [
+        {
+          event,
+          when: () => {
+            throw failure;
+          },
         },
-      }] as const,
+      ] as const,
       initialValue: "initial",
       load: async () => "loaded",
     });
@@ -189,12 +208,18 @@ describe("mutation success effects", () => {
     const listener = vi.fn();
     runtime.onChange(listener);
 
-    await expect(runtime.mutate(save, { id: 5 }, {
-      onSuccess: effects => {
-        effects.update(updated, () => 5);
-        effects.publish(event, undefined);
-      },
-    })).rejects.toBe(failure);
+    await expect(
+      runtime.mutate(
+        save,
+        { id: 5 },
+        {
+          onSuccess: (effects) => {
+            effects.update(updated, () => 5);
+            effects.publish(event, undefined);
+          },
+        },
+      ),
+    ).rejects.toBe(failure);
 
     expect(runtime.getState(updated)).toEqual(beforeUpdated);
     expect(runtime.getState(target)).toEqual(beforeTarget);
@@ -223,12 +248,16 @@ describe("mutation success effects", () => {
     const listener = vi.fn();
     runtime.onChange(listener);
 
-    await runtime.mutate(save, { id: 5 }, {
-      onSuccess: effects => {
-        effects.invalidate([right]);
-        effects.publish(CompleteSave, { id: 5 });
+    await runtime.mutate(
+      save,
+      { id: 5 },
+      {
+        onSuccess: (effects) => {
+          effects.invalidate([right]);
+          effects.publish(CompleteSave, { id: 5 });
+        },
       },
-    });
+    );
 
     expect(runtime.getState(left).generation).toBe(1);
     expect(runtime.getState(right).generation).toBe(1);
@@ -250,9 +279,13 @@ describe("mutation success effects", () => {
     const subscription = runtime.subscribeNodes([target]);
     await runtime.whenSettled();
 
-    await runtime.mutate(save, { id: 5 }, {
-      onSuccess: effects => effects.invalidate([target]),
-    });
+    await runtime.mutate(
+      save,
+      { id: 5 },
+      {
+        onSuccess: (effects) => effects.invalidate([target]),
+      },
+    );
     await runtime.whenSettled();
 
     expect(requestCount).toBe(2);
@@ -282,9 +315,11 @@ describe("mutation success effects", () => {
     await runtime.execute([target]);
     const onSuccess = vi.fn();
 
-    await expect(runtime.mutate(rejected, undefined, {
-      onSuccess,
-    })).rejects.toBe(failure);
+    await expect(
+      runtime.mutate(rejected, undefined, {
+        onSuccess,
+      }),
+    ).rejects.toBe(failure);
 
     expect(onSuccess).not.toHaveBeenCalled();
     expect(runtime.getState(target)).toMatchObject({
@@ -301,11 +336,17 @@ describe("mutation success effects", () => {
     });
     const runtime = createGraphRuntime(createGraph({ nodes: [context] }));
 
-    await expect(runtime.mutate(save, { id: 5 }, {
-      onSuccess: effects => {
-        effects.invalidate([context as never]);
-      },
-    })).rejects.toMatchObject({
+    await expect(
+      runtime.mutate(
+        save,
+        { id: 5 },
+        {
+          onSuccess: (effects) => {
+            effects.invalidate([context as never]);
+          },
+        },
+      ),
+    ).rejects.toMatchObject({
       name: "GraphMutationStateError",
       nodeKey: context.key,
     });

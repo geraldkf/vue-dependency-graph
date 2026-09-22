@@ -39,17 +39,19 @@ describe("mutation success reconciliation", () => {
     const { first, second, runtime } = await createLoadedRuntime();
     const observerSnapshots: string[] = [];
     runtime.onChange(() => {
-      observerSnapshots.push(
-        `${runtime.getState(first).data}:${runtime.getState(second).data}`,
-      );
+      observerSnapshots.push(`${runtime.getState(first).data}:${runtime.getState(second).data}`);
     });
 
-    const result = await runtime.mutate(mutation, { value: 5 }, {
-      onSuccess: (effects, response, input) => {
-        effects.update(first, current => current + response.savedValue);
-        effects.update(second, current => `${current}:${input.value}`);
+    const result = await runtime.mutate(
+      mutation,
+      { value: 5 },
+      {
+        onSuccess: (effects, response, input) => {
+          effects.update(first, (current) => current + response.savedValue);
+          effects.update(second, (current) => `${current}:${input.value}`);
+        },
       },
-    });
+    );
 
     expect(result).toEqual({ savedValue: 5 });
     expect(runtime.getState(first)).toMatchObject({
@@ -79,14 +81,20 @@ describe("mutation success reconciliation", () => {
     const listener = vi.fn();
     runtime.onChange(listener);
 
-    await expect(runtime.mutate(mutation, { value: 5 }, {
-      onSuccess: effects => {
-        effects.update(first, current => current + 1);
-        effects.update(second, () => {
-          throw failure;
-        });
-      },
-    })).rejects.toBe(failure);
+    await expect(
+      runtime.mutate(
+        mutation,
+        { value: 5 },
+        {
+          onSuccess: (effects) => {
+            effects.update(first, (current) => current + 1);
+            effects.update(second, () => {
+              throw failure;
+            });
+          },
+        },
+      ),
+    ).rejects.toBe(failure);
 
     expect(runtime.getState(first)).toEqual(beforeFirst);
     expect(runtime.getState(second)).toEqual(beforeSecond);
@@ -98,12 +106,18 @@ describe("mutation success reconciliation", () => {
     const updater = vi.fn((current: number) => current + 1);
     const failure = new Error("Success callback failed");
 
-    await expect(runtime.mutate(mutation, { value: 5 }, {
-      onSuccess: effects => {
-        effects.update(first, updater);
-        throw failure;
-      },
-    })).rejects.toBe(failure);
+    await expect(
+      runtime.mutate(
+        mutation,
+        { value: 5 },
+        {
+          onSuccess: (effects) => {
+            effects.update(first, updater);
+            throw failure;
+          },
+        },
+      ),
+    ).rejects.toBe(failure);
 
     expect(updater).not.toHaveBeenCalled();
     expect(runtime.getState(first).data).toBe(1);
@@ -112,15 +126,21 @@ describe("mutation success reconciliation", () => {
   it("rejects asynchronous success callbacks without applying their drafts", async () => {
     const { first, runtime } = await createLoadedRuntime();
 
-    await expect(runtime.mutate(mutation, { value: 5 }, {
-      onSuccess: (async (effects: MutationUpdateEffects) => {
-        effects.update(first, current => current + 1);
-      }) as unknown as (
-        effects: MutationUpdateEffects,
-        result: { readonly savedValue: number },
-        input: { readonly value: number },
-      ) => void,
-    })).rejects.toThrow("must be synchronous.");
+    await expect(
+      runtime.mutate(
+        mutation,
+        { value: 5 },
+        {
+          onSuccess: (async (effects: MutationUpdateEffects) => {
+            effects.update(first, (current) => current + 1);
+          }) as unknown as (
+            effects: MutationUpdateEffects,
+            result: { readonly savedValue: number },
+            input: { readonly value: number },
+          ) => void,
+        },
+      ),
+    ).rejects.toThrow("must be synchronous.");
 
     expect(runtime.getState(first).data).toBe(1);
   });
@@ -129,12 +149,18 @@ describe("mutation success reconciliation", () => {
     const { first, runtime } = await createLoadedRuntime();
     const updater = vi.fn((current: number) => current + 1);
 
-    await expect(runtime.mutate(mutation, { value: 5 }, {
-      onSuccess: effects => {
-        effects.update(first, updater);
-        effects.update(first, updater);
-      },
-    })).rejects.toMatchObject({
+    await expect(
+      runtime.mutate(
+        mutation,
+        { value: 5 },
+        {
+          onSuccess: (effects) => {
+            effects.update(first, updater);
+            effects.update(first, updater);
+          },
+        },
+      ),
+    ).rejects.toMatchObject({
       name: "GraphMutationStateError",
       nodeKey: first.key,
     });
@@ -151,9 +177,13 @@ describe("mutation success reconciliation", () => {
       load: async () => 99,
     });
 
-    await runtime.mutate(mutation, { value: 5 }, {
-      onSuccess: effects => effects.update(equivalent, () => 8),
-    });
+    await runtime.mutate(
+      mutation,
+      { value: 5 },
+      {
+        onSuccess: (effects) => effects.update(equivalent, () => 8),
+      },
+    );
 
     expect(runtime.getState(first).data).toBe(8);
   });
@@ -171,11 +201,17 @@ describe("mutation success reconciliation", () => {
     const runtime = createGraphRuntime(createGraph({ nodes: [input, data] }));
     await runtime.execute([data]);
 
-    await expect(runtime.mutate(mutation, { value: 5 }, {
-      onSuccess: effects => {
-        effects.update(input as unknown as typeof data, () => 5);
-      },
-    })).rejects.toMatchObject({
+    await expect(
+      runtime.mutate(
+        mutation,
+        { value: 5 },
+        {
+          onSuccess: (effects) => {
+            effects.update(input as unknown as typeof data, () => 5);
+          },
+        },
+      ),
+    ).rejects.toMatchObject({
       name: "GraphMutationStateError",
       nodeKey: input.key,
     });
@@ -192,11 +228,17 @@ describe("mutation success reconciliation", () => {
     });
     const runtime = createGraphRuntime(createGraph({ nodes: [unloaded] }));
 
-    await expect(runtime.mutate(mutation, { value: 5 }, {
-      onSuccess: effects => {
-        effects.update(unloaded, () => 5);
-      },
-    })).rejects.toBeInstanceOf(GraphMutationStateError);
+    await expect(
+      runtime.mutate(
+        mutation,
+        { value: 5 },
+        {
+          onSuccess: (effects) => {
+            effects.update(unloaded, () => 5);
+          },
+        },
+      ),
+    ).rejects.toBeInstanceOf(GraphMutationStateError);
 
     expect(runtime.getState(unloaded)).toMatchObject({
       data: 0,
@@ -220,12 +262,18 @@ describe("mutation success reconciliation", () => {
     await runtime.execute([loaded]);
     const updater = vi.fn((current: number) => current + 1);
 
-    await expect(runtime.mutate(mutation, { value: 5 }, {
-      onSuccess: effects => {
-        effects.update(loaded, updater);
-        effects.update(unloaded, current => current + 1);
-      },
-    })).rejects.toBeInstanceOf(GraphMutationStateError);
+    await expect(
+      runtime.mutate(
+        mutation,
+        { value: 5 },
+        {
+          onSuccess: (effects) => {
+            effects.update(loaded, updater);
+            effects.update(unloaded, (current) => current + 1);
+          },
+        },
+      ),
+    ).rejects.toBeInstanceOf(GraphMutationStateError);
 
     expect(updater).not.toHaveBeenCalled();
     expect(runtime.getState(loaded).data).toBe(1);
@@ -236,9 +284,13 @@ describe("mutation success reconciliation", () => {
     const listener = vi.fn();
     runtime.onChange(listener);
 
-    await runtime.mutate(mutation, { value: 1 }, {
-      onSuccess: effects => effects.update(first, current => current),
-    });
+    await runtime.mutate(
+      mutation,
+      { value: 1 },
+      {
+        onSuccess: (effects) => effects.update(first, (current) => current),
+      },
+    );
 
     expect(runtime.getState(first).generation).toBe(0);
     expect(listener).not.toHaveBeenCalled();
@@ -259,14 +311,16 @@ describe("mutation success reconciliation", () => {
     await runtime.execute([child]);
     const snapshots: string[] = [];
     runtime.onChange(() => {
-      snapshots.push(
-        `${runtime.getState(parent).data}:${runtime.getState(child).freshness}`,
-      );
+      snapshots.push(`${runtime.getState(parent).data}:${runtime.getState(child).freshness}`);
     });
 
-    await runtime.mutate(mutation, { value: 5 }, {
-      onSuccess: effects => effects.update(parent, () => 5),
-    });
+    await runtime.mutate(
+      mutation,
+      { value: 5 },
+      {
+        onSuccess: (effects) => effects.update(parent, () => 5),
+      },
+    );
 
     expect(runtime.getState(parent)).toMatchObject({
       data: 5,
@@ -296,9 +350,13 @@ describe("mutation success reconciliation", () => {
     const subscription = runtime.subscribeNodes([child]);
     await runtime.whenSettled();
 
-    await runtime.mutate(mutation, { value: 5 }, {
-      onSuccess: effects => effects.update(parent, () => 5),
-    });
+    await runtime.mutate(
+      mutation,
+      { value: 5 },
+      {
+        onSuccess: (effects) => effects.update(parent, () => 5),
+      },
+    );
     await runtime.whenSettled();
 
     expect(runtime.getState(child)).toMatchObject({
@@ -326,14 +384,15 @@ describe("mutation success reconciliation", () => {
     const runtime = createGraphRuntime(createGraph({ nodes: [value] }));
     await runtime.execute([value]);
     const refresh = runtime.refresh([value]);
-    await waitForCondition(
-      () => refreshSignal !== undefined,
-      "refresh request to start",
-    );
+    await waitForCondition(() => refreshSignal !== undefined, "refresh request to start");
 
-    await runtime.mutate(mutation, { value: 5 }, {
-      onSuccess: effects => effects.update(value, () => 5),
-    });
+    await runtime.mutate(
+      mutation,
+      { value: 5 },
+      {
+        onSuccess: (effects) => effects.update(value, () => 5),
+      },
+    );
 
     expect(refreshSignal?.aborted).toBe(true);
     expect(runtime.getState(value)).toMatchObject({

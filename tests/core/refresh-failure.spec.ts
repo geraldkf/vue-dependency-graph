@@ -24,13 +24,21 @@ describe("refresh failures", () => {
 
     shouldFail = true;
     await expect(runtime.refresh([data])).rejects.toBeInstanceOf(GraphExecutionError);
-    expect(runtime.getState(data)).toMatchObject({ data: "first", status: "error", freshness: "stale" });
+    expect(runtime.getState(data)).toMatchObject({
+      data: "first",
+      status: "error",
+      freshness: "stale",
+    });
     expect(runtime.getSchedulerState().error).toBeNull();
 
     shouldFail = false;
     value = "second";
     await runtime.refresh([data]);
-    expect(runtime.getState(data)).toMatchObject({ data: "second", status: "success", error: null });
+    expect(runtime.getState(data)).toMatchObject({
+      data: "second",
+      status: "success",
+      error: null,
+    });
   });
 
   it("normalises derived refresh failures", async () => {

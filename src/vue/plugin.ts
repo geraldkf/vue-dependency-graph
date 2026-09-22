@@ -8,9 +8,7 @@ import type { GraphRuntime } from "../core";
  * Tests that need to provide a runtime without a full plugin import this
  * key directly from this module, not through the public barrel.
  */
-export const GraphRuntimeKey: InjectionKey<GraphRuntime> = Symbol(
-  "graph-runtime"
-);
+export const GraphRuntimeKey: InjectionKey<GraphRuntime> = Symbol("graph-runtime");
 
 export interface GraphRuntimePluginOptions {
   /**
@@ -35,7 +33,7 @@ export interface GraphRuntimePluginOptions {
  */
 export const createGraphRuntimePlugin = (
   runtime: GraphRuntime,
-  options?: GraphRuntimePluginOptions
+  options?: GraphRuntimePluginOptions,
 ): Plugin => ({
   install(app) {
     app.provide(GraphRuntimeKey, runtime);
@@ -54,7 +52,7 @@ export const useGraphRuntime = (): GraphRuntime => {
   const runtime = inject(GraphRuntimeKey);
   if (!runtime) {
     throw new Error(
-      "No GraphRuntime found. Install it with app.use(createGraphRuntimePlugin(runtime))."
+      "No GraphRuntime found. Install it with app.use(createGraphRuntimePlugin(runtime)).",
     );
   }
   return runtime;

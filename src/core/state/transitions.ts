@@ -38,8 +38,7 @@ import type { NodeFreshness } from "./types";
 
 /** The one place the readonly state record is made writable. Not exported. */
 type WritableState = { -readonly [K in keyof NodeStateRecord]: NodeStateRecord[K] };
-const writable = (state: NodeStateRecord): WritableState =>
-  state as WritableState;
+const writable = (state: NodeStateRecord): WritableState => state as WritableState;
 
 /** The fields a snapshot restores; `generation` is never restored. */
 export type NodeStateFields = Pick<
@@ -73,10 +72,7 @@ export const beginAttempt = (state: NodeStateRecord): void => {
 };
 
 /** An execution attempt produced `value`. */
-export const succeedAttempt = (
-  state: NodeStateRecord,
-  value: unknown,
-): void => {
+export const succeedAttempt = (state: NodeStateRecord, value: unknown): void => {
   const target = writable(state);
   target.data = value;
   target.status = "success";
@@ -108,10 +104,7 @@ export const abortAttempt = (state: NodeStateRecord): void => {
  * last successful value and its flag, so the node can still be shown while it
  * is in error.
  */
-export const failAttempt = (
-  state: NodeStateRecord,
-  error: Error,
-): void => {
+export const failAttempt = (state: NodeStateRecord, error: Error): void => {
   const target = writable(state);
   target.status = "error";
   target.freshness = "stale";
@@ -146,10 +139,7 @@ export const writeValue = (
  * Puts back what a mutation's optimistic update replaced. The restore is
  * itself a supersession, so it bumps the generation rather than rewinding it.
  */
-export const restoreSnapshot = (
-  state: NodeStateRecord,
-  snapshot: NodeStateFields,
-): void => {
+export const restoreSnapshot = (state: NodeStateRecord, snapshot: NodeStateFields): void => {
   const target = writable(state);
   target.data = snapshot.data;
   target.status = snapshot.status;
@@ -163,10 +153,7 @@ export const restoreSnapshot = (
  * An idle value is dropped: back to the node's never-loaded shape, with the
  * node's `initialValue` and no successful value.
  */
-export const releaseValue = (
-  state: NodeStateRecord,
-  initialValue: unknown,
-): void => {
+export const releaseValue = (state: NodeStateRecord, initialValue: unknown): void => {
   const target = writable(state);
   target.data = initialValue;
   target.hasSuccessfulValue = false;

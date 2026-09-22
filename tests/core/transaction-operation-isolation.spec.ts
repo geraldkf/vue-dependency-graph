@@ -1,20 +1,21 @@
 import { describe, expect, it, vi } from "vitest";
-import {
-  createGraph,
-  createGraphRuntime,
-  defineContextNode,
-  defineDataNode,
-} from "../../src/core";
+import { createGraph, createGraphRuntime, defineContextNode, defineDataNode } from "../../src/core";
 import { deferred, waitForCondition } from "./test-helpers";
 
 describe("transaction caller operation isolation", () => {
   it.each([
-    ["execute", async (fixture: ReturnType<typeof createRuntime>) =>
-      fixture.runtime.execute([fixture.data])],
-    ["prefetch", async (fixture: ReturnType<typeof createRuntime>) =>
-      fixture.runtime.prefetch([fixture.data])],
-    ["refresh", async (fixture: ReturnType<typeof createRuntime>) =>
-      fixture.runtime.refresh([fixture.data])],
+    [
+      "execute",
+      async (fixture: ReturnType<typeof createRuntime>) => fixture.runtime.execute([fixture.data]),
+    ],
+    [
+      "prefetch",
+      async (fixture: ReturnType<typeof createRuntime>) => fixture.runtime.prefetch([fixture.data]),
+    ],
+    [
+      "refresh",
+      async (fixture: ReturnType<typeof createRuntime>) => fixture.runtime.refresh([fixture.data]),
+    ],
   ] as const)(
     "allows unrelated %s work while a transaction is open and uses committed context",
     async (_operation, invoke) => {
@@ -23,7 +24,7 @@ describe("transaction caller operation isolation", () => {
       const listener = vi.fn();
       fixture.runtime.onChange(listener);
 
-      const pendingTransaction = fixture.runtime.transaction(async transaction => {
+      const pendingTransaction = fixture.runtime.transaction(async (transaction) => {
         transaction.setContext(fixture.context, 2);
         await releaseTransaction.promise;
       });
@@ -56,7 +57,7 @@ describe("transaction caller operation isolation", () => {
     const listener = vi.fn();
     runtime.onChange(listener);
 
-    const pendingTransaction = runtime.transaction(async transaction => {
+    const pendingTransaction = runtime.transaction(async (transaction) => {
       transaction.setContext(context, 2);
       await releaseTransaction.promise;
     });
@@ -65,10 +66,7 @@ describe("transaction caller operation isolation", () => {
     const execution = runtime.execute([data]);
     result.resolve(42);
     await execution;
-    await waitForCondition(
-      () => runtime.getState(data).data === 42,
-      "execution result to commit",
-    );
+    await waitForCondition(() => runtime.getState(data).data === 42, "execution result to commit");
 
     expect(listener).toHaveBeenCalled();
     expect(runtime.getState(data).data).toBe(42);

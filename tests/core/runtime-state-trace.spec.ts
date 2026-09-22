@@ -39,7 +39,7 @@ const createClock = () => {
       timers.set(id, { dueAt: now + delayMs, callback });
       return id;
     },
-    clearTimeout: handle => {
+    clearTimeout: (handle) => {
       if (typeof handle === "number") timers.delete(handle);
     },
     random: () => 0.5,
@@ -71,7 +71,7 @@ const cooperativeLoad = (signal: AbortSignal): Promise<number> =>
     signal.addEventListener("abort", () => reject(abortError()));
   });
 
-const flush = (): Promise<void> => new Promise(resolve => setTimeout(resolve, 0));
+const flush = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
 
 const expectTrace = (tracer: ReturnType<typeof createStateTracer>): void => {
   // No listener may ever observe a state the invariants forbid...
@@ -119,7 +119,7 @@ describe("runtime state golden traces", () => {
     await runtime.whenSettled();
 
     tracer.setStep("transaction");
-    await runtime.transaction(transaction => {
+    await runtime.transaction((transaction) => {
       transaction.setContext(ctx, 3);
       transaction.publish(changed, undefined);
     });
@@ -128,10 +128,7 @@ describe("runtime state golden traces", () => {
 
     tracer.setStep("abort on unsubscribe");
     const slowSubscription = runtime.subscribeNodes([slow]);
-    await waitForCondition(
-      () => runtime.getState(slow).status === "loading",
-      "slow load to start",
-    );
+    await waitForCondition(() => runtime.getState(slow).status === "loading", "slow load to start");
     slowSubscription.unsubscribe();
     slowLoad.resolve(1);
     await runtime.whenSettled();
@@ -230,14 +227,14 @@ describe("runtime state golden traces", () => {
 
     tracer.setStep("optimistic + success update");
     await runtime.mutate(succeed, undefined, {
-      optimistic: effects => effects.update(counter, current => current + 1),
-      onSuccess: effects => effects.update(counter, current => current + 10),
+      optimistic: (effects) => effects.update(counter, (current) => current + 1),
+      onSuccess: (effects) => effects.update(counter, (current) => current + 10),
     });
 
     tracer.setStep("success: update descendant and invalidate its ancestor");
     await runtime.mutate(succeed, undefined, {
-      onSuccess: effects => {
-        effects.update(child, current => current + 1);
+      onSuccess: (effects) => {
+        effects.update(child, (current) => current + 1);
         effects.invalidate([parent]);
       },
     });
@@ -245,14 +242,14 @@ describe("runtime state golden traces", () => {
     tracer.setStep("unknown failure keeps the optimistic value and marks it stale");
     await runtime
       .mutate(fail, undefined, {
-        optimistic: effects => effects.update(counter, current => current + 1000),
+        optimistic: (effects) => effects.update(counter, (current) => current + 1000),
       })
       .catch(() => undefined);
 
     tracer.setStep("rejected failure rolls the optimistic update back");
     await runtime
       .mutate(fail, undefined, {
-        optimistic: effects => effects.update(guarded, current => current + 7),
+        optimistic: (effects) => effects.update(guarded, (current) => current + 7),
         classifyFailure: () => "rejected",
       })
       .catch(() => undefined);
@@ -357,10 +354,7 @@ describe("runtime state golden traces", () => {
     }
     await waitForCondition(() => clock.timerCount() === 1, "final poll timer");
     clock.advanceBy(500);
-    await waitForCondition(
-      () => runtime.getState(poll).status === "error",
-      "polling timeout",
-    );
+    await waitForCondition(() => runtime.getState(poll).status === "error", "polling timeout");
     subscription.unsubscribe();
 
     expectTrace(tracer);
@@ -510,7 +504,7 @@ describe("runtime state golden traces", () => {
     );
     await flush();
     await runtime.mutate(save, undefined, {
-      onSuccess: effects => effects.update(written, () => 7),
+      onSuccess: (effects) => effects.update(written, () => 7),
     });
     writtenRefreshLoad.resolve(99);
     await writtenRefresh;

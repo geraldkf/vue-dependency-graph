@@ -1,10 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  createGraph,
-  createGraphRuntime,
-  defineContextNode,
-  defineDataNode,
-} from "../../src/core";
+import { createGraph, createGraphRuntime, defineContextNode, defineDataNode } from "../../src/core";
 import { createNodeSubscription } from "../../src/vue/node-subscription";
 
 describe("createNodeSubscription", () => {
@@ -26,9 +21,7 @@ describe("createNodeSubscription", () => {
       initialValue: 0,
       load: async ({ get }) => get(context),
     });
-    const runtime = createGraphRuntime(
-      createGraph({ nodes: [context, data] })
-    );
+    const runtime = createGraphRuntime(createGraph({ nodes: [context, data] }));
 
     const { state, dispose } = createNodeSubscription(runtime, data);
     await runtime.whenSettled();
@@ -50,9 +43,7 @@ describe("createNodeSubscription", () => {
       initialValue: 0,
       load: async ({ get }) => get(contextA),
     });
-    const runtime = createGraphRuntime(
-      createGraph({ nodes: [contextA, contextB, dataA] })
-    );
+    const runtime = createGraphRuntime(createGraph({ nodes: [contextA, contextB, dataA] }));
 
     const { state, dispose } = createNodeSubscription(runtime, dataA);
     await runtime.whenSettled();
@@ -77,9 +68,7 @@ describe("createNodeSubscription", () => {
       initialValue: 0,
       load: async ({ get }) => get(context),
     });
-    const runtime = createGraphRuntime(
-      createGraph({ nodes: [context, data] })
-    );
+    const runtime = createGraphRuntime(createGraph({ nodes: [context, data] }));
 
     const { state, dispose } = createNodeSubscription(runtime, data);
     await runtime.whenSettled();

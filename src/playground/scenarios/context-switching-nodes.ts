@@ -19,6 +19,5 @@ export const userProfile = defineDataNode({
   key: "scenario:context-switching:userProfile",
   dependencies: [selectedUserId] as const,
   initialValue: "",
-  load: async ({ get }) =>
-    profileLoader.load(() => `Profile for user #${get(selectedUserId)}`),
+  load: async ({ get }) => profileLoader.load(() => `Profile for user #${get(selectedUserId)}`),
 });

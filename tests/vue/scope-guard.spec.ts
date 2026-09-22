@@ -6,7 +6,7 @@ import { assertActiveEffectScope } from "../../src/vue/scope-guard";
 describe("assertActiveEffectScope", () => {
   it("throws when called with no active effect scope", () => {
     expect(() => assertActiveEffectScope("useNode")).toThrow(
-      /useNode\(\) must be called inside setup\(\)/
+      /useNode\(\) must be called inside setup\(\)/,
     );
   });
 

@@ -2,9 +2,9 @@
   <section aria-labelledby="transaction-isolation-heading">
     <h2 id="transaction-isolation-heading">Transaction Isolation</h2>
     <p>
-      Compare two overlapping top-level transaction sessions. Each session owns
-      its staged work and outcome, while scheduler work from a committed session
-      proceeds without waiting for the other session to close.
+      Compare two overlapping top-level transaction sessions. Each session owns its staged work and
+      outcome, while scheduler work from a committed session proceeds without waiting for the other
+      session to close.
     </p>
 
     <div aria-label="Transaction isolation setup">
@@ -18,21 +18,15 @@
     </div>
 
     <p data-testid="transaction-isolation-mode">Mode: {{ snapshot.mode }}</p>
-    <p data-testid="transaction-isolation-scheduler">
-      Scheduler: {{ snapshot.schedulerStatus }}
-    </p>
-    <p data-testid="transaction-isolation-shared">
-      Shared value: {{ snapshot.sharedValue }}
-    </p>
+    <p data-testid="transaction-isolation-scheduler">Scheduler: {{ snapshot.schedulerStatus }}</p>
+    <p data-testid="transaction-isolation-shared">Shared value: {{ snapshot.sharedValue }}</p>
     <p data-testid="transaction-isolation-conflict">
       Conflict keys: {{ snapshot.conflictKeys.join(", ") || "none" }}
     </p>
 
     <section aria-labelledby="transaction-isolation-a-heading">
       <h3 id="transaction-isolation-a-heading">Operation A</h3>
-      <p data-testid="transaction-isolation-a-phase">
-        Phase: {{ snapshot.operationA.phase }}
-      </p>
+      <p data-testid="transaction-isolation-a-phase">Phase: {{ snapshot.operationA.phase }}</p>
       <p data-testid="transaction-isolation-a-value">
         Committed value: {{ snapshot.operationA.committedValue }}
       </p>
@@ -49,9 +43,7 @@
 
     <section aria-labelledby="transaction-isolation-b-heading">
       <h3 id="transaction-isolation-b-heading">Operation B</h3>
-      <p data-testid="transaction-isolation-b-phase">
-        Phase: {{ snapshot.operationB.phase }}
-      </p>
+      <p data-testid="transaction-isolation-b-phase">Phase: {{ snapshot.operationB.phase }}</p>
       <p data-testid="transaction-isolation-b-value">
         Committed value: {{ snapshot.operationB.committedValue }}
       </p>
@@ -94,9 +86,8 @@ const sync = (): void => {
   snapshot.value = scenario.getSnapshot();
 };
 
-const hasOpenTransaction = computed(() =>
-  snapshot.value.operationA.phase === "open" ||
-  snapshot.value.operationB.phase === "open",
+const hasOpenTransaction = computed(
+  () => snapshot.value.operationA.phase === "open" || snapshot.value.operationB.phase === "open",
 );
 const recentEvents = computed(() => snapshot.value.timeline.slice(-16));
 

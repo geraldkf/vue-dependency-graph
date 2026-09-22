@@ -1,10 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  createGraph,
-  createGraphRuntime,
-  defineContextNode,
-  defineDataNode,
-} from "../../src/core";
+import { createGraph, createGraphRuntime, defineContextNode, defineDataNode } from "../../src/core";
 import { deferred, waitForCondition } from "./test-helpers";
 
 describe("transaction execution races", () => {
@@ -21,15 +16,15 @@ describe("transaction execution races", () => {
     const execution = runtime.execute([data]);
     await waitForCondition(
       () => runtime.getState(data).status === "loading",
-      "pre-commit execution to start"
+      "pre-commit execution to start",
     );
 
-    await runtime.transaction(async transaction => {
+    await runtime.transaction(async (transaction) => {
       transaction.setContext(context, 2);
       attempt.resolve("completed-before-commit");
       await waitForCondition(
         () => runtime.getState(data).data === "completed-before-commit",
-        "execution to commit before context commit"
+        "execution to commit before context commit",
       );
       expect(runtime.getState(data).freshness).toBe("fresh");
     });
@@ -61,7 +56,7 @@ describe("transaction execution races", () => {
     const execution = runtime.execute([data]);
     await waitForCondition(() => signals.length === 1, "ignored-abort attempt to start");
 
-    await runtime.transaction(transaction => {
+    await runtime.transaction((transaction) => {
       transaction.setContext(context, 2);
     });
 

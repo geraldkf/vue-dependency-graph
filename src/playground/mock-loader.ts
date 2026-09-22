@@ -39,7 +39,7 @@ export const createMockLoader = (options?: MockLoaderOptions): MockLoader => {
 
   const load = async <TValue>(produce: () => TValue): Promise<TValue> => {
     callCount.value += 1;
-    await new Promise<void>(resolve => setTimeout(resolve, delayMs.value));
+    await new Promise<void>((resolve) => setTimeout(resolve, delayMs.value));
     if (shouldFail.value) {
       throw new Error("Mock loader failure (toggled on)");
     }

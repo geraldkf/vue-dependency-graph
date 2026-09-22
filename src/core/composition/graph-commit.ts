@@ -71,36 +71,29 @@ export const createGraphCommitCoordinator = ({
       diagnostics.createOperationId();
     schedulerRequest.request("context-invalidation", operationId);
 
-    operationObservation.runObserved(
-      { operationId, reason: "context-invalidation" },
-      () => {
-        const eventTargets = matchPublications(eventPublications, {
-          valueOverlay: contextChanges,
+    operationObservation.runObserved({ operationId, reason: "context-invalidation" }, () => {
+      const eventTargets = matchPublications(eventPublications, {
+        valueOverlay: contextChanges,
+      });
+      for (const publication of eventPublications) {
+        diagnostics.emit({
+          type: "event.published",
+          operationId,
+          eventKey: publication.event.key,
+          transactionOwned: !immediate,
         });
-        for (const publication of eventPublications) {
-          diagnostics.emit({
-            type: "event.published",
-            operationId,
-            eventKey: publication.event.key,
-            transactionOwned: !immediate,
-          });
-        }
-        if (eventPublications.length > 0) {
-          diagnostics.emit({
-            type: "event.matched",
-            operationId,
-            eventKey: eventPublications.map(({ event }) => event.key).join(","),
-            transactionOwned: !immediate,
-            matchedNodeKeys: eventTargets.map((node) => node.key),
-          });
-        }
-        commitContexts(
-          contextChanges,
-          eventTargets,
-          immediate ? { notify, schedule } : undefined,
-        );
-      },
-    );
+      }
+      if (eventPublications.length > 0) {
+        diagnostics.emit({
+          type: "event.matched",
+          operationId,
+          eventKey: eventPublications.map(({ event }) => event.key).join(","),
+          transactionOwned: !immediate,
+          matchedNodeKeys: eventTargets.map((node) => node.key),
+        });
+      }
+      commitContexts(contextChanges, eventTargets, immediate ? { notify, schedule } : undefined);
+    });
   };
 
   const coordinator: GraphCommitCoordinator = {

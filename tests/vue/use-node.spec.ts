@@ -13,7 +13,7 @@ import { useNode, type UseNodeResult } from "../../src/vue/use-node";
 
 const mountProbe = (
   runtime: GraphRuntime,
-  node: Parameters<typeof useNode>[0]
+  node: Parameters<typeof useNode>[0],
 ): { captured: UseNodeResult<typeof node>; unmount: () => void } => {
   let captured!: UseNodeResult<typeof node>;
   const Probe = defineComponent({
@@ -57,9 +57,7 @@ describe("useNode", () => {
       initialValue: 0,
       load: async ({ get }) => get(context),
     });
-    const runtime = createGraphRuntime(
-      createGraph({ nodes: [context, data] })
-    );
+    const runtime = createGraphRuntime(createGraph({ nodes: [context, data] }));
 
     const { captured } = mountProbe(runtime, data);
 
@@ -87,9 +85,7 @@ describe("useNode", () => {
       initialValue: 0,
       load,
     });
-    const runtime = createGraphRuntime(
-      createGraph({ nodes: [context, data] })
-    );
+    const runtime = createGraphRuntime(createGraph({ nodes: [context, data] }));
 
     // Two independent mounted consumers of the same node. This confirms
     // useNode doesn't accidentally break the core's existing execution
@@ -107,8 +103,6 @@ describe("useNode", () => {
   it("throws when called outside an active effect scope", () => {
     const context = defineContextNode({ key: "d-ctx5", initialValue: 1 });
 
-    expect(() => useNode(context)).toThrow(
-      /useNode\(\) must be called inside setup\(\)/
-    );
+    expect(() => useNode(context)).toThrow(/useNode\(\) must be called inside setup\(\)/);
   });
 });

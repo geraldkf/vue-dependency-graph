@@ -8,7 +8,7 @@ Accepted, implemented, and validated.
 
 Every data-node attempt has an `AbortSignal`. The runtime aborts it when nothing needs the work any more: the last subscriber leaves, an invalidation or write supersedes the attempt, or a queued attempt is cancelled.
 
-Until now aborting only *signalled*. The attempt itself kept waiting for its loader to settle, so an attempt lived exactly as long as the loader chose to. A loader that honours the signal (`fetch(url, { signal })`) ends promptly, and nothing was wrong. A loader that ignores the signal - a third-party SDK call, a promise that is never rejected on abort - kept the abandoned attempt alive, and an attempt that stays alive keeps three things:
+Until now aborting only _signalled_. The attempt itself kept waiting for its loader to settle, so an attempt lived exactly as long as the loader chose to. A loader that honours the signal (`fetch(url, { signal })`) ends promptly, and nothing was wrong. A loader that ignores the signal - a third-party SDK call, a promise that is never rejected on abort - kept the abandoned attempt alive, and an attempt that stays alive keeps three things:
 
 - its **concurrency slot** (`maxConcurrentLoads`);
 - its **place in the active attempt table**, so a later request for the same node reuses the abandoned attempt instead of starting a new one;
@@ -25,7 +25,7 @@ When an attempt's signal aborts, the attempt ends immediately, without waiting f
 - Whatever the loader eventually produces, success or failure, is ignored. A failure after abandonment is not an unhandled rejection.
 - Loaders that honour the signal are unaffected: they reject on abort as before, and the outcome is identical.
 
-The runtime cannot stop work that ignores the signal; it stops *waiting* for it. Passing the signal on (to `fetch` or an API client) is still what actually cancels the request, and stays the documented advice.
+The runtime cannot stop work that ignores the signal; it stops _waiting_ for it. Passing the signal on (to `fetch` or an API client) is still what actually cancels the request, and stays the documented advice.
 
 ## Consequences
 

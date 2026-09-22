@@ -23,11 +23,7 @@ type MutationOutcomeEventType =
   | "mutation.reconciliation-failed"
   | "mutation.rolled-back";
 
-type MutationOutcome =
-  | "rollback-conflict"
-  | "unknown"
-  | "reconciliation-failed"
-  | "rejected";
+type MutationOutcome = "rollback-conflict" | "unknown" | "reconciliation-failed" | "rejected";
 
 /**
  * Replaces the repeated 4-way `instanceof` ternary chain (once for the

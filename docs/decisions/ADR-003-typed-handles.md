@@ -19,7 +19,7 @@ The stable string key carried by each handle remains the identity used for topol
 ## Consequences
 
 - Dependency access (`get(SomeHandle)`) and results are compiler-checked end to end; a node that does not exist, or is not declared as a dependency, is a compile error rather than a runtime `undefined`.
-- Renaming a node's variable is a normal, compiler-assisted refactor. Renaming a node's *key* is a separate, deliberate action (it affects diagnostics, topology, and any external reference to that key) and does not happen accidentally as a side effect of a handle rename.
+- Renaming a node's variable is a normal, compiler-assisted refactor. Renaming a node's _key_ is a separate, deliberate action (it affects diagnostics, topology, and any external reference to that key) and does not happen accidentally as a side effect of a handle rename.
 - There is no central key-to-type registry to maintain by hand; the type lives on the handle itself.
 - Consumers must import and hold a reference to the handle rather than a plain string, which is slightly more ceremony than `"targets"` but is the direct cost of the type safety above.
 - Two independently constructed definitions that share a key remain distinct objects at the type level. Graph validation rejects registering both, and runtime operations never substitute an unregistered definition's loader, derivation, policy, or metadata for the canonical registered definition.

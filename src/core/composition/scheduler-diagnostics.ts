@@ -37,9 +37,7 @@ export const createSchedulerDiagnostics = ({
 }: SchedulerDiagnosticsDependencies): SchedulerDiagnostics => {
   let pendingOperationId = "";
 
-  const withCause = (
-    causeId: string | undefined,
-  ): { readonly causeId?: string } =>
+  const withCause = (causeId: string | undefined): { readonly causeId?: string } =>
     causeId === undefined ? {} : { causeId };
 
   const diagnostic: SchedulerDiagnostics = {

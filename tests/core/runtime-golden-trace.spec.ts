@@ -53,7 +53,7 @@ const createClock = () => {
       timers.set(id, { dueAt: now + delayMs, callback });
       return id;
     },
-    clearTimeout: handle => {
+    clearTimeout: (handle) => {
       if (typeof handle === "number") timers.delete(handle);
     },
     random: () => 0.5,
@@ -151,7 +151,7 @@ describe("runtime golden diagnostic trace", () => {
     await runtime.whenSettled();
 
     // transaction-owned context write + event
-    await runtime.transaction(transaction => {
+    await runtime.transaction((transaction) => {
       transaction.setContext(ctx, 3);
       transaction.publish(changed, undefined);
     });
@@ -177,8 +177,8 @@ describe("runtime golden diagnostic trace", () => {
 
     // mutation: optimistic update, then success effects (invalidate + publish)
     await runtime.mutate(save, undefined, {
-      optimistic: effects => effects.update(data, current => current + 1),
-      onSuccess: effects => {
+      optimistic: (effects) => effects.update(data, (current) => current + 1),
+      onSuccess: (effects) => {
         effects.invalidate([source]);
         effects.publish(changed, undefined);
       },
@@ -202,9 +202,7 @@ describe("runtime golden diagnostic trace", () => {
 
     // Guard the trace's own coverage: every execution reason must appear, so
     // the snapshot cannot silently stop covering an attribution path.
-    const reasons = new Set(
-      events.flatMap(event => ("reason" in event ? [event.reason] : [])),
-    );
+    const reasons = new Set(events.flatMap((event) => ("reason" in event ? [event.reason] : [])));
     for (const reason of [
       "explicit",
       "subscription",
@@ -219,11 +217,9 @@ describe("runtime golden diagnostic trace", () => {
     ]) {
       expect(reasons, `missing reason "${reason}"`).toContain(reason);
     }
-    expect(events.map(event => event.type)).toContain("node.value-released");
+    expect(events.map((event) => event.type)).toContain("node.value-released");
     expect(collector.getEvents().length).toBeLessThan(2_000);
 
-    expect(
-      events.map(event => JSON.stringify(sortKeys(event))),
-    ).toMatchSnapshot();
+    expect(events.map((event) => JSON.stringify(sortKeys(event)))).toMatchSnapshot();
   });
 });

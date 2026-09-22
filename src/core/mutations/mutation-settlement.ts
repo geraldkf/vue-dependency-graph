@@ -11,15 +11,9 @@ import {
   GraphMutationStateError,
 } from "./errors";
 import type { MutationCommitter } from "./mutation-commit";
-import type {
-  OptimisticSession,
-  OptimisticSessionManager,
-} from "./optimistic-session";
+import type { OptimisticSession, OptimisticSessionManager } from "./optimistic-session";
 import type { MutationUpdatePlanner } from "./mutation-update-planner";
-import type {
-  MutationOptions,
-  MutationSuccessEffects,
-} from "./types";
+import type { MutationOptions, MutationSuccessEffects } from "./types";
 
 export interface MutationSettlementCoordinator {
   readonly settleSuccess: <TInput, TResult>(
@@ -37,10 +31,7 @@ export interface MutationSettlementCoordinator {
 }
 
 export interface MutationSettlementDependencies {
-  readonly resolveRegisteredNode: (
-    node: AnyNodeDefinition,
-    purpose: string,
-  ) => AnyNodeDefinition;
+  readonly resolveRegisteredNode: (node: AnyNodeDefinition, purpose: string) => AnyNodeDefinition;
   readonly matchPublications: (
     publications: readonly EventPublication[],
     options?: EventMatchOptions,
@@ -73,7 +64,7 @@ export const createMutationSettlementCoordinator = ({
 
     const invalidationRoots = new Map<string, AnyNodeDefinition>();
     const publications: EventPublication[] = [];
-    const updateDrafts = updatePlanner.collect(successUpdates => {
+    const updateDrafts = updatePlanner.collect((successUpdates) => {
       let acceptingEffects = true;
       const effects: MutationSuccessEffects = Object.freeze({
         update: successUpdates.update,
@@ -81,7 +72,7 @@ export const createMutationSettlementCoordinator = ({
           if (!acceptingEffects) {
             throw new Error("Mutation success effects are no longer active.");
           }
-          const registeredNodes = nodes.map(node =>
+          const registeredNodes = nodes.map((node) =>
             resolveRegisteredNode(node, "mutation invalidation"),
           );
           for (const registered of registeredNodes) {
@@ -112,19 +103,16 @@ export const createMutationSettlementCoordinator = ({
     }, "success");
 
     const prepared = updatePlanner.prepare(updateDrafts);
-    const changedUpdates = prepared.filter(update => update.changed);
+    const changedUpdates = prepared.filter((update) => update.changed);
     const preliminaryInvalidation = prepareCombinedInvalidation(
-      [
-        ...optimisticTargets,
-        ...changedUpdates.map(({ node }) => node),
-      ],
+      [...optimisticTargets, ...changedUpdates.map(({ node }) => node)],
       [...invalidationRoots.values()],
       prepared.map(({ node }) => node),
     );
     const affectedDerivedKeys = new Set(
       preliminaryInvalidation.affectedNodes
-        .filter(node => node.kind === "derived")
-        .map(node => node.key),
+        .filter((node) => node.kind === "derived")
+        .map((node) => node.key),
     );
     const eventTargets = matchPublications(publications, {
       valueOverlay: prepared.map(({ node, value }) => ({ node, value })),
@@ -148,7 +136,7 @@ export const createMutationSettlementCoordinator = ({
     mutationCommitter.commitStaleReconciliation(optimistic);
     throw new GraphMutationReconciliationError(
       mutationKey,
-      optimistic.snapshots.map(snapshot => snapshot.node.key),
+      optimistic.snapshots.map((snapshot) => snapshot.node.key),
       error,
     );
   };
@@ -181,10 +169,7 @@ export const createMutationSettlementCoordinator = ({
     throw new GraphMutationRollbackConflictError(conflictingKeys, error);
   };
 
-  const settleKnownRejection = (
-    optimistic: OptimisticSession,
-    error: unknown,
-  ): never => {
+  const settleKnownRejection = (optimistic: OptimisticSession, error: unknown): never => {
     const conflictingKeys = optimisticSessions.getRollbackConflicts(optimistic);
     if (conflictingKeys.length > 0) {
       return settleRollbackConflict(optimistic, conflictingKeys, error);
@@ -197,13 +182,10 @@ export const createMutationSettlementCoordinator = ({
     throw error;
   };
 
-  const settleUnknownOutcome = (
-    optimistic: OptimisticSession,
-    error: unknown,
-  ): never => {
+  const settleUnknownOutcome = (optimistic: OptimisticSession, error: unknown): never => {
     mutationCommitter.commitStaleReconciliation(optimistic);
     throw new GraphMutationOutcomeUnknownError(
-      optimistic.targets.map(node => node.key),
+      optimistic.targets.map((node) => node.key),
       error,
     );
   };

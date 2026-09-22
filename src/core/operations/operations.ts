@@ -1,13 +1,7 @@
 import type { RefreshableNodeDefinition } from "./types";
 import type { ExecutionDiagnosticContext } from "../execution/execution";
-import type {
-  ActiveAttempt,
-  NodeStateRecord,
-} from "../state/state";
-import type {
-  AnyNodeDefinition,
-  DataNodeDefinition,
-} from "../graph/types";
+import type { ActiveAttempt, NodeStateRecord } from "../state/state";
+import type { AnyNodeDefinition, DataNodeDefinition } from "../graph/types";
 import type { ExecutionOrigin } from "../state/state";
 import { invalidate } from "../state/transitions";
 
@@ -27,16 +21,9 @@ export interface RuntimeOperationsController {
 }
 
 export interface RuntimeOperationsDependencies {
-  readonly getNodeState: (
-    key: string
-  ) => NodeStateRecord;
-  readonly getActiveAttempt: (
-    key: string
-  ) => ActiveAttempt | undefined;
-  readonly resolveRegisteredNode: (
-    node: AnyNodeDefinition,
-    purpose: string
-  ) => AnyNodeDefinition;
+  readonly getNodeState: (key: string) => NodeStateRecord;
+  readonly getActiveAttempt: (key: string) => ActiveAttempt | undefined;
+  readonly resolveRegisteredNode: (node: AnyNodeDefinition, purpose: string) => AnyNodeDefinition;
   readonly execute: (
     targets: readonly AnyNodeDefinition[],
     origin: "prefetch" | "refresh" | "refresh-policy",
@@ -45,14 +32,10 @@ export interface RuntimeOperationsDependencies {
   readonly notify: () => void;
 }
 
-const createRefreshOperationKey = (
-  keys: ReadonlySet<string>
-): string =>
+const createRefreshOperationKey = (keys: ReadonlySet<string>): string =>
   JSON.stringify([...keys].sort());
 
-const isRefreshableNode = (
-  node: AnyNodeDefinition
-): node is RefreshableNodeDefinition =>
+const isRefreshableNode = (node: AnyNodeDefinition): node is RefreshableNodeDefinition =>
   node.kind === "data" || node.kind === "derived";
 
 export const createRuntimeOperationsController = ({
@@ -82,11 +65,7 @@ export const createRuntimeOperationsController = ({
     for (const requested of requestedTargets) {
       const registered = resolveRegisteredNode(requested, purpose);
       if (!isRefreshableNode(registered)) {
-        return Promise.reject(
-          new Error(
-            `Context node "${registered.key}" cannot be refreshed.`
-          )
-        );
+        return Promise.reject(new Error(`Context node "${registered.key}" cannot be refreshed.`));
       }
       if (keys.has(registered.key)) continue;
       keys.add(registered.key);
@@ -105,10 +84,7 @@ export const createRuntimeOperationsController = ({
     for (const target of targets) {
       const state = getNodeState(target.key);
       const active = getActiveAttempt(target.key);
-      if (
-        active?.origins.has("refresh") ||
-        active?.origins.has("refresh-policy")
-      ) {
+      if (active?.origins.has("refresh") || active?.origins.has("refresh-policy")) {
         active.origins.add(origin);
         continue;
       }
@@ -129,23 +105,12 @@ export const createRuntimeOperationsController = ({
   const refresh = (
     targets: readonly RefreshableNodeDefinition[],
     diagnostics?: ExecutionDiagnosticContext,
-  ): Promise<void> => refreshWithOrigin(
-    targets,
-    "refresh",
-    "manual refresh",
-    diagnostics,
-  );
+  ): Promise<void> => refreshWithOrigin(targets, "refresh", "manual refresh", diagnostics);
 
   const refreshPolicyNode = (
     node: DataNodeDefinition<unknown, readonly AnyNodeDefinition[]>,
     diagnostics?: ExecutionDiagnosticContext,
-  ): Promise<void> =>
-    refreshWithOrigin(
-      [node],
-      "refresh-policy",
-      "refresh policy",
-      diagnostics,
-    );
+  ): Promise<void> => refreshWithOrigin([node], "refresh-policy", "refresh policy", diagnostics);
 
   return Object.freeze({ prefetch, refresh, refreshPolicyNode });
 };

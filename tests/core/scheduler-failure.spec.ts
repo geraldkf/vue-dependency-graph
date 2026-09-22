@@ -9,7 +9,9 @@ import {
 
 describe("scheduler failures", () => {
   it("stores automatic execution failure and settles without retrying", async () => {
-    const load = vi.fn(async () => { throw new Error("failed"); });
+    const load = vi.fn(async () => {
+      throw new Error("failed");
+    });
     const data = defineDataNode({ key: "data", initialValue: "", load });
     const runtime = createGraphRuntime(createGraph({ nodes: [data] }));
 
@@ -39,7 +41,11 @@ describe("scheduler failures", () => {
 
     expect(load).toHaveBeenCalledTimes(2);
     expect(runtime.getSchedulerState().error).toBeNull();
-    expect(runtime.getState(data)).toMatchObject({ data: "loaded", error: null, status: "success" });
+    expect(runtime.getState(data)).toMatchObject({
+      data: "loaded",
+      error: null,
+      status: "success",
+    });
   });
 
   it("retries a subscribed branch after context change", async () => {
@@ -49,7 +55,12 @@ describe("scheduler failures", () => {
       if (value === 1) throw new Error("failed");
       return value;
     });
-    const data = defineDataNode({ key: "data", dependencies: [context] as const, initialValue: 0, load });
+    const data = defineDataNode({
+      key: "data",
+      dependencies: [context] as const,
+      initialValue: 0,
+      load,
+    });
     const runtime = createGraphRuntime(createGraph({ nodes: [data, context] }));
 
     runtime.subscribeNodes([data]);

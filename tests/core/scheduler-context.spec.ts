@@ -1,10 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import {
-  createGraph,
-  createGraphRuntime,
-  defineContextNode,
-  defineDataNode,
-} from "../../src/core";
+import { createGraph, createGraphRuntime, defineContextNode, defineDataNode } from "../../src/core";
 import { deferred, waitForCondition } from "./test-helpers";
 
 describe("scheduler context invalidation", () => {
@@ -17,7 +12,12 @@ describe("scheduler context invalidation", () => {
       signals.push(signal);
       return get(context) === 1 ? first.promise : second.promise;
     });
-    const data = defineDataNode({ key: "data", dependencies: [context] as const, initialValue: 0, load });
+    const data = defineDataNode({
+      key: "data",
+      dependencies: [context] as const,
+      initialValue: 0,
+      load,
+    });
     const runtime = createGraphRuntime(createGraph({ nodes: [data, context] }));
 
     runtime.subscribeNodes([data]);
@@ -39,7 +39,12 @@ describe("scheduler context invalidation", () => {
   it("does not load stale descendants without subscribers", async () => {
     const context = defineContextNode({ key: "context", initialValue: 1 });
     const load = vi.fn(async ({ get }) => get(context));
-    const data = defineDataNode({ key: "data", dependencies: [context] as const, initialValue: 0, load });
+    const data = defineDataNode({
+      key: "data",
+      dependencies: [context] as const,
+      initialValue: 0,
+      load,
+    });
     const runtime = createGraphRuntime(createGraph({ nodes: [data, context] }));
 
     runtime.setContext(context, 2);

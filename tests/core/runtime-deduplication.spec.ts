@@ -1,10 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import {
-  createGraph,
-  createGraphRuntime,
-  defineDataNode,
-  defineDerivedNode,
-} from "../../src/core";
+import { createGraph, createGraphRuntime, defineDataNode, defineDerivedNode } from "../../src/core";
 import { deferred, waitForCondition } from "./test-helpers";
 
 describe("runtime in-flight deduplication", () => {
@@ -16,10 +11,7 @@ describe("runtime in-flight deduplication", () => {
 
     const first = runtime.execute([data]);
     const second = runtime.execute([data]);
-    await waitForCondition(
-      () => load.mock.calls.length === 1,
-      "the shared data loader to start"
-    );
+    await waitForCondition(() => load.mock.calls.length === 1, "the shared data loader to start");
     expect(load).toHaveBeenCalledOnce();
 
     result.resolve("loaded");
@@ -31,14 +23,22 @@ describe("runtime in-flight deduplication", () => {
     const result = deferred<number>();
     const load = vi.fn(() => result.promise);
     const parent = defineDataNode({ key: "parent", initialValue: 0, load });
-    const left = defineDerivedNode({ key: "left", dependencies: [parent] as const, derive: ({ get }) => get(parent) + 1 });
-    const right = defineDerivedNode({ key: "right", dependencies: [parent] as const, derive: ({ get }) => get(parent) + 2 });
+    const left = defineDerivedNode({
+      key: "left",
+      dependencies: [parent] as const,
+      derive: ({ get }) => get(parent) + 1,
+    });
+    const right = defineDerivedNode({
+      key: "right",
+      dependencies: [parent] as const,
+      derive: ({ get }) => get(parent) + 2,
+    });
     const runtime = createGraphRuntime(createGraph({ nodes: [right, left, parent] }));
 
     const execution = runtime.execute([left, right]);
     await waitForCondition(
       () => load.mock.calls.length === 1,
-      "the shared ancestor loader to start"
+      "the shared ancestor loader to start",
     );
     expect(load).toHaveBeenCalledOnce();
     result.resolve(3);

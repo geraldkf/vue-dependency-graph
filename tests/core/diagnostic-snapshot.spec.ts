@@ -19,13 +19,13 @@ describe("diagnostic snapshots", () => {
     const redacted = defineContextNode({
       key: "redacted",
       initialValue: { name: "Gerald", secret: "hidden" },
-      diagnostics: { value: value => ({ name: value.name }) },
+      diagnostics: { value: (value) => ({ name: value.name }) },
     });
     const runtime = createGraphRuntime(createGraph({ nodes: [omitted, included, redacted] }));
 
     const snapshot = runtime.createDiagnosticSnapshot();
 
-    expect(snapshot.nodes.map(node => node.value)).toEqual([
+    expect(snapshot.nodes.map((node) => node.value)).toEqual([
       { status: "omitted" },
       { status: "included", data: { visible: "allowed" } },
       { status: "redacted", data: { name: "Gerald" } },
@@ -44,7 +44,11 @@ describe("diagnostic snapshots", () => {
     const failed = defineContextNode({
       key: "failed",
       initialValue: "secret",
-      diagnostics: { value: () => { throw new Error("redactor failed"); } },
+      diagnostics: {
+        value: () => {
+          throw new Error("redactor failed");
+        },
+      },
     });
     const unsafe = defineContextNode({
       key: "unsafe",
@@ -114,7 +118,9 @@ describe("diagnostic snapshots", () => {
     const subscription = runtime.subscribeNodes([data]);
     await runtime.whenSettled();
     let notifications = 0;
-    runtime.onChange(() => { notifications += 1; });
+    runtime.onChange(() => {
+      notifications += 1;
+    });
     const eventCount = events.length;
 
     const snapshot = runtime.createDiagnosticSnapshot();
@@ -126,8 +132,8 @@ describe("diagnostic snapshots", () => {
       diagnostics: { retainedEventCount: eventCount, droppedEventCount: 0 },
       scheduler: { isScheduled: false, isRunning: false, error: null },
     });
-    expect(snapshot.topology.map(node => node.key)).toEqual(["data", "context"]);
-    expect(snapshot.nodes.map(node => node.key)).toEqual(["data", "context"]);
+    expect(snapshot.topology.map((node) => node.key)).toEqual(["data", "context"]);
+    expect(snapshot.nodes.map((node) => node.key)).toEqual(["data", "context"]);
     expect(snapshot.subscriptions).toEqual([
       { key: "data", direct: 1, required: 0, total: 1 },
       { key: "context", direct: 0, required: 1, total: 1 },

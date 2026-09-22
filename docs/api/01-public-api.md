@@ -30,14 +30,13 @@ const PointPeriods = defineDataNode({
   key: "pointPeriods",
   dependencies: [JobSeekerId] as const,
   initialValue: [] as PointPeriod[],
-  load: ({ get, signal }) =>
-    api.getPointPeriods(get(JobSeekerId), signal),
+  load: ({ get, signal }) => api.getPointPeriods(get(JobSeekerId), signal),
 });
 
 const CurrentPointPeriod = defineDerivedNode({
   key: "currentPointPeriod",
   dependencies: [PointPeriods] as const,
-  derive: ({ get }) => get(PointPeriods).find(period => period.isCurrent),
+  derive: ({ get }) => get(PointPeriods).find((period) => period.isCurrent),
 });
 ```
 
@@ -206,14 +205,11 @@ Both composables must run inside `setup()` or another active Vue effect scope. T
 An application with Pinia already installed can expose the runtime through a setup store without changing `App.vue` or installing the graph runtime plugin:
 
 ```ts
-export const useDependencyGraphStore = defineStore(
-  "dependencyGraph",
-  () => {
-    const runtime = markRaw(createGraphRuntime(graph));
-    onScopeDispose(() => runtime.dispose());
-    return { runtime };
-  }
-);
+export const useDependencyGraphStore = defineStore("dependencyGraph", () => {
+  const runtime = markRaw(createGraphRuntime(graph));
+  onScopeDispose(() => runtime.dispose());
+  return { runtime };
+});
 ```
 
 ```ts
@@ -230,7 +226,7 @@ Create the runtime inside the store factory so each Pinia instance owns an indep
 Use the callback handle for all work that belongs to one atomic local graph transaction:
 
 ```ts
-const result = await runtime.transaction(async transaction => {
+const result = await runtime.transaction(async (transaction) => {
   transaction.setContext(JobSeekerId, 123);
   transaction.publish(AppointmentBooked, payload);
   return "committed";
@@ -244,10 +240,10 @@ Every top-level `runtime.transaction(...)` call creates an independent session. 
 Use `transaction.transaction(...)` only when work must join the same atomic boundary:
 
 ```ts
-await runtime.transaction(async transaction => {
+await runtime.transaction(async (transaction) => {
   transaction.setContext(ContextA, valueA);
 
-  await transaction.transaction(async nested => {
+  await transaction.transaction(async (nested) => {
     nested.setContext(ContextB, valueB);
     nested.publish(DomainChanged, payload);
   });
@@ -259,7 +255,7 @@ The nested callback uses the same session. If its failure escapes the outer call
 Plain runtime operations remain independent while a transaction is open:
 
 ```ts
-const pending = runtime.transaction(async transaction => {
+const pending = runtime.transaction(async (transaction) => {
   transaction.setContext(ContextA, stagedValue);
   await gate;
 });
@@ -276,7 +272,7 @@ Those operations use committed state and dispatch notifications and scheduler wo
 `runtime.whenSettled()` is scheduler-specific. For transaction-triggered scheduler work, await in this order:
 
 ```ts
-await runtime.transaction(transaction => {
+await runtime.transaction((transaction) => {
   transaction.setContext(ContextA, valueA);
 });
 await runtime.whenSettled();
@@ -363,8 +359,8 @@ const Progress = defineDataNode({
   refresh: pollUntil<ReportProgress | undefined>({
     intervalMs: 2_000,
     timeoutMs: 600_000,
-    stopWhen: value => value?.state === "completed",
-    failWhen: value => value?.state === "failed",
+    stopWhen: (value) => value?.state === "completed",
+    failWhen: (value) => value?.state === "failed",
   }),
 });
 ```
@@ -412,8 +408,8 @@ const ReportProgress = defineDataNode({
   refresh: pollUntil<Progress | undefined>({
     intervalMs: 2_000,
     timeoutMs: 600_000,
-    failWhen: value => value?.state === "failed",
-    stopWhen: value => value?.state === "completed",
+    failWhen: (value) => value?.state === "failed",
+    stopWhen: (value) => value?.state === "completed",
   }),
 });
 ```
@@ -429,10 +425,7 @@ Interval and poll-until policies apply their declared fixed or exponential retry
 Core runtimes use `TimerEnvironment` for clocks, timeouts, randomness, and pause state:
 
 ```ts
-import {
-  createDefaultTimerEnvironment,
-  type TimerEnvironment,
-} from "vue-dependency-graph/core";
+import { createDefaultTimerEnvironment, type TimerEnvironment } from "vue-dependency-graph/core";
 
 const environment: TimerEnvironment = createDefaultTimerEnvironment();
 const runtime = createGraphRuntime(graph, { timerEnvironment: environment });
@@ -514,14 +507,12 @@ Optional synchronous success effects reconcile graph state after confirmed remot
 ```ts
 const result = await runtime.mutate(SaveAppointment, input, {
   onSuccess: (effects, saved, originalInput) => {
-    effects.update(Appointments, current =>
-      current.map(appointment =>
-        appointment.clientId === originalInput.clientId
-          ? saved
-          : appointment
-      )
+    effects.update(Appointments, (current) =>
+      current.map((appointment) =>
+        appointment.clientId === originalInput.clientId ? saved : appointment,
+      ),
     );
-    effects.update(AppointmentSummary, current => ({
+    effects.update(AppointmentSummary, (current) => ({
       ...current,
       lastAppointmentId: saved.appointmentId,
     }));
@@ -556,7 +547,7 @@ The same success-effect callback may also invalidate nodes and publish typed eve
 ```ts
 await runtime.mutate(SaveAppointment, input, {
   onSuccess: (effects, saved) => {
-    effects.update(Appointments, current => reconcile(current, saved));
+    effects.update(Appointments, (current) => reconcile(current, saved));
     effects.invalidate([AppointmentSummary]);
     effects.publish(AppointmentBooked, {
       jobSeekerId: saved.jobSeekerId,
@@ -585,18 +576,15 @@ An optional optimistic update callback and failure classifier provide guarded op
 ```ts
 await runtime.mutate(BookAppointment, input, {
   optimistic: (effects, originalInput) => {
-    effects.update(Appointments, current => [
+    effects.update(Appointments, (current) => [
       ...current,
       createPendingAppointment(originalInput),
     ]);
   },
   onSuccess: (effects, saved) => {
-    effects.update(Appointments, current =>
-      replacePendingAppointment(current, saved)
-    );
+    effects.update(Appointments, (current) => replacePendingAppointment(current, saved));
   },
-  classifyFailure: error =>
-    isKnownRejectedResponse(error) ? "rejected" : "unknown",
+  classifyFailure: (error) => (isKnownRejectedResponse(error) ? "rejected" : "unknown"),
 });
 ```
 
@@ -626,8 +614,6 @@ Context changes, event invalidation, refresh, polling, independent mutations, an
 
 Mutation retry, offline queues, layered same-node optimistic updates, and built-in idempotency-key management remain outside the current mutation API.
 
-
-
 ## Diagnostics and observability
 
 ### Runtime diagnostics foundation
@@ -639,7 +625,7 @@ const events: GraphDiagnosticEvent[] = [];
 const runtime = createGraphRuntime(graph, {
   diagnostics: {
     sink: {
-      emit: event => events.push(event),
+      emit: (event) => events.push(event),
     },
   },
 });
@@ -676,7 +662,6 @@ const runtime = createGraphRuntime(graph, {
 
 Default runtime IDs are runtime-local diagnostic labels. They are not distributed tracing identifiers or guaranteed to be globally unique across processes, tabs, or application sessions.
 
-
 #### Core execution causality
 
 The diagnostic stream covers ordinary graph execution:
@@ -695,9 +680,7 @@ Every node execution event contains the node key, node kind, generation, executi
 Execution origin and reason are intentionally separate. Origin identifies ownership such as `scheduler`, `prefetch`, or `refresh`. Reason explains why work was required, such as `subscription`, `context-invalidation`, `changed-result`, or `dependency`.
 
 ```ts
-const event = events.find(
-  event => event.type === "node.load.started"
-);
+const event = events.find((event) => event.type === "node.load.started");
 
 if (event?.type === "node.load.started") {
   console.log(event.nodeKey, event.origin, event.reason);
@@ -705,7 +688,6 @@ if (event?.type === "node.load.started") {
 ```
 
 Errors are represented by immutable `{ name, message }` records. Diagnostic events do not expose loaded values, context values, event payloads, mutation inputs, or mutation results.
-
 
 #### Advanced lifecycle diagnostics
 
@@ -747,7 +729,6 @@ The metrics snapshot includes operation counts, per-node attempt outcomes and du
 
 A collector may be owned by one runtime or deliberately shared by multiple runtimes. Events preserve their runtime IDs while metrics aggregate the received stream.
 
-
 #### Diagnostic snapshots and value safety
 
 `runtime.createDiagnosticSnapshot()` returns an immutable, versioned `GraphDiagnosticSnapshotV1`. The snapshot contains graph topology, node runtime state, scheduler state, subscription counts, refresh-policy state, optional collector metrics, and retained/dropped diagnostic counts.
@@ -759,7 +740,7 @@ const profile = defineContextNode({
   key: "profile",
   initialValue: { name: "Gerald", identifier: "sensitive" },
   diagnostics: {
-    value: value => ({ name: value.name }),
+    value: (value) => ({ name: value.name }),
   },
 });
 ```
@@ -769,7 +750,6 @@ Supported value policies are `"omit"`, `"include"`, or a redactor function. Incl
 Runtime and scheduler errors use bounded `{ name, message, cause }` serialisation. Cyclic or over-depth causes are marked `truncated`. Stack traces are not included.
 
 Snapshot construction is observational. It does not notify observers, schedule work, emit diagnostic events, or mutate graph-owned values and errors.
-
 
 #### Stable diagnostic normalisation
 
@@ -820,13 +800,13 @@ For a custom UI instead of the pre-built panel:
 import { useGraphDevtools } from "vue-dependency-graph/devtools";
 
 const {
-  graphView,        // ComputedRef<InspectorGraphView>
-  timeline,          // ComputedRef<readonly InspectorTimelineEntry[]>
-  metricsView,       // ComputedRef<InspectorMetricsView>
-  selectedNodeKey,   // Ref<string | undefined>
-  selectedNodeDetail,// ComputedRef<InspectorNodeDetail | undefined>
-  select,            // (key: string | undefined) => void
-  exportSnapshot,    // () => string (pretty-printed JSON)
+  graphView, // ComputedRef<InspectorGraphView>
+  timeline, // ComputedRef<readonly InspectorTimelineEntry[]>
+  metricsView, // ComputedRef<InspectorMetricsView>
+  selectedNodeKey, // Ref<string | undefined>
+  selectedNodeDetail, // ComputedRef<InspectorNodeDetail | undefined>
+  select, // (key: string | undefined) => void
+  exportSnapshot, // () => string (pretty-printed JSON)
 } = useGraphDevtools({ runtime, diagnostics });
 ```
 

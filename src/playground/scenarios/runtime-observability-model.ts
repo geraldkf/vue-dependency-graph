@@ -49,7 +49,7 @@ export const createRuntimeObservabilityScenario = (): RuntimeObservabilityScenar
     dependencies: [selectedCase, protectedToken] as const,
     initialValue: "not loaded",
     diagnostics: {
-      value: value => ({ summary: value }),
+      value: (value) => ({ summary: value }),
     },
     load: async ({ get }) => {
       if (failNext) {
@@ -107,7 +107,7 @@ export const createRuntimeObservabilityScenario = (): RuntimeObservabilityScenar
 
   const runTransactionRollback = async (): Promise<void> => {
     try {
-      await runtime.transaction(transaction => {
+      await runtime.transaction((transaction) => {
         transaction.setContext(selectedCase, "rolled-back-case");
         throw new Error("Demonstration transaction rolled back.");
       });

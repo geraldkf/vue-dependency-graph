@@ -15,9 +15,7 @@ export interface RuntimeObserverOptions {
   readonly onListenerError?: (error: unknown) => void;
 }
 
-export const createRuntimeObserver = (
-  options?: RuntimeObserverOptions,
-): RuntimeObserver => {
+export const createRuntimeObserver = (options?: RuntimeObserverOptions): RuntimeObserver => {
   const listeners = new Set<RuntimeListener>();
   const onListenerError = options?.onListenerError;
 

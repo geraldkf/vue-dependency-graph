@@ -10,8 +10,16 @@ import {
 describe("graph runtime state", () => {
   it("creates accurate independent initial state", () => {
     const context = defineContextNode({ key: "context", initialValue: 1 });
-    const data = defineDataNode({ key: "data", initialValue: "initial", load: async () => "loaded" });
-    const derived = defineDerivedNode({ key: "derived", dependencies: [context] as const, derive: () => "derived" });
+    const data = defineDataNode({
+      key: "data",
+      initialValue: "initial",
+      load: async () => "loaded",
+    });
+    const derived = defineDerivedNode({
+      key: "derived",
+      dependencies: [context] as const,
+      derive: () => "derived",
+    });
     const graph = createGraph({ nodes: [derived, data, context] });
     const first = createGraphRuntime(graph);
     const second = createGraphRuntime(graph);
@@ -78,5 +86,4 @@ describe("graph runtime state", () => {
     expect(Object.isFrozen(before)).toBe(true);
     expect(Object.isFrozen(after)).toBe(true);
   });
-
 });

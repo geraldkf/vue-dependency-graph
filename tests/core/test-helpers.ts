@@ -21,7 +21,7 @@ export const deferred = <T>(): Deferred<T> => {
 export const waitForCondition = async (
   condition: () => boolean,
   description: string,
-  maximumTurns = 50
+  maximumTurns = 50,
 ): Promise<void> => {
   for (let turn = 0; turn < maximumTurns; turn += 1) {
     if (condition()) return;

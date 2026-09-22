@@ -2,9 +2,7 @@
   <section aria-label="Unmount cleanup scenario">
     <h2>Unmount Cleanup</h2>
     <p>
-      <button @click="visible = !visible">
-        {{ visible ? "Hide" : "Show" }} consumer
-      </button>
+      <button @click="visible = !visible">{{ visible ? "Hide" : "Show" }} consumer</button>
     </p>
     <p data-testid="subscriber-count">Subscribers: {{ subscriberCount }}</p>
     <ToggleableConsumer v-if="visible" />
@@ -26,13 +24,9 @@ import { toggleableResource } from "./unmount-cleanup-nodes";
 const { runtime } = useDependencyGraphStore();
 const visible = ref(true);
 
-const subscriberCount = ref(
-  runtime.getSubscriptionState(toggleableResource).direct
-);
+const subscriberCount = ref(runtime.getSubscriptionState(toggleableResource).direct);
 const stopWatchingSubscriberCount = runtime.onChange(() => {
-  subscriberCount.value = runtime.getSubscriptionState(
-    toggleableResource
-  ).direct;
+  subscriberCount.value = runtime.getSubscriptionState(toggleableResource).direct;
 });
 onScopeDispose(stopWatchingSubscriberCount);
 </script>

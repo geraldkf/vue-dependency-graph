@@ -1,7 +1,4 @@
-import type {
-  NodeSubscription,
-  NodeSubscriptionState,
-} from "./subscriptions/types";
+import type { NodeSubscription, NodeSubscriptionState } from "./subscriptions/types";
 import type { SchedulerState } from "./scheduling/types";
 import type { RuntimeListener } from "./observation/types";
 import type { GraphTransaction } from "./transactions/types";
@@ -49,16 +46,11 @@ export interface GraphRuntime {
   readonly getState: <TNode extends AnyNodeDefinition>(
     node: TNode,
   ) => NodeRuntimeState<RuntimeNodeData<TNode>>;
-  readonly setContext: <TValue>(
-    node: ContextNodeDefinition<TValue>,
-    value: TValue,
-  ) => void;
+  readonly setContext: <TValue>(node: ContextNodeDefinition<TValue>, value: TValue) => void;
   readonly execute: (nodes: readonly AnyNodeDefinition[]) => Promise<void>;
   readonly prefetch: (nodes: readonly AnyNodeDefinition[]) => Promise<void>;
   readonly prefetchQuery: (query: AnyQueryDefinition) => Promise<void>;
-  readonly refresh: (
-    nodes: readonly RefreshableNodeDefinition[],
-  ) => Promise<void>;
+  readonly refresh: (nodes: readonly RefreshableNodeDefinition[]) => Promise<void>;
   readonly refreshQuery: (query: AnyQueryDefinition) => Promise<void>;
   readonly publish: <TEvent extends AnyEventDefinition>(
     event: TEvent,
@@ -69,12 +61,8 @@ export interface GraphRuntime {
     input: TInput,
     options?: MutationOptions<TInput, TResult>,
   ) => Promise<TResult>;
-  readonly subscribeNodes: (
-    nodes: readonly AnyNodeDefinition[],
-  ) => NodeSubscription;
-  readonly getSubscriptionState: (
-    node: AnyNodeDefinition,
-  ) => NodeSubscriptionState;
+  readonly subscribeNodes: (nodes: readonly AnyNodeDefinition[]) => NodeSubscription;
+  readonly getSubscriptionState: (node: AnyNodeDefinition) => NodeSubscriptionState;
   readonly hasSubscribers: (node: AnyNodeDefinition) => boolean;
   readonly getSchedulerState: () => SchedulerState;
   readonly whenSettled: () => Promise<void>;
@@ -90,9 +78,7 @@ export interface GraphRuntime {
    * `runtime.transaction(...)` call never does. Transactions are local to
    * the graph and do not roll back remote work.
    */
-  readonly transaction: <T>(
-    work: (transaction: GraphTransaction) => T | Promise<T>,
-  ) => Promise<T>;
+  readonly transaction: <T>(work: (transaction: GraphTransaction) => T | Promise<T>) => Promise<T>;
   /**
    * Releases the runtime's long-lived background resources: refresh-policy
    * and release-policy timers, and the refresh policy's subscription to the

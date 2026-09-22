@@ -14,7 +14,7 @@ import { useNodes, type UseNodesResult } from "../../src/vue/use-nodes";
 
 const mountProbe = <const TNodes extends readonly AnyNodeDefinition[]>(
   runtime: GraphRuntime,
-  nodes: TNodes
+  nodes: TNodes,
 ): { captured: UseNodesResult<TNodes>; unmount: () => void } => {
   let captured!: UseNodesResult<TNodes>;
   const Probe = defineComponent({
@@ -62,9 +62,7 @@ describe("useNodes", () => {
       initialValue: 0,
       load: async ({ get }) => get(contextB) * 100,
     });
-    const runtime = createGraphRuntime(
-      createGraph({ nodes: [contextA, contextB, dataA, dataB] })
-    );
+    const runtime = createGraphRuntime(createGraph({ nodes: [contextA, contextB, dataA, dataB] }));
 
     const { captured } = mountProbe(runtime, [dataA, dataB]);
     await runtime.whenSettled();
@@ -89,9 +87,7 @@ describe("useNodes", () => {
         throw new Error("load failed");
       },
     });
-    const runtime = createGraphRuntime(
-      createGraph({ nodes: [context, okNode, failingNode] })
-    );
+    const runtime = createGraphRuntime(createGraph({ nodes: [context, okNode, failingNode] }));
 
     const { captured } = mountProbe(runtime, [okNode, failingNode]);
     await runtime.whenSettled();

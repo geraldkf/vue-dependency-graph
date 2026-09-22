@@ -22,18 +22,16 @@ const isRecord = (value: unknown): value is Readonly<Record<string, unknown>> =>
 // guards (mirroring execution.ts's `isDataNode`/`isDerivedNode`) narrow to
 // those interfaces so the fields can be read without a cast.
 const isDataNode = (
-  node: AnyNodeDefinition
-): node is DataNodeDefinition<unknown, readonly AnyNodeDefinition[]> =>
-  node.kind === "data";
+  node: AnyNodeDefinition,
+): node is DataNodeDefinition<unknown, readonly AnyNodeDefinition[]> => node.kind === "data";
 
 const isDerivedNode = (
-  node: AnyNodeDefinition
-): node is DerivedNodeDefinition<unknown, readonly AnyNodeDefinition[]> =>
-  node.kind === "derived";
+  node: AnyNodeDefinition,
+): node is DerivedNodeDefinition<unknown, readonly AnyNodeDefinition[]> => node.kind === "derived";
 
 const readEventInvalidation = (
   declaration: unknown,
-  nodeKey: string
+  nodeKey: string,
 ): {
   readonly event: AnyEventDefinition;
   readonly when: EventInvalidationCandidate["when"];
@@ -41,7 +39,7 @@ const readEventInvalidation = (
   if (!isRecord(declaration)) {
     throw new GraphValidationError(
       "INVALID_EVENT_DECLARATION",
-      `Node "${nodeKey}" has an invalid event invalidation declaration.`
+      `Node "${nodeKey}" has an invalid event invalidation declaration.`,
     );
   }
 
@@ -50,29 +48,27 @@ const readEventInvalidation = (
   if (!isRecord(eventValue) || typeof eventValue.key !== "string") {
     throw new GraphValidationError(
       "INVALID_EVENT_DECLARATION",
-      `Node "${nodeKey}" has an invalid event invalidation declaration.`
+      `Node "${nodeKey}" has an invalid event invalidation declaration.`,
     );
   }
 
   if (eventValue.key.trim().length === 0) {
     throw new GraphValidationError(
       "INVALID_EVENT_KEY",
-      `Node "${nodeKey}" declares an event with a blank key.`
+      `Node "${nodeKey}" declares an event with a blank key.`,
     );
   }
 
   if (conditional && typeof declaration.when !== "function") {
     throw new GraphValidationError(
       "INVALID_EVENT_DECLARATION",
-      `Node "${nodeKey}" has an invalid conditional declaration for event "${eventValue.key}".`
+      `Node "${nodeKey}" has an invalid conditional declaration for event "${eventValue.key}".`,
     );
   }
 
   return {
     event: eventValue as unknown as AnyEventDefinition,
-    when: conditional
-      ? declaration.when as EventInvalidationCandidate["when"]
-      : undefined,
+    when: conditional ? (declaration.when as EventInvalidationCandidate["when"]) : undefined,
   };
 };
 
@@ -85,7 +81,7 @@ const validateRefreshPolicy = (node: AnyNodeDefinition): void => {
       const reason = error instanceof Error ? error.message : String(error);
       throw new GraphValidationError(
         "INVALID_REFRESH_POLICY",
-        `Node "${node.key}" has an invalid refresh policy: ${reason}`
+        `Node "${node.key}" has an invalid refresh policy: ${reason}`,
       );
     }
     return;
@@ -98,7 +94,7 @@ const validateRefreshPolicy = (node: AnyNodeDefinition): void => {
   if ("refresh" in node) {
     throw new GraphValidationError(
       "INVALID_REFRESH_POLICY",
-      `Node "${node.key}" cannot declare a refresh policy because it is not a data node.`
+      `Node "${node.key}" cannot declare a refresh policy because it is not a data node.`,
     );
   }
 };
@@ -112,7 +108,7 @@ const validateReleasePolicy = (node: AnyNodeDefinition): void => {
       const reason = error instanceof Error ? error.message : String(error);
       throw new GraphValidationError(
         "INVALID_RELEASE_POLICY",
-        `Node "${node.key}" has an invalid release policy: ${reason}`
+        `Node "${node.key}" has an invalid release policy: ${reason}`,
       );
     }
     return;
@@ -124,13 +120,13 @@ const validateReleasePolicy = (node: AnyNodeDefinition): void => {
   if ("release" in node) {
     throw new GraphValidationError(
       "INVALID_RELEASE_POLICY",
-      `Node "${node.key}" cannot declare a release policy because it is not a data node.`
+      `Node "${node.key}" cannot declare a release policy because it is not a data node.`,
     );
   }
 };
 
 const buildEventInvalidationIndex = (
-  nodes: readonly AnyNodeDefinition[]
+  nodes: readonly AnyNodeDefinition[],
 ): ReadonlyMap<string, readonly EventInvalidationCandidate[]> => {
   const candidatesByEvent = new Map<string, EventInvalidationCandidate[]>();
 
@@ -140,23 +136,24 @@ const buildEventInvalidationIndex = (
     // with `refresh` above - untyped input can still carry one, and that
     // must still be caught below rather than silently ignored, so this
     // falls back to a narrow, explained cast for that case only.
-    const invalidatedBy = isDataNode(node) || isDerivedNode(node)
-      ? node.invalidatedBy
-      : "invalidatedBy" in node
-        ? (node as AnyNodeDefinition & { readonly invalidatedBy?: unknown }).invalidatedBy
-        : undefined;
+    const invalidatedBy =
+      isDataNode(node) || isDerivedNode(node)
+        ? node.invalidatedBy
+        : "invalidatedBy" in node
+          ? (node as AnyNodeDefinition & { readonly invalidatedBy?: unknown }).invalidatedBy
+          : undefined;
 
     if (invalidatedBy === undefined) continue;
     if (!Array.isArray(invalidatedBy)) {
       throw new GraphValidationError(
         "INVALID_EVENT_DECLARATION",
-        `Node "${node.key}" must declare invalidatedBy as an array.`
+        `Node "${node.key}" must declare invalidatedBy as an array.`,
       );
     }
     if (node.kind === "context" && invalidatedBy.length > 0) {
       throw new GraphValidationError(
         "INVALID_EVENT_DECLARATION",
-        `Context node "${node.key}" cannot declare event invalidation.`
+        `Context node "${node.key}" cannot declare event invalidation.`,
       );
     }
 
@@ -166,7 +163,7 @@ const buildEventInvalidationIndex = (
       if (eventKeys.has(event.key)) {
         throw new GraphValidationError(
           "DUPLICATE_EVENT_INVALIDATION",
-          `Node "${node.key}" declares event "${event.key}" more than once.`
+          `Node "${node.key}" declares event "${event.key}" more than once.`,
         );
       }
       eventKeys.add(event.key);
@@ -178,10 +175,7 @@ const buildEventInvalidationIndex = (
   }
 
   return new Map(
-    [...candidatesByEvent].map(([key, candidates]) => [
-      key,
-      Object.freeze([...candidates]),
-    ])
+    [...candidatesByEvent].map(([key, candidates]) => [key, Object.freeze([...candidates])]),
   );
 };
 
@@ -194,7 +188,7 @@ const keyOf = (nodeOrKey: NodeOrKey): string =>
 
 const findCycle = (
   keys: readonly string[],
-  parentNodesByKey: ReadonlyMap<string, readonly AnyNodeDefinition[]>
+  parentNodesByKey: ReadonlyMap<string, readonly AnyNodeDefinition[]>,
 ): readonly string[] | undefined => {
   const visited = new Set<string>();
   const active = new Set<string>();
@@ -212,9 +206,7 @@ const findCycle = (
 
     // Traversal order is by key (default code-unit sort), independent of
     // declaration and registration order, so cycle messages stay deterministic.
-    const parents = (parentNodesByKey.get(key) ?? [])
-      .map(parent => parent.key)
-      .sort();
+    const parents = (parentNodesByKey.get(key) ?? []).map((parent) => parent.key).sort();
     for (const parent of parents) {
       const cycle = visit(parent);
       if (cycle) return cycle;
@@ -240,10 +232,7 @@ export const createGraph = (options: CreateGraphOptions): Graph => {
 
   for (const node of nodes) {
     if (nodesByKey.has(node.key)) {
-      throw new GraphValidationError(
-        "DUPLICATE_NODE_KEY",
-        `Duplicate node key "${node.key}".`
-      );
+      throw new GraphValidationError("DUPLICATE_NODE_KEY", `Duplicate node key "${node.key}".`);
     }
     validateRefreshPolicy(node);
     validateReleasePolicy(node);
@@ -270,7 +259,7 @@ export const createGraph = (options: CreateGraphOptions): Graph => {
       if (seenDependencies.has(dependency.key)) {
         throw new GraphValidationError(
           "DUPLICATE_DEPENDENCY",
-          `Node "${node.key}" declares dependency "${dependency.key}" more than once.`
+          `Node "${node.key}" declares dependency "${dependency.key}" more than once.`,
         );
       }
       seenDependencies.add(dependency.key);
@@ -279,7 +268,7 @@ export const createGraph = (options: CreateGraphOptions): Graph => {
       if (registeredDependency === undefined) {
         throw new GraphValidationError(
           "MISSING_DEPENDENCY",
-          `Node "${node.key}" references missing dependency "${dependency.key}".`
+          `Node "${node.key}" references missing dependency "${dependency.key}".`,
         );
       }
 
@@ -296,13 +285,13 @@ export const createGraph = (options: CreateGraphOptions): Graph => {
   }
 
   const cycle = findCycle(
-    nodes.map(node => node.key),
-    parentNodesByKey
+    nodes.map((node) => node.key),
+    parentNodesByKey,
   );
   if (cycle) {
     throw new GraphValidationError(
       "CIRCULAR_DEPENDENCY",
-      `Circular dependency detected: ${cycle.join(" -> ")}`
+      `Circular dependency detected: ${cycle.join(" -> ")}`,
     );
   }
 
@@ -319,10 +308,7 @@ export const createGraph = (options: CreateGraphOptions): Graph => {
     getNodes: () => graphNodes,
   });
 
-  registerEventInvalidationIndex(
-    graph,
-    buildEventInvalidationIndex(nodes)
-  );
+  registerEventInvalidationIndex(graph, buildEventInvalidationIndex(nodes));
 
   return graph;
 };

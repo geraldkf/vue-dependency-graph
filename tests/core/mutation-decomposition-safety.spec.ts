@@ -12,16 +12,18 @@ import {
   type MutationSuccessEffects,
 } from "../../src/core";
 
-const createValue = (key: string) => defineDataNode({
-  key,
-  initialValue: 0,
-  load: async () => 1,
-});
+const createValue = (key: string) =>
+  defineDataNode({
+    key,
+    initialValue: 0,
+    load: async () => 1,
+  });
 
-const successfulMutation = (key: string) => defineMutation({
-  key,
-  execute: async () => undefined,
-});
+const successfulMutation = (key: string) =>
+  defineMutation({
+    key,
+    execute: async () => undefined,
+  });
 
 describe("mutation decomposition safety net", () => {
   it("treats an unchanged optimistic draft as no session", async () => {
@@ -34,12 +36,14 @@ describe("mutation decomposition safety net", () => {
     runtime.onChange(listener);
     const localFailure = new Error("Local success failed");
 
-    await expect(runtime.mutate(mutation, undefined, {
-      optimistic: effects => effects.update(value, current => current),
-      onSuccess: () => {
-        throw localFailure;
-      },
-    })).rejects.toBe(localFailure);
+    await expect(
+      runtime.mutate(mutation, undefined, {
+        optimistic: (effects) => effects.update(value, (current) => current),
+        onSuccess: () => {
+          throw localFailure;
+        },
+      }),
+    ).rejects.toBe(localFailure);
 
     expect(runtime.getState(value)).toEqual(before);
     expect(listener).not.toHaveBeenCalled();
@@ -54,12 +58,14 @@ describe("mutation decomposition safety net", () => {
     await runtime.execute([value]);
 
     await runtime.mutate(first, undefined, {
-      optimistic: effects => effects.update(value, current => current),
+      optimistic: (effects) => effects.update(value, (current) => current),
     });
 
-    await expect(runtime.mutate(second, undefined, {
-      optimistic: effects => effects.update(value, current => current + 1),
-    })).resolves.toBeUndefined();
+    await expect(
+      runtime.mutate(second, undefined, {
+        optimistic: (effects) => effects.update(value, (current) => current + 1),
+      }),
+    ).resolves.toBeUndefined();
     expect(runtime.getState(value).data).toBe(2);
   });
 
@@ -86,7 +92,7 @@ describe("mutation decomposition safety net", () => {
     let captured: unknown;
     try {
       await runtime.mutate(mutation, undefined, {
-        optimistic: effects => effects.update(value, current => current + 10),
+        optimistic: (effects) => effects.update(value, (current) => current + 10),
         classifyFailure,
       });
     } catch (error) {
@@ -96,18 +102,13 @@ describe("mutation decomposition safety net", () => {
     expect(classifyFailure).toHaveBeenCalledTimes(1);
     expect(captured).toBeInstanceOf(GraphMutationOutcomeUnknownError);
     expect((captured as Error).cause).toBe(remoteFailure);
-    expect(observed).toEqual([
-      "11:fresh:1",
-      "11:stale:2",
-    ]);
+    expect(observed).toEqual(["11:fresh:1", "11:stale:2"]);
 
-    await expect(runtime.mutate(
-      successfulMutation("decomposition.classifier-follow-up"),
-      undefined,
-      {
-        optimistic: effects => effects.update(value, current => current + 1),
-      },
-    )).resolves.toBeUndefined();
+    await expect(
+      runtime.mutate(successfulMutation("decomposition.classifier-follow-up"), undefined, {
+        optimistic: (effects) => effects.update(value, (current) => current + 1),
+      }),
+    ).resolves.toBeUndefined();
   });
 
   it("closes retained success effects after callback completion", async () => {
@@ -119,12 +120,12 @@ describe("mutation decomposition safety net", () => {
     let retained!: MutationSuccessEffects;
 
     await runtime.mutate(successfulMutation("decomposition.effects"), undefined, {
-      onSuccess: effects => {
+      onSuccess: (effects) => {
         retained = effects;
       },
     });
 
-    expect(() => retained.update(value, current => current + 1)).toThrowError(
+    expect(() => retained.update(value, (current) => current + 1)).toThrowError(
       "Mutation success effects are no longer active.",
     );
     expect(() => retained.invalidate([invalidated])).toThrowError(
@@ -153,26 +154,22 @@ describe("mutation decomposition safety net", () => {
     const prohibitedTarget = defineDataNode({
       key: "decomposition-publication-prohibited-target",
       dependencies: [summary] as const,
-      invalidatedBy: [{
-        event: prohibited,
-        when: ({ get }: EventInvalidationContext<
-          typeof prohibited,
-          readonly [typeof summary]
-        >) => get(summary) > 0,
-      }] as const,
+      invalidatedBy: [
+        {
+          event: prohibited,
+          when: ({ get }: EventInvalidationContext<typeof prohibited, readonly [typeof summary]>) =>
+            get(summary) > 0,
+        },
+      ] as const,
       initialValue: 0,
       load: async () => 20,
     });
     const explicitTarget = createValue("decomposition-publication-explicit");
-    const runtime = createGraphRuntime(createGraph({
-      nodes: [
-        acceptedTarget,
-        prohibitedTarget,
-        explicitTarget,
-        summary,
-        source,
-      ],
-    }));
+    const runtime = createGraphRuntime(
+      createGraph({
+        nodes: [acceptedTarget, prohibitedTarget, explicitTarget, summary, source],
+      }),
+    );
     await runtime.execute([acceptedTarget, prohibitedTarget, explicitTarget]);
     const beforeSource = runtime.getState(source);
     const beforeAccepted = runtime.getState(acceptedTarget);
@@ -181,18 +178,16 @@ describe("mutation decomposition safety net", () => {
     const listener = vi.fn();
     runtime.onChange(listener);
 
-    await expect(runtime.mutate(
-      successfulMutation("decomposition.publications"),
-      undefined,
-      {
-        onSuccess: effects => {
+    await expect(
+      runtime.mutate(successfulMutation("decomposition.publications"), undefined, {
+        onSuccess: (effects) => {
           effects.update(source, () => 5);
           effects.invalidate([explicitTarget]);
           effects.publish(accepted, undefined);
           effects.publish(prohibited, undefined);
         },
-      },
-    )).rejects.toMatchObject({
+      }),
+    ).rejects.toMatchObject({
       name: "EventPredicateDependencyError",
       dependencyKey: summary.key,
     });
@@ -215,35 +210,31 @@ describe("mutation decomposition safety net", () => {
     const target = defineDataNode({
       key: "decomposition-reconciliation-target",
       dependencies: [summary] as const,
-      invalidatedBy: [{
-        event: changed,
-        when: ({ get }: EventInvalidationContext<
-          typeof changed,
-          readonly [typeof summary]
-        >) => get(summary) > 0,
-      }] as const,
+      invalidatedBy: [
+        {
+          event: changed,
+          when: ({ get }: EventInvalidationContext<typeof changed, readonly [typeof summary]>) =>
+            get(summary) > 0,
+        },
+      ] as const,
       initialValue: 0,
       load: async () => 10,
     });
     const runtime = createGraphRuntime(createGraph({ nodes: [target, summary, source] }));
     await runtime.execute([target]);
 
-    await expect(runtime.mutate(
-      successfulMutation("decomposition.reconciliation-failure"),
-      undefined,
-      {
-        optimistic: effects => effects.update(source, current => current + 1),
-        onSuccess: effects => effects.publish(changed, undefined),
-      },
-    )).rejects.toBeInstanceOf(GraphMutationReconciliationError);
+    await expect(
+      runtime.mutate(successfulMutation("decomposition.reconciliation-failure"), undefined, {
+        optimistic: (effects) => effects.update(source, (current) => current + 1),
+        onSuccess: (effects) => effects.publish(changed, undefined),
+      }),
+    ).rejects.toBeInstanceOf(GraphMutationReconciliationError);
 
-    await expect(runtime.mutate(
-      successfulMutation("decomposition.reconciliation-follow-up"),
-      undefined,
-      {
-        optimistic: effects => effects.update(source, current => current + 1),
-      },
-    )).resolves.toBeUndefined();
+    await expect(
+      runtime.mutate(successfulMutation("decomposition.reconciliation-follow-up"), undefined, {
+        optimistic: (effects) => effects.update(source, (current) => current + 1),
+      }),
+    ).resolves.toBeUndefined();
     expect(runtime.getState(source).data).toBe(3);
   });
 });

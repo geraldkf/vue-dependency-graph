@@ -15,7 +15,7 @@ describe("transaction context conflicts", () => {
     const releaseTransaction = deferred<void>();
     const runtime = createGraphRuntime(createGraph({ nodes: [context] }));
 
-    const pendingTransaction = runtime.transaction(async transaction => {
+    const pendingTransaction = runtime.transaction(async (transaction) => {
       transaction.setContext(context, 2);
       await releaseTransaction.promise;
     });
@@ -45,13 +45,11 @@ describe("transaction context conflicts", () => {
       load: async () => 1,
     });
     const releaseTransaction = deferred<void>();
-    const runtime = createGraphRuntime(
-      createGraph({ nodes: [conflicting, unaffected, target] }),
-    );
+    const runtime = createGraphRuntime(createGraph({ nodes: [conflicting, unaffected, target] }));
     const listener = vi.fn();
     runtime.onChange(listener);
 
-    const pendingTransaction = runtime.transaction(async transaction => {
+    const pendingTransaction = runtime.transaction(async (transaction) => {
       transaction.setContext(conflicting, 2);
       transaction.setContext(unaffected, 20);
       transaction.publish(changed, undefined);
@@ -63,9 +61,7 @@ describe("transaction context conflicts", () => {
     listener.mockClear();
     releaseTransaction.resolve();
 
-    await expect(pendingTransaction).rejects.toBeInstanceOf(
-      GraphTransactionConflictError,
-    );
+    await expect(pendingTransaction).rejects.toBeInstanceOf(GraphTransactionConflictError);
     expect(runtime.getState(conflicting)).toMatchObject({ data: 3, generation: 1 });
     expect(runtime.getState(unaffected)).toMatchObject({ data: 10, generation: 0 });
     expect(runtime.getState(target).generation).toBe(0);
@@ -79,7 +75,7 @@ describe("transaction context conflicts", () => {
     const releaseTransaction = deferred<void>();
     const runtime = createGraphRuntime(createGraph({ nodes: [second, first] }));
 
-    const pendingTransaction = runtime.transaction(async transaction => {
+    const pendingTransaction = runtime.transaction(async (transaction) => {
       transaction.setContext(second, 20);
       transaction.setContext(first, 10);
       await releaseTransaction.promise;
@@ -104,7 +100,7 @@ describe("transaction context conflicts", () => {
     const releaseTransaction = deferred<void>();
     const runtime = createGraphRuntime(createGraph({ nodes: [context] }));
 
-    const pendingTransaction = runtime.transaction(async transaction => {
+    const pendingTransaction = runtime.transaction(async (transaction) => {
       transaction.setContext(context, 2);
       transaction.setContext(context, 1);
       await releaseTransaction.promise;
@@ -114,9 +110,7 @@ describe("transaction context conflicts", () => {
     runtime.setContext(context, 3);
     releaseTransaction.resolve();
 
-    await expect(pendingTransaction).rejects.toBeInstanceOf(
-      GraphTransactionConflictError,
-    );
+    await expect(pendingTransaction).rejects.toBeInstanceOf(GraphTransactionConflictError);
     expect(runtime.getState(context)).toMatchObject({ data: 3, generation: 1 });
   });
 
@@ -125,7 +119,7 @@ describe("transaction context conflicts", () => {
     const beginStaging = deferred<void>();
     const runtime = createGraphRuntime(createGraph({ nodes: [context] }));
 
-    const pendingTransaction = runtime.transaction(async transaction => {
+    const pendingTransaction = runtime.transaction(async (transaction) => {
       await beginStaging.promise;
       transaction.setContext(context, 3);
     });

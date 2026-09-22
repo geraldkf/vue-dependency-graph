@@ -33,7 +33,7 @@ const createTestEnvironment = () => {
       timers.set(id, { id, dueAt: now + delayMs, callback });
       return id;
     },
-    clearTimeout: handle => {
+    clearTimeout: (handle) => {
       if (typeof handle === "number") timers.delete(handle);
     },
     random: () => 0.5,
@@ -44,11 +44,9 @@ const createTestEnvironment = () => {
     now += durationMs;
     while (true) {
       const next = [...timers.values()]
-        .filter(timer => timer.dueAt <= now)
+        .filter((timer) => timer.dueAt <= now)
         .sort((left, right) =>
-          left.dueAt === right.dueAt
-            ? left.id - right.id
-            : left.dueAt - right.dueAt
+          left.dueAt === right.dueAt ? left.id - right.id : left.dueAt - right.dueAt,
         )[0];
       if (!next) return;
       timers.delete(next.id);
@@ -75,7 +73,7 @@ describe("poll-until refresh policy", () => {
       refresh: pollUntil<Progress>({
         intervalMs: 100,
         timeoutMs: 1_000,
-        stopWhen: value => value.state === "completed",
+        stopWhen: (value) => value.state === "completed",
       }),
     });
     const runtime = createGraphRuntime(createGraph({ nodes: [node] }), {
@@ -93,7 +91,7 @@ describe("poll-until refresh policy", () => {
     await waitForCondition(() => requests === 3, "completion request");
     await waitForCondition(
       () => runtime.getState(node).data.state === "completed",
-      "completion result"
+      "completion result",
     );
 
     expect(runtime.getState(node).status).toBe("success");
@@ -121,8 +119,8 @@ describe("poll-until refresh policy", () => {
       refresh: pollUntil<Progress>({
         intervalMs: 100,
         timeoutMs: 1_000,
-        stopWhen: value => value.state === "completed",
-        failWhen: value => value.state === "failed",
+        stopWhen: (value) => value.state === "completed",
+        failWhen: (value) => value.state === "failed",
       }),
     });
     const runtime = createGraphRuntime(createGraph({ nodes: [node] }), {
@@ -132,10 +130,7 @@ describe("poll-until refresh policy", () => {
     const subscription = runtime.subscribeNodes([node]);
     await runtime.whenSettled();
     clock.advanceBy(100);
-    await waitForCondition(
-      () => runtime.getState(node).error !== null,
-      "business failure"
-    );
+    await waitForCondition(() => runtime.getState(node).error !== null, "business failure");
 
     const state = runtime.getState(node);
     expect(state.data).toEqual({ state: "failed", request: 2 });
@@ -166,9 +161,7 @@ describe("poll-until refresh policy", () => {
 
     runtime.subscribeNodes([node]);
     await runtime.whenSettled();
-    expect(runtime.getState(node).error).toBeInstanceOf(
-      GraphPollingConditionError
-    );
+    expect(runtime.getState(node).error).toBeInstanceOf(GraphPollingConditionError);
     expect(clock.timerCount()).toBe(0);
   });
 
@@ -194,10 +187,7 @@ describe("poll-until refresh policy", () => {
     clock.advanceBy(100);
     await waitForCondition(() => clock.timerCount() === 1, "second timeout poll");
     clock.advanceBy(100);
-    await waitForCondition(
-      () => runtime.getState(node).error !== null,
-      "polling timeout"
-    );
+    await waitForCondition(() => runtime.getState(node).error !== null, "polling timeout");
 
     const state = runtime.getState(node);
     expect(state.data).toBe(3);
@@ -257,7 +247,7 @@ describe("poll-until refresh policy", () => {
       refresh: pollUntil<Progress>({
         intervalMs: 100,
         timeoutMs: 1_000,
-        stopWhen: value => value.state === "completed",
+        stopWhen: (value) => value.state === "completed",
       }),
     });
     const runtime = createGraphRuntime(createGraph({ nodes: [jobId, node] }), {
