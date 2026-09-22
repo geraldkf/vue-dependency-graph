@@ -126,23 +126,53 @@ Keep transaction integration coverage grouped by behaviour: staging, invalidatio
 
 ### Typed event publication
 
-Event tests cover payload typing, declaration validation, deterministic graph indexing, conditional matching, atomic predicate failure, direct and descendant invalidation, stale-data retention, unrelated branches, scheduler reload, shared-descendant deduplication, generation-before-abort ordering, and ignored-abort protection. M6D adds transaction coverage for staged visibility, rollback, final-context predicate matching, combined invalidation deduplication, publication order, predicate-failure atomicity, explicit nested composition, isolated overlapping sessions, conflict handling, and scheduler-specific settlement.
+Event tests cover payload typing, declaration validation, deterministic graph indexing, conditional matching, atomic predicate failure, direct and descendant invalidation, stale-data retention, unrelated branches, scheduler reload, shared-descendant deduplication, generation-before-abort ordering, and ignored-abort protection. Transaction coverage includes staged visibility, rollback, final-context predicate matching, combined invalidation deduplication, publication order, predicate-failure atomicity, explicit nested composition, isolated overlapping sessions, conflict handling, and scheduler-specific settlement. Mutation coverage verifies success-only publication, direct-update overlays, and rejection of affected-derived predicate reads without partial success effects.
 
 ### Mutations
 
-- Success invalidation
-- Optimistic update
-- Rollback
-- Success reconciliation
-- Event publication
+Mutation tests exercise the public `runtime.mutate(...)` entry point and verify observable behaviour rather than private coordination calls. Coverage includes:
 
-### Diagnostics
+- typed definition, input, and result inference;
+- independent remote attempts and exact input and signal mapping;
+- atomic confirmed-success updates, invalidation, and event publication;
+- successful-value preconditions, duplicate-target rejection, callback lifetime, and asynchronous-effect rejection;
+- pure replacement updaters and development/test protection against nested in-place writes;
+- no-op updates and one notification with at most one scheduler request per local commit;
+- immediate optimistic visibility and subscribed descendant execution;
+- same-node optimistic ownership conflicts and disjoint mutation concurrency;
+- known-rejection rollback with monotonic generations and generation-before-abort ordering;
+- rollback scheduling for restored stale subscribed state;
+- rollback conflicts when newer graph or settled descendant work exists;
+- unknown outcome retention and authoritative reconciliation;
+- confirmed remote success followed by local reconciliation failure;
+- success-only typed event publication, direct-update predicate overlays, and affected-derived read restrictions;
+- independence from graph transactions and from the data-load concurrency budget;
+- ownership release after every terminal settlement path;
+- immutable, sorted public error metadata and preserved causes.
 
-- Load reason
-- Bounded event history
-- Redaction
-- Stable snapshot normalisation
-- Listener failures: a throwing `onChange` listener or background policy is isolated and reported as `runtime.listener-failed`, attributed to the operation being committed when there is one; silent when diagnostics are disabled (`tests/core/runtime-listener-failures.spec.ts`, `tests/core/runtime-observer.spec.ts`)
+Keep runtime-level behavioural suites as the primary specification for the update planner, optimistic-session manager, mutation committer, settlement coordinator, and runtime-facing controller. Static decomposition tests should protect private exports, acyclic dependency direction, and single-controller runtime wiring without coupling tests to internal delegation details.
+
+### Diagnostics and devtools
+
+Diagnostics tests verify observable event and snapshot contracts rather than private emitter calls. Coverage includes:
+
+- diagnostics disabled when no sink is supplied;
+- immutable runtime-local sequence, operation, and cause identifiers;
+- caller intent and node-execution causality across scheduler, event, transaction, policy, mutation, and release paths;
+- sink failure isolation without changes to runtime state or operation results;
+- listener failure isolation and `runtime.listener-failed` attribution;
+- bounded event retention, dropped-event counts, and cumulative metrics independent of eviction;
+- safe snapshot construction with values omitted by default;
+- explicit inclusion, typed redaction, unsupported values, cycles, and redactor failure;
+- bounded safe error serialisation;
+- pure, immutable, idempotent normalisation with stable identifier aliasing;
+- deterministic graph, node, timeline, and metrics protocol transforms;
+- stable dependency-depth graph layout and event lanes;
+- live panel updates, selection, snapshot export, invalid import errors, offline inspection, and return to live mode;
+- the requirement that a live panel receives the same in-memory collector configured as the runtime sink.
+
+Use deterministic diagnostic environments in tests. Assert functional fields and causal relationships rather than real timestamps or incidental runtime identifiers.
+
 - State transitions: `tests/core/state-transitions.spec.ts` pins the exact field and generation effect of each transition and checks that every transition maps every valid state to a valid state
 - State write rule: `tests/core/state-types.test.ts` asserts with `@ts-expect-error` that every node-state field, compound assignment, and `generation++` is rejected outside the transitions (checked by `pnpm typecheck`, like the other `*.types.test.ts` files). `pnpm check:boundaries` fails on a writable mapped type outside `state/transitions.ts` and on a transitions import from a module not on its allowlist
 - State traces: `tests/core/runtime-state-trace.spec.ts` snapshots every observable change to node `status`, `freshness`, `generation`, `hasSuccessfulValue`, `error`, and `data`, per change notification, for scenarios that reach each transition (load, failure and recovery, refresh after failure, context, event, and transaction invalidation, mutation success, unknown and rejected failure, release, retry exhaustion, polling timeout, abort while loading or refreshing, cancellation while queued, and supersession by an invalidation or a mutation write), and fails on any state-invariant violation. Diagnostics traces cannot see these fields
@@ -199,29 +229,29 @@ Compile-time `.test.ts` files are checked by `vue-tsc` and excluded from Vitest.
 
 ## Refresh policy tests
 
-M8A adds behavioural coverage for immutable policy descriptors, normalized defaults, invalid configuration, data-node integration, and defensive graph validation. Compile-time coverage verifies polling value types and confirms context and derived nodes reject refresh metadata.
+Policy-definition coverage verifies immutable descriptors, normalised defaults, invalid configuration, data-node integration, and defensive graph validation. Compile-time coverage verifies polling value types and confirms context and derived nodes reject refresh metadata.
 
-Later Milestone 8 timer and polling tests must use an injected deterministic environment rather than real delays.
+Timer and polling tests must use an injected deterministic environment rather than real delays.
 
 ### Stale-after runtime coverage
 
-M8B uses an injected deterministic environment rather than real delays. Coverage verifies timer creation, duration expiry, remaining age after resubscription, timer cleanup, automatic-only cancellation, and shared manual-refresh ownership.
+Stale-after coverage verifies timer creation, duration expiry, remaining age after resubscription, timer cleanup, automatic-only cancellation, and shared manual-refresh ownership.
 
 ### Fixed-interval runtime coverage
 
-M8C uses the injected deterministic environment to verify repeated settled refresh, non-overlap during slow loads, full-delay restart after settlement and resubscription, context-invalidation restart, timer cleanup, and isolation between runtimes.
+Fixed-interval coverage verifies repeated settled refresh, non-overlap during slow loads, full-delay restart after settlement and resubscription, context-invalidation restart, timer cleanup, and isolation between runtimes.
 
 ### Poll-until runtime coverage
 
-M8D uses the deterministic environment to verify intermediate progress, completion, business failure, failure-before-completion ordering, timeout, predicate exceptions, generation changes, obsolete-result protection, retained successful data, and final-unsubscribe cleanup.
+Poll-until coverage verifies intermediate progress, completion, business failure, failure-before-completion ordering, timeout, predicate exceptions, generation changes, obsolete-result protection, retained successful data, and final-unsubscribe cleanup.
 
 ### Retry and lifecycle coverage
 
-M8E uses deterministic clock and random sources to verify fixed and exponential delay calculation, jitter bounds, retry reset and exhaustion, timer preservation during pause, coalesced resume, suppression of paused requests, and active-time polling timeout. Browser adapter tests cover visibility, network state, options, and listener cleanup.
+Retry and lifecycle coverage uses deterministic clock and random sources to verify fixed and exponential delay calculation, jitter bounds, retry reset and exhaustion, timer preservation during pause, coalesced resume, suppression of paused requests, and active-time polling timeout. Browser adapter tests cover visibility, network state, options, and listener cleanup.
 
 ### Polling Progress playground coverage
 
-M8F uses Vue Testing Library against a deterministic virtual-time scenario. Tests cover progress, non-overlap metrics, completion, retained-data failure, timeout, retry delay, pause/resume, unmount timer cleanup, reset, and shell tab mounting.
+The Polling Progress playground uses Vue Testing Library with deterministic virtual time. Tests cover progress, non-overlap metrics, completion, retained-data failure, timeout, retry delay, pause and resume, unmount timer cleanup, reset, and shell tab mounting.
 
 ## Compile-time type tests
 
@@ -286,16 +316,7 @@ Compile-time tests verify mutation input/result inference, data-node-only direct
 Tests must not use real network requests, real delays, or framework-inferred HTTP semantics. Known rejection versus unknown outcome is supplied explicitly by the test classifier.
 
 
-## Offline validation responsibility
+## Combined validation responsibility
 
-Milestone 8 validation is complete. The combined checkout passed boundary checks, strict typechecking, the complete Vitest suite, and the production build. The Polling Progress manual browser paths also passed. Future milestones must continue to report validation against the exact combined checkout.
+Before release or history deletion, validate the exact combined checkout with boundary checks, strict typechecking, the complete Vitest suite, and the production build. Timer and polling behaviour must remain deterministic in automated tests; manual playground checks supplement but do not replace those suites.
 
-M9H-G1 keeps runtime-level mutation tests as the primary specification while extracting update planning. Existing reconciliation, optimistic, updater-purity, and G0 safety tests jointly protect callback lifetime, validation-before-evaluation, duplicate rejection, Promise-like rejection, protected-value handling, no-op detection, and unchanged public errors. The planner remains internal and is not tested through public exports.
-
-M9H-G2 relies on the runtime-level optimistic, outcome-race, rollback-scheduling, reconciliation-failure, optimistic-descendant, and G0 safety suites to specify session behaviour. These tests protect no-op ownership, overlapping conflicts, snapshot restoration, monotonic generations, settled descendant conflicts, immutable sorted keys, release after every settlement path, and stale subscribed recovery while the implementation boundary moves.
-
-M9H-G3 is protected by the existing generation-before-abort, ignored-abort, atomic optimistic, success reconciliation, success-effects, rollback scheduling, unknown-outcome, rollback-conflict, reconciliation-failure, optimistic-descendant, and G0 lifecycle tests. These runtime-level tests remain the specification for the four extracted commit transitions; direct tests that only verify delegation are intentionally avoided.
-
-M9H-G4 is protected by the ownership-release, callback-lifetime, multi-publication atomicity, public error, classifier single-invocation, rollback-conflict, unknown-outcome, reconciliation-failure, success-effects, and G0 lifecycle tests. These runtime-level tests verify the settlement boundary through observable behaviour rather than mocks between the controller and coordinator.
-
-M9H-G5 preserves the complete runtime-level mutation suite as the lifecycle-seam specification. The controller remains tested through public `mutate(...)` behaviour rather than direct tests of private transition names. Static checks additionally protect acyclic dependency direction, single-controller runtime wiring, private extracted modules, and the absence of premature observability emissions.

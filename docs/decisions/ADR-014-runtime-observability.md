@@ -1,76 +1,92 @@
-## ADR-014: Runtime Observability Through a Structured Event Stream
+# ADR-014: Runtime Observability Through a Structured Event Stream
 
 ## Status
 
 Accepted, implemented, and validated.
 
-### Context
+## Context
 
-The graph runtime automatically coordinates subscriptions, scheduling, dependency execution, invalidation, transactions, typed events, refresh policies, polling, and optimistic mutations. This reduces consumer orchestration but makes it difficult to answer why work occurred, which operation caused it, whether work was reused or discarded, and how long a lifecycle took.
+The graph runtime automatically coordinates subscriptions, scheduling, dependency execution, invalidation, transactions, typed events, refresh policies, polling, release policies, and optimistic mutations. This reduces consumer orchestration but makes it difficult to answer why work occurred, which operation caused it, whether it was reused or discarded, and how long a lifecycle took.
 
-The existing graph observer intentionally has no payload and exists to tell reactive consumers that committed runtime state may have changed. Expanding that observer into diagnostics would mix UI state propagation with tracing, would make transaction notification buffering affect diagnostics, and would encourage consumers to infer lifecycle events from snapshots.
+The graph change observer intentionally has no payload and only tells reactive consumers that committed runtime state may have changed. Expanding that observer into diagnostics would mix UI state propagation with lifecycle tracing and encourage consumers to reconstruct causes from snapshots.
 
-Maintaining separate instrumentation and metrics call paths would also risk semantic drift. A counter could report a mutation rollback that does not correspond to the diagnostic timeline, or a newly added lifecycle could be instrumented in one system but omitted from the other.
+Independent instrumentation and metrics paths would also risk semantic drift. A metric could report an outcome that does not correspond to the diagnostic timeline, or a new lifecycle could be added to one path and omitted from the other.
 
-Diagnostic output may contain sensitive graph data. A safe default is required before snapshots or future devtools can expose values.
+Diagnostic output may expose sensitive graph values. Safe omission and explicit redaction are required before snapshots or tooling can inspect runtime state.
 
-### Decision
+## Decision
 
-Add one optional, framework-agnostic structured diagnostic event stream to each `GraphRuntime`.
+Add one optional, framework-independent structured diagnostic event stream to each `GraphRuntime`.
 
-The runtime will create one failure-isolating diagnostic emitter when a sink is configured. Core capabilities emit immutable discriminated events through that emitter at established lifecycle boundaries. Sink exceptions do not alter graph state, operation promises, observer notification, scheduling, or settlement.
+### Diagnostic emission
 
-Events use deterministic runtime-local sequence and operation identifiers. Causal links connect subscriptions, invalidations, caller-owned operations, transactions, policies, and mutations to node execution. Runtime-local IDs are diagnostic identities, not distributed tracing identifiers.
+When a sink is configured, the runtime creates one failure-isolating diagnostic emitter. Core capabilities emit immutable discriminated events at established lifecycle boundaries. Sink exceptions do not alter graph state, operation promises, observer notification, scheduling, settlement, policy work, or mutation outcomes.
 
-Metrics are reduced from the diagnostic stream. The first provided sink is a bounded in-memory collector that retains recent events and maintains cumulative counters independently of event eviction.
+Diagnostics remain separate from the graph change observer. They are emitted synchronously, are not awaited, and are not included in `runtime.whenSettled()`.
 
-Diagnostic snapshots are versioned and separate from public runtime state snapshots. Node values are omitted by default. Inclusion or redaction requires explicit immutable node-definition metadata. Snapshot import and live cache restoration are not included.
+### Identity and causality
 
-Diagnostics remain outside the graph observer and transaction notification buffer. Diagnostic emission is not awaited and is not included in `whenSettled()`.
+Events use monotonically increasing runtime-local sequence numbers and deterministic runtime-local operation identifiers. Cause identifiers connect subscriptions, invalidations, caller-owned operations, scheduler flushes, transactions, policies, and mutations to the node work they trigger.
 
-### Consequences
+Runtime identifiers and operation identifiers are diagnostic labels. They are not globally unique process identifiers or distributed tracing identifiers.
 
-- Existing runtimes that omit diagnostics retain their current behaviour and do not retain event history.
-- Every emitted event has a deterministic order within one runtime.
-- A diagnostic sink cannot break graph behaviour by throwing.
-- Metrics and timelines share one lifecycle vocabulary.
-- Correlation can explain causal chains without exposing transaction-staged values, mutation inputs, mutation results, or event payloads.
-- Future devtools can consume stable events and snapshots rather than private runtime internals.
-- Event contracts become public compatibility surface and must be added deliberately.
+### Metrics and bounded collection
+
+Metrics are reduced from the same diagnostic event stream rather than maintained through a separate instrumentation path.
+
+The provided in-memory collector retains a bounded window of recent events while maintaining cumulative metrics independently of event eviction. It reports how many older events were dropped. Collector reset affects only retained diagnostic state and metrics; it does not mutate the runtime.
+
+### Diagnostic snapshots
+
+`runtime.createDiagnosticSnapshot()` creates a versioned serialisable diagnostic representation of current topology, node state, scheduler state, subscriptions, policy state, retained diagnostics, and available metrics.
+
+Snapshots are observational. Creating one does not notify observers, schedule work, emit another diagnostic event, or mutate graph-owned values.
+
+Node values are omitted by default. A node may explicitly include its value or provide a synchronous redactor. Included or redacted values must be safely serialisable. Unsupported values are omitted, and a redactor failure produces a safe marker rather than failing snapshot creation.
+
+Diagnostic snapshots are not a cache-persistence or live-state restoration format.
+
+### Stable normalisation
+
+Public pure normalisers replace volatile timestamps, runtime identifiers, operation identifiers, cause identifiers, timer due times, and duration totals with deterministic values while preserving event order, causal relationships, keys, generations, outcomes, errors, and explicitly approved values.
+
+Normalisation returns new immutable values, does not mutate its input, and is stable when applied repeatedly.
+
+## Consequences
+
+- Runtimes without a configured sink retain no diagnostic history and preserve normal behaviour.
+- Sink failure cannot break runtime correctness.
+- Timelines and metrics share one lifecycle vocabulary.
+- Causal chains can be inspected without exposing event payloads, mutation inputs, mutation results, or transaction-staged values.
+- Bounded collection prevents unbounded event retention while preserving cumulative metrics.
+- Snapshot value omission is safe by default but requires explicit node-level configuration when a value is needed for investigation.
+- Diagnostic event contracts are a public compatibility surface and must be extended deliberately.
 - Synchronous emission adds bounded work at instrumented lifecycle points when diagnostics are enabled.
-- A bounded collector may drop old events, so dropped-record count is part of its inspection contract.
-- Safe snapshot defaults may omit values needed for a specific investigation. Consumers must explicitly opt in at node definition time.
 
-### Alternatives considered
+Transaction ownership and scheduler settlement are defined by [ADR-005](./ADR-005-atomic-graph-transactions.md). The devtools consumption model is defined by [ADR-015](./ADR-015-devtools-inspector-protocol.md). Public contracts are maintained in the [Public API](../api/01-public-api.md).
 
-#### Add payloads to `runtime.onChange(...)`
+## Alternatives considered
 
-Rejected. The observer is a reactive invalidation signal with transaction-aware dispatch behaviour. Diagnostics require start, queue, abort, discard, causation, and duration events that do not all correspond to committed reactive state changes.
+### Add payloads to `runtime.onChange(...)`
 
-#### Maintain metrics directly in every capability
+Rejected. The observer is a reactive invalidation signal, while diagnostics require start, queue, reuse, abort, discard, causation, duration, and policy events that do not all correspond to committed UI state changes.
 
-Rejected. Independent counters and event emission would duplicate lifecycle decisions and could drift. Metrics will consume the same diagnostic records used by the timeline.
+### Maintain metrics directly in each capability
 
-#### Always retain a runtime event history
+Rejected. Independent counters and timeline emission would duplicate lifecycle decisions and could drift.
+
+### Always retain runtime event history
 
 Rejected. Production consumers may not need diagnostics, and unbounded history would leak memory. Retention belongs to an optional bounded sink.
 
-#### Use globally unique random identifiers
+### Use globally unique random identifiers
 
-Rejected for the first release. Runtime-local deterministic identifiers are easier to test and are sufficient for one runtime timeline. External telemetry adapters may add process or distributed correlation later.
+Rejected for the core runtime. Deterministic runtime-local identifiers are easier to test and sufficient for one runtime timeline. External telemetry adapters may add process or distributed correlation.
 
-#### Include node values by default
+### Include node values by default
 
 Rejected. Graph values may contain personal or operationally sensitive information. Omission is the safe default, with explicit inclusion or redaction where justified.
 
-#### Build the devtools protocol at the same time
+### Restore diagnostic snapshots into live cache state
 
-Rejected. Milestone 10 must first prove the event, metrics, and snapshot contracts. UI transport, command handling, and offline viewing remain Milestone 11 concerns.
-
-### Implementation plan
-
-See `docs/implementation/110-milestone-10-observability-plan.md`.
-
-## Transaction isolation reconciliation
-
-The current transaction contract is defined by ADR-005. Top-level transactions are independent sessions, explicit nested work uses `transaction.transaction(...)`, committed work dispatches notification and scheduling directly, and `runtime.whenSettled()` remains scheduler-specific. Any earlier wording in this ADR about ambient groups or notification buffering is historical.
+Rejected. Offline inspection and live cache restoration have different compatibility and correctness requirements. Persistence remains a separate deferred capability.

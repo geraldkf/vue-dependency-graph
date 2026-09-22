@@ -40,7 +40,7 @@ Instead, one gap the analysis found is closed: listener and policy failures are 
 Any one of these is enough to reopen this decision:
 
 1. **A third policy with different needs.** The likeliest candidate is a count-bounded release buffer or LRU eviction (ADR-016 records it as a reasonable follow-up), which would sit on `releaseValue` but decide by count rather than by time. Building it by hand first is the test of whether a shared shape exists.
-2. **Policies defined outside core.** For example, something the existing-application migration trial (Milestone 13) needs and that cannot be expressed with the built-in policies.
+2. **Policies defined outside core.** For example, something the existing-application migration trial needs that cannot be expressed with the built-in policies.
 3. **Measured reconcile cost.** Profiling that shows policy reconciliation mattering, roughly beyond 1,000 policy nodes. Try a dirty set inside the controllers first.
 
 ## If it is revisited

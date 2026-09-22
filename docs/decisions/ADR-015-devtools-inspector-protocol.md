@@ -6,41 +6,77 @@ Accepted, implemented, and validated.
 
 ## Context
 
-Milestone 10 (see [ADR-014](./ADR-014-runtime-observability.md)) delivered a structured diagnostic event stream, an in-memory collector, metrics, and versioned safe snapshots. Milestone 11's job was to put a UI on top of that.
+The runtime diagnostics foundation provides structured events, cumulative metrics, and safe versioned snapshots. A developer-facing UI needs to turn those contracts into a graph, node details, a timeline, metrics, and offline inspection without depending on private runtime internals.
 
-The conventional way a Vue ecosystem library ships devtools is a `@vue/devtools-api` integration: a custom inspector tab and timeline layer inside the official browser extension, the same approach Pinia and Vue Router use. That's a reasonable default, but two constraints ruled it out for this milestone specifically:
+A conventional Vue browser-extension integration would require an additional dependency and would place the primary UI in a surface that this repository cannot exercise through its normal component and playground tests.
 
-- `@vue/devtools-api` was not already a dependency, and adding an external package whose UI surface (an actual browser extension panel) cannot be exercised by this project's test suite means shipping a large piece of functionality with no automated verification and no way to visually confirm it renders correctly.
-- This project's own discipline throughout has been to verify everything it ships - typecheck, automated tests, and a playground scenario for manual QA. A browser-extension integration breaks that pattern at the one point where it matters most: the thing a person actually looks at.
+Embedding transformation logic directly inside Vue components would also make the inspector model harder to test and impossible to reuse from another renderer.
 
 ## Decision
 
-Devtools ships as an embeddable Vue component panel (`GraphDevtoolsPanel`, in `src/devtools`) that a consuming app mounts against its own runtime and diagnostics collector - the same shape TanStack Query Devtools and Nuxt Devtools use, either as their primary interface or as a stepping stone before a browser-extension integration.
+Ship devtools as an embeddable Vue component over a pure framework-independent protocol layer.
 
-The data transformation from a diagnostic snapshot and event stream into inspector-ready view models - the graph layout algorithm, node detail, timeline entries, and metrics grouping - is a separate, pure, framework-agnostic layer (`src/devtools/protocol/`) with no Vue dependency and no rendering concerns. The Vue components are one consumer of that layer, not the layer itself. This makes "inspector protocol" (named as its own concern in the original Milestone 11 plan) a real, honored decision rather than an implementation detail folded invisibly into the UI: a future `@vue/devtools-api` integration, or a third-party tool, can build on the same stable data contract without depending on Vue, and without redoing the layout algorithm or the event-categorisation logic.
+### Protocol layer
 
-Two further, smaller decisions worth recording:
+The protocol transforms diagnostic snapshots, events, and metrics into stable inspector view models:
 
-- **Layout is deterministic, not force-directed.** Nodes are placed in columns by longest-path dependency depth, rows assigned alphabetically within a column. The same snapshot always produces the same positions. This was chosen specifically so the layout algorithm is unit-testable without a rendering engine and without tolerating simulation jitter between runs - a property a physics-based force layout does not have.
-- **Offline viewing reuses the live views unchanged.** `useOfflineDevtoolsSnapshot` loads a previously exported JSON snapshot and feeds it through the exact same `computeGraphView`/`computeNodeDetail`/`computeTimeline`/`computeMetricsView` functions and the exact same components as the live path, with no live runtime attached. This is a direct consequence of the protocol/UI split above, not separate work - it's what "the components only need view models, not a runtime" gets you for free.
+- dependency and event-invalidation graph views;
+- per-node details;
+- categorised timeline entries;
+- grouped metrics views.
+
+The protocol has no Vue dependency and does not require access to private runtime internals. A future renderer, including a browser-extension integration, can reuse the same transforms.
+
+### Deterministic graph layout
+
+Graph layout uses dependency-depth columns and deterministic ordering within each column. The same snapshot therefore produces the same positions without force-simulation jitter, seeding, or settling logic.
+
+Typed events use a separate lane with edges to nodes that declare them in `invalidatedBy`.
+
+### Embeddable Vue panel
+
+`GraphDevtoolsPanel` consumes a live runtime and the same `InMemoryGraphDiagnostics` collector configured as the runtime's sink. It provides Graph, Node, Timeline, and Metrics views plus snapshot export and import.
+
+The panel does not create diagnostics implicitly and cannot reconstruct event history from runtime state alone.
+
+### Offline inspection
+
+Offline snapshot inspection uses the same protocol transforms and rendering components as live inspection. Loading a valid exported snapshot detaches the views from the live runtime until the user returns to live mode.
+
+Offline inspection is read-only and does not restore snapshot values into a live runtime.
+
+### Scope boundary
+
+The panel is a read-only inspector except for exporting and importing diagnostic snapshots. It does not provide runtime commands to invalidate nodes, refresh nodes, publish synthetic events, or simulate failures.
+
+The current implementation is not a `@vue/devtools-api` browser-extension integration. That remains an additive future renderer rather than a rewrite of the protocol.
 
 ## Consequences
 
-- Devtools has no new runtime dependencies and is fully covered by the same automated test suite as everything else in this project - typecheck, unit tests on the protocol layer, component tests on the Vue layer, and a dedicated playground scenario for manual QA.
-- The panel only works where a consumer chooses to mount it; there's no ambient "install once, inspect any app" browser-extension experience. That's the direct cost of the decision above, not an oversight.
-- The panel is read-only plus export/import. The original vision's "Controls" section (invalidate a node, refresh a node, publish a synthetic event, simulate failure/delay) was not built - see `docs/architecture/06-observability-devtools-and-snapshots.md` for exactly what shipped against that vision. Adding write controls remains legitimate future work; it just wasn't in this milestone's scope.
-- Because the protocol layer has no Vue dependency, a future `@vue/devtools-api` integration is additive - a new renderer on the existing data contract - rather than a rewrite of the transformation logic this milestone already built and tested.
+- Devtools has no new runtime dependency and is testable through pure protocol tests, Vue component tests, and the playground.
+- Consumers must deliberately mount the panel; there is no ambient browser-extension experience.
+- Live views require the exact collector receiving the runtime's diagnostic events.
+- Offline and live modes present the same view models and rendering behaviour.
+- Deterministic layout makes graph rendering stable in tests and bug reports.
+- A future browser-extension renderer can reuse the protocol without importing the embeddable panel.
+- Runtime write controls remain outside the inspector contract.
+
+The diagnostic event, metric, and snapshot contracts are defined by [ADR-014](./ADR-014-runtime-observability.md). Public panel and composable usage is maintained in the [Public API](../api/01-public-api.md).
 
 ## Alternatives considered
 
-### A `@vue/devtools-api` browser-extension integration
+### `@vue/devtools-api` browser-extension integration
 
-Rejected for this milestone for the reasons in Context above: an unverified new dependency and a UI surface this project's test suite cannot exercise. Not rejected permanently - the protocol layer this ADR establishes is designed to make that integration cheaper later, not harder.
+Rejected for the initial devtools UI because it adds a dependency and places the primary rendering surface outside the repository's normal automated component coverage. It may be added later as another protocol consumer.
 
-### A force-directed or manually-positioned graph layout
+### Force-directed graph layout
 
-Rejected. A force simulation isn't deterministic between runs (or requires seeding and settling-iteration logic to become deterministic, which is more complexity for a debugging tool than the value justifies), and manual positioning doesn't scale to graphs the consumer didn't hand-lay-out. Longest-path-depth columns give a legible, stable layout for the common case (a DAG that isn't pathologically wide) with a straightforward, testable algorithm.
+Rejected because simulation output is unstable unless additional seeding and settling rules are introduced. Dependency-depth columns provide deterministic, testable placement.
 
-### Building the view-model logic directly inside the Vue components
+### Build view-model logic directly inside Vue components
 
-Rejected. This is the same reasoning as `runtime.ts`'s earlier separation of composition from cross-cutting concerns (see the codebase's own refactor history): mixing data transformation into rendering code makes the transformation harder to test in isolation and impossible to reuse from a non-Vue consumer, for no benefit the coupling would have bought.
+Rejected because it would couple transformation to rendering, make pure testing harder, and prevent non-Vue consumers from reusing the inspector model.
+
+### Restore imported snapshots into the runtime
+
+Rejected because offline diagnostic inspection is observational. Live cache restoration is a separate persistent-cache capability with different correctness and compatibility requirements.

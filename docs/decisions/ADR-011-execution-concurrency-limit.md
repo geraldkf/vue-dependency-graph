@@ -6,9 +6,9 @@ Accepted, implemented, and validated.
 
 ## Context
 
-A request came in describing the scheduler as running "everything sync" and asking for sibling dependencies to run via `Promise.all`, plus a configurable concurrency cap. Checked directly against `src/core/execution/execution.ts` and then verified empirically (see `docs/implementation/26-execution-concurrency-limit-plan.md` for the test and its output): dependency resolution already uses `Promise.allSettled` over a `.map()`, not a sequential loop, for both sibling dependencies of one node and independent top-level targets in one `execute()` call. Three sibling loads with a 100ms artificial delay each completed in ~102ms total, confirming genuine concurrency, not sequential execution.
+Dependency execution already runs independent sibling dependencies and independent top-level targets concurrently. The execution engine resolves dependency branches with `Promise.allSettled(...)`; it does not serialise unrelated data-node loads.
 
-What the current implementation genuinely lacks is a cap: nothing limits how many `load()` calls can be in flight simultaneously. A context change that invalidates many subscribed nodes at once fires all of their loads with no throttling, which can overwhelm a backend or a browser's connection pool. That gap is real and is what this ADR addresses.
+Unbounded concurrency can still overwhelm a backend or a browser connection pool when one context change or invalidation makes many subscribed nodes eligible at once. The runtime therefore needs a configurable cap without changing dependency ordering, failure isolation, attempt sharing, or stale-result protection.
 
 ## Decision
 
@@ -28,7 +28,7 @@ Default: unlimited (`Infinity`), making the feature backward-compatible by const
 - Derived nodes are never gated. They are synchronous by design and gating them would add queueing overhead for work that takes no meaningful time.
 - The limit is global and shared across every execution origin (`scheduler`, `explicit`, `prefetch`, `refresh`). A per-origin budget was considered and rejected: if a subscription-driven load and a `prefetch()` each had their own separate allowance, the combined in-flight total could exceed the number the caller actually configured, defeating the purpose of the setting.
 - No dynamic adjustment after construction, and no priority ordering among queued waiters (FIFO only) — both are plausible future work, neither has a concrete need driving it yet, and both add real complexity (mid-flight limit changes affecting already-queued waiters; priority inversion between origins) that isn't worth taking on speculatively.
-- Orthogonal to Milestone 5's transaction work. Transactions govern when state mutations and notifications become observable; this governs how many loads run concurrently. Neither depends on the other, and this can be implemented independently of Milestone 4 or Milestone 5's sequencing.
+- Orthogonal to graph transactions. Transactions govern when local context and event effects become observable; the limiter governs how many data-node loads run concurrently.
 
 ## Alternatives considered
 

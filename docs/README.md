@@ -20,8 +20,3 @@ Use these maintained documents as the current sources of truth:
 - [Roadmap](./ROADMAP.md)
 - [Playground](./PLAYGROUND.md)
 
-For the per-milestone build history (plans, implementation notes, validation
-handoffs) that produced the above, see
-[`implementation/README.md`](./implementation/README.md). It's a historical
-record, not something to read to understand the system as it stands today -
-start with Architecture above for that.

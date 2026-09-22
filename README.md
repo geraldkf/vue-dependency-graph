@@ -6,9 +6,9 @@ This repository begins as an isolated research and development project. The exis
 
 ## Status
 
-Design and prototyping. Milestones 1 through 10 are implemented and validated. The runtime now includes graph execution and scheduling, Vue integration, isolated atomic transaction sessions, typed events, query groups, refresh policies and polling, optimistic mutations, and opt-in runtime observability.
+The initial framework capabilities are implemented and validated. The runtime includes graph execution and scheduling, Vue integration, isolated atomic transaction sessions, typed events, query groups, refresh policies and polling, typed and optimistic mutations, diagnostics, devtools, automatic value release, retention hardening, and overlapping scheduler flushes.
 
-Milestone 10 is closed. It delivered diagnostic event and snapshot contracts, lifecycle causality, in-memory metrics, stable normalisation, the Runtime Observability playground, and transaction-overlap isolation hardening with a dedicated Transaction Isolation playground. APIs remain subject to change until the existing-application migration trial is complete. See `docs/implementation/110-milestone-10-observability-plan.md` and `docs/implementation/114-transaction-overlap-isolation-plan.md`.
+The next active objective is a bounded existing-application migration trial. APIs remain subject to change until that trial establishes production-shaped compatibility and adoption guidance. See the [roadmap](docs/ROADMAP.md).
 
 ## Repository model
 
@@ -157,8 +157,8 @@ pnpm install --frozen-lockfile
 - Public API: `docs/api/01-public-api.md`
 - Architecture: `docs/architecture/01-system-overview.md`
 - Vue and Pinia integration: `docs/architecture/07-vue-and-pinia-integration.md`
-- Roadmap: `docs/implementation/01-roadmap.md`
+- Roadmap: `docs/ROADMAP.md`
 - Test strategy: `docs/testing/01-test-strategy.md`
-- Mutation hardening plan: `docs/implementation/95-milestone-9h-mutation-correctness-hardening-plan.md`
+- Mutation adoption guide: `docs/guides/04-mutation-adoption.md`
 
 Historical implementation notes preserve point-in-time decisions and validation evidence. Use the documents above for the current architecture and API.

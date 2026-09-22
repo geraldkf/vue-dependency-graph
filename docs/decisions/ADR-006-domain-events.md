@@ -8,7 +8,7 @@ Accepted, implemented, and validated.
 
 Application domains need to make graph data stale after business actions without importing another domain's store or calling another store's loading methods directly. Direct store coupling makes ownership unclear and creates integration paths outside the graph scheduler.
 
-The framework already owns node invalidation, stale-data retention, generation advancement, cancellation, subscription-aware scheduling, and atomic context transactions. Typed events should feed that existing machinery rather than create another execution model.
+The framework already owns invalidation, stale-data retention, generation advancement, cancellation, subscription-aware scheduling, and atomic local graph commits. Domain events should feed that machinery rather than create another execution or handler model.
 
 ## Decision
 
@@ -21,7 +21,7 @@ const AppointmentBooked = defineEvent<{
 }>("appointment.booked");
 ```
 
-Nodes may declare unconditional invalidation or a synchronous predicate using the typed payload and their declared dependencies.
+Nodes may declare unconditional invalidation or a synchronous predicate using the typed payload and the node's declared dependencies.
 
 ```ts
 invalidatedBy: [{
@@ -31,29 +31,50 @@ invalidatedBy: [{
 }]
 ```
 
-Applications publish through the runtime:
+Event identity is key-based. Graph creation validates declarations and builds an immutable candidate index by event key. Publishing an event with no graph consumers is a silent no-op.
+
+Predicates are evaluated before graph mutation. A predicate failure applies no partial event invalidation. Matching nodes and their transitive descendants are invalidated through the existing generation, cancellation, notification, and scheduler paths; publication does not invoke loaders directly.
+
+### Publication ownership
+
+Plain runtime publication is immediate:
 
 ```ts
 runtime.publish(AppointmentBooked, payload);
 ```
 
-Event identity is key-based. The graph builds an immutable internal event invalidation index from node declarations. Publishing an event with no graph consumers is a silent no-op.
+It evaluates against committed graph state and remains independent while another transaction is open.
 
-Publication invalidates matched nodes and their transitive descendants through the existing invalidation and scheduler capabilities. It does not invoke loaders directly.
+Transaction-owned publication is explicit:
 
-Events published inside a graph transaction are staged in call order. On successful commit, effective context values commit first, event predicates evaluate against committed values, and combined context/event effects are deduplicated into one invalidation commit. Rollback discards staged publications.
+```ts
+await runtime.transaction(transaction => {
+  transaction.publish(AppointmentBooked, payload);
+});
+```
+
+Staged publications retain call order. Successful commit evaluates predicates against the final staged context overlay and combines context-driven and event-driven effects into one graph commit. Rollback or context conflict discards the staged publications.
+
+A confirmed mutation success may publish through `effects.publish(...)`. Its event matches are prepared with the mutation's other success effects and participate in the same local commit. Optimistic apply, remote rejection, unknown outcome, and failed success preparation do not publish the event.
+
+Repeated publications remain distinct because their payloads may match different nodes. The resulting affected-node set is deduplicated within one commit so each affected node advances generation at most once.
+
+### Delivery boundary
+
+Events are an in-memory invalidation mechanism for one `GraphRuntime`. They do not provide cross-tab delivery, durable replay, server delivery, distributed transactions, or exactly-once handling. External transports remain application-owned and must validate and map incoming messages before calling `runtime.publish(...)`.
 
 ## Consequences
 
 - Domain publishers depend on shared event contracts rather than target stores.
-- Payload shape and conditional matching are strongly typed.
+- Payloads and conditional matching remain strongly typed.
 - Predicates cannot read undeclared graph dependencies.
-- Event publication uses existing stale-data, generation, cancellation, notification, and scheduling behaviour.
-- A predicate failure causes no partial event-owned invalidation.
-- Multiple publications remain distinct for ordering and future diagnostics, but affected node keys are deduplicated per transaction commit.
-- Runtime delivery is in-memory and local to one `GraphRuntime`.
-- External messages require application-owned validation and explicit mapping before publication.
-- No general-purpose handler API or event history is introduced.
+- Event publication reuses the runtime's existing stale-data, generation, cancellation, notification, and scheduling behaviour.
+- A failed predicate cannot leave partially invalidated graph state.
+- Transaction-owned events share the transaction's commit, rollback, and conflict outcome.
+- Mutation event publication occurs only after confirmed remote success.
+- The framework is not a general-purpose event bus and does not define arbitrary event handlers or replay semantics.
+
+Transaction session ownership is defined by [ADR-005](./ADR-005-atomic-graph-transactions.md). Mutation outcome semantics are defined by [ADR-013](./ADR-013-mutation-framework.md). Public event contracts and examples are maintained in the [Public API](../api/01-public-api.md) and [User Guide](../guides/00-user-guide.md).
 
 ## Alternatives considered
 
@@ -67,30 +88,16 @@ Rejected because payloads and declaration predicates would lose compile-time saf
 
 ### Arbitrary event subscribers
 
-Rejected for Milestone 6. Handler ordering, side effects, async failure, cleanup, and replay semantics would turn graph invalidation into a general event bus.
+Rejected because handler ordering, side effects, asynchronous failure, cleanup, and replay semantics would turn graph invalidation into a general event bus.
 
 ### Scan every node on publication
 
-Rejected because immutable declarations allow a deterministic index to be built once during graph creation.
+Rejected because immutable declarations allow a deterministic candidate index to be built once during graph creation.
 
-### Replay staged events one by one after transaction commit
+### Replay staged events as separate commits
 
 Rejected because converging context and event effects could advance one node's generation multiple times and produce unnecessary notifications or scheduler requests.
 
-### Deduplicate staged events by key
+### Deduplicate publications by key
 
-Rejected because repeated publications may carry different payloads and match different nodes. Deduplicate graph effects, not publication records.
-
-
-## Amendment: explicit event ownership
-
-TOI-2 introduces `GraphTransaction`, and TOI-4 removes ambient event staging. Transaction-owned event publications must use `transaction.publish(...)`. Plain `runtime.publish(...)` always evaluates and applies its event effects immediately, even while another transaction group is open. A transaction rollback discards only publications staged through its handle.
-
-This amendment corrects the ownership gap in the original runtime-wide depth model. TOI-5 completes dispatch isolation: observer notification and automatic scheduling for an unrelated immediate publication bypass the transaction-owned buffer.
-
-
-The maintained public contract and event migration examples are in `docs/api/01-public-api.md` and `docs/implementation/67-toi-8e-migration-guidance.md`.
-
-## Transaction isolation reconciliation
-
-The current transaction contract is defined by ADR-005. Top-level transactions are independent sessions, explicit nested work uses `transaction.transaction(...)`, committed work dispatches notification and scheduling directly, and `runtime.whenSettled()` remains scheduler-specific. Any earlier wording in this ADR about ambient groups or notification buffering is historical.
+Rejected because repeated publications may carry different payloads and match different nodes. Graph effects are deduplicated, not publication records.

@@ -1,20 +1,20 @@
-## ADR-012: Subscription-Aware Refresh Policies and Polling
+# ADR-012: Subscription-Aware Refresh Policies and Polling
 
 ## Status
 
 Accepted, implemented, and validated.
 
-### Context
+## Context
 
 The runtime supports subscription-driven loading, explicit refresh, cancellation, stale-data retention, generation protection, shared attempts, a runtime-wide concurrency limit, time-based freshness, and polling for long-running resources.
 
 Polling implemented inside a node loader would require recursive delays, hide request ownership, bypass normal refresh preparation, complicate cancellation, and make deterministic testing difficult. Browser lifecycle imports in the core would also violate the framework boundary.
 
-### Decision
+## Decision
 
 Add immutable refresh-policy metadata to data-node definitions and interpret it through one runtime-local policy controller.
 
-The first release supports one policy per data node:
+The runtime supports one policy per data node:
 
 - stale after a duration;
 - fixed interval while subscribed;
@@ -26,7 +26,7 @@ Poll timeout is based on active elapsed time and excludes paused duration. Termi
 
 The core does not import browser APIs. Optional Vue/browser integration provides environment signals for document visibility and network availability. The same injected timer environment now also backs value-release policies, as recorded in [ADR-016](./ADR-016-value-release-policies.md); refresh and release remain separate controllers with separate policy semantics.
 
-### Consequences
+## Consequences
 
 - No second execution or cache path is introduced.
 - Existing concurrency, cancellation, deduplication, generation, and stale-data rules remain authoritative.
@@ -35,9 +35,9 @@ The core does not import browser APIs. Optional Vue/browser integration provides
 - Manual refresh remains caller-owned and does not inherit policy retry behaviour.
 - `whenSettled()` remains scheduler-specific because interval policies may never become permanently idle.
 - Deterministic tests require an injected fake clock and random source.
-- Structured policy diagnostics (`refresh-policy.*` events) were delivered in Milestone 10; see `docs/decisions/ADR-014-runtime-observability.md`.
+- Structured policy diagnostics use the runtime diagnostic event stream; see [ADR-014](./ADR-014-runtime-observability.md).
 
-### Alternatives considered
+## Alternatives considered
 
 #### Poll recursively inside `load(...)`
 
@@ -49,7 +49,7 @@ Rejected. A new tick can occur while the prior request is active. Recursive time
 
 #### Run policies without subscribers
 
-Rejected for the first release. Background activity without a consumer creates unclear lifetime and resource ownership. An explicit always-on mode can be added later if a concrete application requires it.
+Rejected. Background activity without a consumer creates unclear lifetime and resource ownership. An explicit always-on mode can be considered later if a concrete application requires it.
 
 #### Add browser lifecycle logic to core
 

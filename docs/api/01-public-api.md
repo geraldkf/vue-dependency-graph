@@ -260,7 +260,7 @@ An open transaction that has not committed has not requested scheduler work and 
 
 ## Typed event definitions
 
-M6A implements typed event handles and node declarations. M6B adds graph validation and indexing. M6C implements immediate publication, and M6D implements transaction-aware publication.
+Typed event handles provide compile-time payload safety for local graph invalidation.
 
 ```ts
 const AppointmentBooked = defineEvent<{
@@ -276,13 +276,13 @@ runtime.publish(AppointmentBooked, {
 
 Data and derived nodes may declare unconditional or conditional `invalidatedBy` entries. Conditional predicates receive the typed `payload` and a `get(...)` function restricted to the node's declared dependencies. Events published through `transaction.publish(...)` are staged in call order. Successful commit evaluates predicates against final staged context values and applies one combined context/event invalidation commit. Rollback discards staged publications.
 
-`defineEvent(...)`, `invalidatedBy`, graph validation, indexing, predicate matching, and immediate `runtime.publish(...)` invalidation are implemented. Transaction-aware publication is implemented and validated. See `docs/implementation/52-milestone-6-implementation-summary.md`.
-
 Publication invalidates matched nodes synchronously and schedules subscribed stale work through the existing scheduler. It is silent when no declaration matches. Predicate evaluation completes before mutation, so a predicate failure applies no partial event invalidation. Plain `runtime.publish(...)` is always immediate, even while another transaction is open. Only `transaction.publish(...)` is staged and follows its owning transaction session outcome. Observer notification and automatic scheduling for these plain runtime operations are also immediate and are not held behind the unrelated transaction.
+
+After confirmed mutation success, `effects.publish(...)` may publish a typed event as part of the mutation's prepared local success commit. Mutation events are not published during optimistic application, remote rejection, unknown outcome, or failed success preparation. Event delivery is local to one `GraphRuntime`; cross-tab, server, durable replay, and exactly-once delivery remain application concerns.
 
 ## Query groups
 
-Milestone 7 implements immutable query definitions as typed groups of existing nodes:
+Immutable query definitions group existing nodes without adding topology or query-owned runtime state:
 
 ```ts
 const AppointmentsPage = defineQuery({
@@ -327,7 +327,7 @@ Query prefetch delegates to the existing prefetch operation for every query node
 
 ## Refresh policy definitions
 
-Milestone 8A defines immutable refresh-policy metadata for data nodes. Runtime interpretation begins in Milestone 8B, so these declarations do not yet create timers or automatic refresh behaviour.
+Data nodes may declare immutable refresh-policy metadata. Each runtime interprets that metadata and owns its timers and policy sessions.
 
 ```ts
 const Progress = defineDataNode({
@@ -347,7 +347,7 @@ Use `staleAfter(...)` for age-based policy metadata and `refreshInterval(...)` f
 
 ### Stale-after runtime behaviour
 
-Milestone 8B activates `staleAfter(...)` for subscribed data nodes. A runtime schedules one refresh after the latest successful value reaches the declared age. Final unsubscribe clears the timer and aborts policy-only work. Resubscription reuses the remaining freshness duration.
+`staleAfter(...)` refreshes subscribed data nodes when their latest successful value reaches the configured age. A runtime schedules one refresh after the latest successful value reaches the declared age. Final unsubscribe clears the timer and aborts policy-only work. Resubscription reuses the remaining freshness duration.
 
 ```ts
 const runtime = createGraphRuntime(graph, {
@@ -359,7 +359,7 @@ const runtime = createGraphRuntime(graph, {
 
 ### Fixed interval while subscribed
 
-Milestone 8C activates `refreshInterval(...)` for subscribed data nodes:
+`refreshInterval(...)` repeatedly refreshes subscribed data nodes after each successful policy cycle settles:
 
 ```ts
 const Notifications = defineDataNode({
@@ -372,11 +372,11 @@ const Notifications = defineDataNode({
 
 The runtime starts one timeout after successful work settles. Timer expiry delegates to the existing refresh and execution path. The next timeout begins only after successful policy work settles, so slow requests do not overlap. Final unsubscribe clears the timer, and resubscription starts a clean full interval.
 
-Retry metadata remains inert until M8E. A failed interval refresh retains existing stale data and suspends automatic interval work until a later external execution succeeds.
+A failed interval refresh retains existing stale data and applies the configured bounded retry policy. Retry exhaustion suspends automatic interval work until a later external successful execution starts a new cycle.
 
 ### Poll until completion
 
-Milestone 8D activates `pollUntil<TValue>(...)` for subscribed data nodes:
+`pollUntil<TValue>(...)` repeatedly refreshes subscribed data nodes until completion, business failure, or timeout:
 
 ```ts
 const ReportProgress = defineDataNode({
@@ -394,7 +394,7 @@ const ReportProgress = defineDataNode({
 
 Every successful value is evaluated in failure, completion, timeout order. Completion leaves the successful value fresh. Business failure, predicate exception, and timeout preserve the latest successful value but expose a terminal error and stale freshness.
 
-Exported terminal error types are `GraphPollingConditionError` and `GraphPollingTimeoutError`. Retry metadata remains inert until M8E.
+Exported terminal error types are `GraphPollingConditionError` and `GraphPollingTimeoutError`. Configured retry applies to retryable policy refresh failures before terminal exhaustion.
 
 ### Retry and lifecycle environment
 
@@ -412,7 +412,7 @@ It pauses policy timers while the document is hidden or the browser is offline. 
 
 ## Release policies
 
-Milestone 12 adds `release` metadata for data nodes, interpreted by a runtime-local release-policy controller built on the same `timerEnvironment` refresh policies use (see above):
+`release` metadata for data nodes is interpreted by a runtime-local release-policy controller built on the same `timerEnvironment` used by refresh policies:
 
 ```ts
 import { releaseAfter, retain } from "vue-dependency-graph/core";
@@ -437,7 +437,7 @@ A release emits a `node.value-released` diagnostic event (`{ operationId, nodeKe
 
 ## Mutation definitions and execution
 
-Milestone 9A introduces immutable typed mutation definitions and caller-owned remote execution:
+Immutable typed mutation definitions represent caller-owned remote execution:
 
 ```ts
 interface SaveAppointmentInput {
@@ -463,13 +463,13 @@ const result = await runtime.mutate(SaveAppointment, {
 
 `defineMutation(...)` validates the key and execute function, returns a frozen definition, and retains input and asynchronous result types. `MutationInput<TMutation>` and `MutationResult<TMutation>` extract those types.
 
-`runtime.mutate(...)` creates one caller-owned mutation attempt, passes the exact input and an attempt-scoped `AbortSignal`, and returns the remote result. Each call is independent. M9A does not deduplicate, retry, cancel, reconcile graph data, invalidate nodes, publish events, apply optimistic state, or consume the data-load concurrency limit.
+`runtime.mutate(...)` creates one caller-owned mutation attempt, passes the exact input and an attempt-scoped `AbortSignal`, and returns the remote result. Each call is independent. A basic call does not deduplicate, retry, reconcile graph data, invalidate nodes, publish events, apply optimistic state, or consume the data-load concurrency limit.
 
 A plain mutation call remains independent while a graph transaction is open. It cannot read staged transaction state and its result is not committed or rolled back by that transaction.
 
 ### Direct success reconciliation
 
-Milestone 9B adds optional synchronous success effects:
+Optional synchronous success effects reconcile graph state after confirmed remote success:
 
 ```ts
 const result = await runtime.mutate(SaveAppointment, input, {
@@ -511,7 +511,7 @@ If remote execution succeeded but local reconciliation fails, `runtime.mutate(..
 
 ### Success invalidation and typed publication
 
-Milestone 9C extends the same success-effect callback:
+The same success-effect callback may also invalidate nodes and publish typed events:
 
 ```ts
 await runtime.mutate(SaveAppointment, input, {
@@ -540,7 +540,7 @@ Remote rejection skips `onSuccess` entirely, so no success invalidation or event
 
 ### Optimistic updates and known rejection
 
-Milestone 9D adds an optional optimistic update callback and failure classifier:
+An optional optimistic update callback and failure classifier provide guarded optimistic behaviour:
 
 ```ts
 await runtime.mutate(BookAppointment, input, {
@@ -568,7 +568,7 @@ Optimistic invalidation immediately participates in normal subscription scheduli
 
 Only one unresolved optimistic mutation may own a data node. A same-node conflict rejects with `GraphMutationConflictError` before the conflicting request starts. Disjoint optimistic work remains independent.
 
-A failure classified as `rejected` restores the complete captured snapshots atomically and preserves the original remote error. Successful completion does not perform a transient rollback. It retains the optimistic value when no success update replaces it, or applies normal M9B/M9C success effects directly over optimistic state.
+A failure classified as `rejected` restores the complete captured snapshots atomically and preserves the original remote error. Successful completion does not perform a transient rollback. It retains the optimistic value when no success update replaces it, or applies the prepared confirmed-success effects directly over optimistic state.
 
 A missing classifier defaults to `unknown`. Classifier exceptions and unsupported runtime classifier results also take the safe unknown path.
 
@@ -584,7 +584,7 @@ If remote execution succeeds but optimistic success reconciliation fails, the ru
 
 Context changes, event invalidation, refresh, polling, independent mutations, and transactions remain independent while mutation work is pending. Their newer graph state is never overwritten by an obsolete rollback snapshot.
 
-Devtools and cache garbage collection remain future APIs.
+Mutation retry, offline queues, layered same-node optimistic updates, and built-in idempotency-key management remain outside the current mutation API.
 
 
 
@@ -592,7 +592,7 @@ Devtools and cache garbage collection remain future APIs.
 
 ### Runtime diagnostics foundation
 
-Milestone 10A adds optional structured diagnostics at runtime construction:
+Configure optional structured diagnostics when constructing the runtime:
 
 ```ts
 const events: GraphDiagnosticEvent[] = [];
@@ -607,7 +607,7 @@ const runtime = createGraphRuntime(graph, {
 
 Diagnostics are disabled when no sink is supplied. A configured sink receives immutable events synchronously in runtime-local sequence order. Sink failures are isolated and do not change runtime state, operation results, observer notification, scheduling, or settlement.
 
-M10A emits the foundation events:
+The foundation event set includes:
 
 - `runtime.created` after runtime-local diagnostic identity is created;
 - `operation.execute.requested`;
@@ -618,7 +618,7 @@ M10A emits the foundation events:
 
 `runtime.listener-failed` is emitted when a change listener throws while the runtime is notifying - an application's `onChange` subscriber, or one of the runtime's own background policies, which listen the same way (a refresh policy that cannot arm its timer, for example). It carries `error: { name, message }` and, when the notification happened while an operation was being committed, that operation's `operationId`. The failure itself stays isolated: other listeners still run and runtime state is unaffected. The devtools Timeline shows it as a failed runtime entry.
 
-Operation-request events contain immutable requested node keys and a deterministic runtime-local operation ID. Query operation events also contain the query key. These events record caller intent only. M10B adds execution, scheduling, subscription, invalidation, reuse, skip, queue, and outcome events that complete the causal trace.
+Operation-request events contain immutable requested node keys and a deterministic runtime-local operation ID. Query operation events also contain the query key. These events record caller intent; execution, scheduling, subscription, invalidation, reuse, skip, queue, and outcome events complete the causal trace.
 
 Tests may provide a deterministic diagnostics environment:
 
@@ -639,7 +639,7 @@ Default runtime IDs are runtime-local diagnostic labels. They are not distribute
 
 #### Core execution causality
 
-Milestone 10B extends the diagnostic stream across ordinary graph execution:
+The diagnostic stream covers ordinary graph execution:
 
 - subscription add and remove;
 - scheduler request, start, completion, and failure;
@@ -669,7 +669,7 @@ Errors are represented by immutable `{ name, message }` records. Diagnostic even
 
 #### Advanced lifecycle diagnostics
 
-Milestone 10C adds structured records for typed events, transactions, refresh policies, polling, and mutations.
+Structured records also cover typed events, transactions, refresh policies, polling, release, and mutations.
 
 Typed event records contain the event key, whether publication was transaction-owned, and matched node keys. Event payloads are never included.
 
@@ -687,7 +687,7 @@ Mutation records cover request start, effective optimistic commit, remote start 
 
 #### In-memory diagnostics and metrics
 
-Milestone 10D provides an optional bounded collector that implements `GraphDiagnosticSink`:
+An optional bounded collector implements `GraphDiagnosticSink`:
 
 ```ts
 const diagnostics = createInMemoryGraphDiagnostics({ capacity: 500 });
@@ -710,7 +710,7 @@ A collector may be owned by one runtime or deliberately shared by multiple runti
 
 #### Diagnostic snapshots and value safety
 
-Milestone 10E adds `runtime.createDiagnosticSnapshot()`, which returns an immutable, versioned `GraphDiagnosticSnapshotV1`. The snapshot contains graph topology, node runtime state, scheduler state, subscription counts, refresh-policy state, optional collector metrics, and retained/dropped diagnostic counts.
+`runtime.createDiagnosticSnapshot()` returns an immutable, versioned `GraphDiagnosticSnapshotV1`. The snapshot contains graph topology, node runtime state, scheduler state, subscription counts, refresh-policy state, optional collector metrics, and retained/dropped diagnostic counts.
 
 Node values are omitted by default. A node can explicitly include its value or provide a strongly typed synchronous redactor:
 
@@ -733,7 +733,7 @@ Snapshot construction is observational. It does not notify observers, schedule w
 
 #### Stable diagnostic normalisation
 
-Milestone 10F provides public pure normalisers for deterministic tests and offline comparisons:
+Public pure normalisers support deterministic tests and offline comparisons:
 
 ```ts
 const normalizedSnapshot = normalizeDiagnosticSnapshot(snapshot);
@@ -749,11 +749,11 @@ Sequence order, event types, node and event keys, generations, reasons, origins,
 
 The playground includes a dedicated Runtime Observability scenario. It owns an isolated runtime and bounded collector, then demonstrates subscription-driven initial loading, context invalidation, explicit refresh, request failure and recovery, transaction rollback, mutation completion, recent events, cumulative metrics, redacted snapshot preview, and JSON export.
 
-Reset disposes the existing subscription and creates a clean runtime, collector, identifier sequence, and metrics baseline. Leaving the scenario also disposes its dedicated subscription. The scenario is an executable behaviour demonstration and does not introduce a devtools protocol or runtime command channel - that's what Milestone 11, below, added.
+Reset disposes the existing subscription and creates a clean runtime, collector, identifier sequence, and metrics baseline. Leaving the scenario also disposes its dedicated subscription. The scenario is an executable behaviour demonstration; the reusable inspector contract belongs to the devtools protocol described below.
 
 ## Devtools
 
-Milestone 11 adds an embeddable devtools panel (`vue-dependency-graph/devtools`) built on the diagnostics foundation above. See [ADR-015](../decisions/ADR-015-devtools-inspector-protocol.md) for why it's an embeddable component rather than a browser-extension integration, and `docs/architecture/06-observability-devtools-and-snapshots.md` for what shipped against the original devtools vision.
+The `vue-dependency-graph/devtools` entry point provides an embeddable devtools panel built on the diagnostics foundation above. See [ADR-015](../decisions/ADR-015-devtools-inspector-protocol.md) for the protocol and embedding decision, and [Observability, devtools, and snapshots](../architecture/06-observability-devtools-and-snapshots.md) for the current architecture.
 
 ### Panel
 

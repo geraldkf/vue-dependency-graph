@@ -8,7 +8,7 @@ Build a dedicated Vue application to validate framework behaviour.
 
 An early wishlist for a single unified explorer UI, written before the playground existed. It didn't happen in that shape: the playground grew into one dedicated scenario page per behaviour instead (see "Implemented scenarios" below), which turned out to suit "demonstrate and manually validate one specific mechanism at a time" better than a single do-everything panel would have.
 
-The graph-explorer/metrics/snapshot-export part of this list is fulfilled differently than originally envisioned here - not as a bespoke playground feature, but as the Milestone 11 devtools panel (`src/devtools`), a reusable component embeddable in any consuming app. The Devtools scenario below demonstrates it against this playground's own runtimes.
+Graph exploration, metrics, and snapshot export are provided by the reusable devtools panel in `src/devtools`, which can be embedded in any consuming app. The Devtools scenario demonstrates it against this playground's own runtimes.
 
 
 ## Implemented scenarios
@@ -168,7 +168,7 @@ Manual validation:
 
 ### Devtools
 
-The **Devtools** scenario mounts the Milestone 11 `GraphDevtoolsPanel` (`src/devtools`) against a dedicated runtime with a context node, a data node carrying both an event-invalidation rule and a refresh policy, a derived node, and a mutation - enough variety to exercise every tab.
+The **Devtools** scenario mounts `GraphDevtoolsPanel` (`src/devtools`) against a dedicated runtime with a context node, a data node carrying both an event-invalidation rule and a refresh policy, a derived node, and a mutation, providing enough variety to exercise every tab.
 
 Controls:
 

@@ -1,126 +1,166 @@
 # Observability, Devtools, and Snapshots
 
-## Status
+Automatic orchestration reduces consumer code but makes runtime behaviour less visible. The observability architecture provides one optional structured event stream, metrics derived from that stream, safe diagnostic snapshots, and an embeddable inspector built only on public diagnostic contracts. The governing decisions are [ADR-014](../decisions/ADR-014-runtime-observability.md) and [ADR-015](../decisions/ADR-015-devtools-inspector-protocol.md).
 
-Milestone 10 is implemented and validated. M10A through M10G delivered diagnostic foundations, lifecycle causality, advanced diagnostics, the bounded in-memory collector and metrics, versioned safe snapshots, stable normalisation and regression coverage, and the Runtime Observability playground. Final reconciliation also completed transaction-overlap isolation, documentation cleanup, and the Transaction Isolation playground. See [the Milestone 10 observability plan](../implementation/110-milestone-10-observability-plan.md), [the transaction overlap isolation plan](../implementation/114-transaction-overlap-isolation-plan.md), and [ADR-014](../decisions/ADR-014-runtime-observability.md).
+## Why observability is part of the runtime
 
-The accepted direction is one optional structured diagnostic event stream with deterministic runtime-local causation, a bounded in-memory collector, metrics reduced from the same stream, and safe versioned snapshots. Milestone 11 (complete) delivered the devtools UI as an embeddable Vue component panel (`src/devtools`) - see [ADR-015](../decisions/ADR-015-devtools-inspector-protocol.md) for why that shape rather than a `@vue/devtools-api` browser-extension integration, and the per-view status notes below for what shipped against the original vision versus what's still open.
-
-## Devtools panel
-
-`GraphDevtoolsPanel` (`src/devtools/components/GraphDevtoolsPanel.vue`) is a tabbed panel a consuming app mounts against its own `runtime` and an `InMemoryGraphDiagnostics` collector. Every view is a thin renderer over a pure, framework-agnostic transform in `src/devtools/protocol/` - see ADR-015. `useGraphDevtools` wires a live runtime in; `useOfflineDevtoolsSnapshot` loads a previously exported JSON snapshot into the exact same views with no runtime attached, so a snapshot can be captured from one session and inspected or shared later.
-
-## Why observability is part of the architecture
-
-Automatic orchestration reduces consumer code but makes hidden execution possible. The framework must make it easy to answer:
+The runtime must make it possible to answer:
 
 - Why did this node load?
-- Which context or event invalidated it?
-- Which dependencies blocked it?
-- Was the result discarded as obsolete?
-- How long did each execution take?
-- Why is polling still active?
+- Which subscription, context change, event, mutation, refresh, or policy caused it?
+- Which dependency blocked it?
+- Was an attempt reused, queued, aborted, or discarded?
+- How long did the operation take?
+- Why is polling still active or stopped?
+- Did a listener or diagnostic sink fail without affecting runtime behaviour?
+
+These questions require lifecycle events and causal links. They cannot be reconstructed reliably from the graph change observer or a point-in-time state snapshot.
 
 ## Diagnostic event stream
 
-The core should emit structured diagnostic events through an optional observer:
+A runtime emits diagnostics only when a sink is supplied. Events are immutable discriminated records emitted synchronously in runtime-local sequence order.
 
-- Node registered
-- Subscription added or removed
-- Node invalidated
-- Execution scheduled
-- Node execution started, succeeded, failed, aborted, or discarded
-- Transaction started, committed, or rolled back
-- Domain event published
-- Change listener failed (`runtime.listener-failed`): listeners are isolated from one another, and this is how a failure in one, including one of the runtime's own background policies, stays visible
-- Poll scheduled or stopped
-- Mutation started, committed, or rolled back
+The stream covers:
 
-Diagnostics must be bounded or stream-based so long-running applications do not leak memory.
+- runtime creation and isolated listener failure;
+- caller-owned execute, prefetch, refresh, and query operations;
+- subscriptions and scheduler flushes;
+- context and result invalidation;
+- data load and derived execution outcomes;
+- fresh-value skips, active-attempt reuse, concurrency queueing, abort, and discard;
+- typed event matching and publication;
+- transaction start, commit, rollback, and conflict;
+- refresh-policy scheduling, retry, pause, resume, completion, failure, and stop;
+- value release;
+- mutation request, optimistic apply, remote settlement, success commit, rollback, rollback conflict, unknown outcome, and reconciliation failure.
+
+Diagnostic records do not include event payloads, mutation inputs, mutation results, or transaction-staged values.
+
+## Causality and identifiers
+
+Every runtime has a runtime-local diagnostic identifier and monotonically increasing sequence numbers. Operations receive deterministic runtime-local operation identifiers. Cause identifiers connect initiating actions to scheduler work and node execution.
+
+Identifiers are intended for one runtime timeline and deterministic tests. They are not globally unique process identifiers or distributed tracing identifiers. External telemetry adapters may add broader correlation.
+
+## Failure isolation
+
+The diagnostic emitter isolates sink exceptions. A throwing sink cannot change graph state, operation results, notifications, scheduling, settlement, or policy behaviour.
+
+The graph observer also isolates listener failures. When diagnostics are enabled, a failed listener is reported as `runtime.listener-failed`, including safe error details and the committing operation identifier when available. Other listeners continue and runtime state remains committed.
+
+Diagnostic emission is not awaited and is not included in `runtime.whenSettled()`.
+
+## In-memory collector
+
+`createInMemoryGraphDiagnostics(...)` provides a bounded diagnostic sink.
+
+It retains the newest events in insertion order and reports how many older events were dropped. Metrics are reduced cumulatively as events arrive, so event eviction does not reduce historical counts or durations.
+
+`getEvents()` and `getMetrics()` return immutable snapshots. `reset()` clears collector events and metrics only; it does not reset the runtime, subscriptions, scheduler, policies, mutations, or graph state.
+
+A collector may be owned by one runtime or deliberately shared. Shared collectors preserve event runtime identifiers while aggregating metrics.
 
 ## Metrics
 
-Initial metrics:
+Metrics are projections of the diagnostic stream and therefore use the same lifecycle vocabulary as the timeline.
 
-- Execution count
-- Node load count
-- Success, failure, abort, and discarded-result counts
-- Cache/fresh-value reuse count
-- Node execution duration
-- Query time-to-ready
-- Retry count
-- Poll attempt count and total polling duration
-- Active subscription count
-- Transaction count and duration
+The metrics snapshot includes:
 
-Metrics are projected from the structured diagnostic event stream so counters and timelines share one lifecycle vocabulary. The core provides an optional bounded in-memory collector. Vendor-specific telemetry adapters remain application or later-milestone work.
+- operation counts;
+- per-node attempt outcomes and durations;
+- current and maximum active data loads;
+- concurrency queue counts and wait duration;
+- fresh-value skips and active-attempt reuse;
+- invalidation sources;
+- scheduler outcomes;
+- refresh-policy outcomes;
+- transaction outcomes and durations;
+- mutation outcomes and durations;
+- current subscription totals;
+- dropped-event count.
 
-## Devtools views
+Metrics do not create a second instrumentation path or alter runtime execution.
 
-Status against this original vision: Graph view, Node inspector, and Timeline are delivered as described below, with two exceptions noted inline. Controls (the write/remote-control section) was **not** built - the panel that shipped is a read-only inspector plus export/import, not a remote-control console. Extending it with write controls remains open future work, not something ADR-015 rejected; it just wasn't in Milestone 11's scope.
+## Diagnostic snapshots
 
-### Graph view
+`runtime.createDiagnosticSnapshot()` returns a versioned serialisable snapshot containing:
 
-- Nodes and dependency edges
-- Event invalidation edges
-- Node kind
-- Runtime status and freshness
-- Active subscriptions
+- runtime and schema identity;
+- graph topology and event invalidation edges;
+- node runtime states;
+- scheduler state;
+- subscription counts;
+- refresh-policy state;
+- optional collector metrics;
+- retained and dropped diagnostic counts.
 
-### Node inspector
+Snapshot construction is observational. It does not notify, schedule, execute, emit another diagnostic event, or mutate graph-owned values.
 
-- Current value with configurable redaction
-- Dependencies and descendants
-- ~~Last execution~~ - not surfaced as a distinct field; cross-reference the Timeline, filtered to the selected node, instead
-- ~~Last invalidation reason~~ - same as above; the Timeline's `node.invalidated` entries carry this, the inspector doesn't duplicate it
-- Error
-- Refresh and retry policies
+## Value safety and redaction
+
+Node values are omitted by default. A node may opt into value inclusion or provide a synchronous typed redactor.
+
+Included and redacted values must be safely serialisable primitives, arrays, or plain objects. Cycles, non-finite numbers, functions, symbols, `bigint`, and non-plain objects are omitted safely. Redactor exceptions produce a redaction-failed marker and safe error details instead of failing snapshot creation.
+
+Runtime and scheduler errors use bounded serialisation without stack traces. Cyclic or excessively deep causes are marked as truncated.
+
+## Stable normalisation
+
+Public pure normalisers create deterministic snapshots, event streams, and exports for tests and offline comparison.
+
+Normalisation replaces volatile timestamps, runtime identifiers, operation identifiers, cause identifiers, timer due times, and duration totals. Operation and cause identifiers are aliased consistently in first-seen order so causal relationships remain visible.
+
+Functional data remains unchanged, including sequence order, event types, node and event keys, generations, reasons, origins, outcomes, safe errors, approved values, metrics, and graph state. Normalisation is immutable and idempotent.
+
+## Devtools protocol
+
+The devtools protocol is a framework-independent transformation layer over diagnostic snapshots, events, and metrics.
+
+It computes:
+
+- a deterministic graph view;
+- node details;
+- categorised timeline entries;
+- grouped metrics views.
+
+The protocol does not import Vue and does not read private runtime internals. The embeddable panel is one renderer; another renderer can reuse the same contracts.
+
+## Deterministic graph view
+
+Nodes are placed in columns by dependency depth and sorted deterministically within each column. Typed events occupy a separate lane with edges to nodes declaring them in `invalidatedBy`.
+
+The layout avoids force-simulation jitter and produces stable positions for tests, exports, and repeated debugging sessions.
+
+## Devtools panel
+
+`GraphDevtoolsPanel` is an embeddable Vue component with four views:
+
+- Graph
+- Node
+- Timeline
 - Metrics
 
-### Timeline
+A live panel receives a `GraphRuntime` and the same `InMemoryGraphDiagnostics` instance used as the runtime's diagnostic sink. The panel does not create diagnostics implicitly and cannot reconstruct past events from runtime state alone.
 
-- Scheduler flushes
-- Executions
-- Transactions
-- Events
-- Mutations
-- Poll cycles (via `refresh-policy.*` events, which cover both interval refresh and poll-until sessions)
+The panel is read-only except for diagnostic snapshot export and import. It does not invalidate nodes, refresh nodes, publish synthetic events, or simulate failures.
 
-### Controls
+## Offline snapshot inspection
 
-Not delivered in Milestone 11. Development-only controls may still be added later:
+Snapshot export combines current snapshot, retained events, and metrics into a versioned JSON document. Offline loading validates the document and feeds it through the same protocol transforms and rendering components as live mode.
 
-- Invalidate a node
-- Refresh a node
-- Publish a synthetic event
-- Simulate failure or delay through the playground adapter
-- Export a snapshot (this one *is* delivered, as `GraphDevtoolsPanel`'s "Export snapshot" button)
+Offline mode requires no live runtime. Returning to live mode resumes the current runtime and collector views, including activity that occurred while the offline snapshot was displayed.
 
-## Snapshot diagnostics
+Offline import does not restore graph values or state into a live runtime.
 
-A snapshot is a serialisable diagnostic representation, not a default cache-persistence mechanism.
+## Current limitations
 
-Include:
+The current observability and devtools surface deliberately does not include:
 
-- Schema version
-- Framework version
-- Timestamp
-- Registered topology
-- Node status and freshness
-- Redacted or omitted values
-- Errors in serialisable form
-- Last invalidation reason
-- Subscription counts
-- Selected metrics
+- runtime write or remote-control commands;
+- `@vue/devtools-api` browser-extension integration;
+- live cache restoration from diagnostic snapshots;
+- globally unique or distributed tracing identifiers;
+- built-in vendor-specific production telemetry adapters;
+- automatic capture of node values without explicit inclusion or redaction.
 
-## Redaction and privacy
-
-Node values are omitted from diagnostic snapshots by default. A node may explicitly opt in to value inclusion or provide a synchronous custom redactor through immutable definition metadata. The exact public metadata shape is finalised with compile-time coverage in M10E. Redactor failure must omit the value rather than fail snapshot creation.
-
-## Snapshot testing
-
-Tests should assert stable functional fields, not timestamps or incidental execution IDs. Provide a normaliser that excludes volatile fields.
-
-## Importing snapshots
-
-Snapshot import for visual inspection is useful. Restoring snapshots as live cache state is a separate persistence feature and should not be included initially.
+These remain separate capabilities that require concrete consumer needs and their own compatibility and security decisions.

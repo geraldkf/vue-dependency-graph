@@ -177,7 +177,7 @@ Final unsubscribe aborts an active attempt only when all owners are automatic (`
 
 Interval policies use recursive timeouts rather than `setInterval(...)`. One timeout exists per subscribed interval node. Expiry requests a policy-owned refresh through the existing operation and execution controllers. The next timeout is created only after successful policy work fully settles, preventing overlapping requests and avoiding a race with shared refresh-operation cleanup.
 
-A failed interval refresh schedules no next timeout in M8C. Retry and backoff remain M8E work. Context or event invalidation closes the previous timing session; successful execution for the new generation starts a new full interval.
+A failed interval refresh applies its configured bounded retry policy. Retry exhaustion stops automatic interval work while retaining prior successful data as stale. Context or event invalidation closes the previous timing session; successful execution for the new generation starts a new full interval.
 
 ## Poll-until sessions
 
@@ -195,7 +195,7 @@ Pause clears timers while retaining one remaining delay and timer purpose. Resum
 
 ## Release-policy ownership
 
-Implemented, Milestone 12 - see [ADR-016](../decisions/ADR-016-value-release-policies.md).
+See [ADR-016](../decisions/ADR-016-value-release-policies.md).
 
 A sibling release-policy controller owns one timer per eligible data node, started the moment that node's subscriber count - direct plus required, the same total `hasSubscribers` check invalidation and the scheduler's settlement logic already use, not the scheduler's own `hasDirectSubscribers` filter - drops to zero while the node still has a successful value. Resubscribing before the timer fires cancels it with no other effect; the existing value is reused exactly as if nothing had happened.
 
