@@ -3,7 +3,7 @@
     <h2>Error and Retry</h2>
     <p>
       <label>
-        <input type="checkbox" v-model="flakyLoader.shouldFail.value" />
+        <input v-model="flakyLoader.shouldFail.value" type="checkbox" />
         Make the next load fail
       </label>
     </p>

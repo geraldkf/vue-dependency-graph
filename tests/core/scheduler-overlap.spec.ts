@@ -833,7 +833,7 @@ describe("storms and reentrancy", () => {
       },
     });
     const { runtime } = build([ctx, slowNode, followerNode, triggerNode]);
-    let runtimeRef: GraphRuntime | undefined = runtime;
+    const runtimeRef: GraphRuntime | undefined = runtime;
     const followerSubscription = runtime.subscribeNodes([followerNode]);
     const slowSubscription = runtime.subscribeNodes([slowNode]);
     await flush();

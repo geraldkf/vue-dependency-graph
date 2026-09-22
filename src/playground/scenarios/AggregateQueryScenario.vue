@@ -3,7 +3,7 @@
     <h2>Aggregate Query</h2>
     <p>
       <label>
-        <input type="checkbox" v-model="metricCLoader.shouldFail.value" />
+        <input v-model="metricCLoader.shouldFail.value" type="checkbox" />
         Make metric C fail
       </label>
     </p>

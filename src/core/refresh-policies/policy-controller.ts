@@ -274,6 +274,9 @@ export const createRuntimeRefreshPolicyController = ({
     return true;
   };
 
+  // Forward reference: assigned once below, but declared here because earlier
+  // closures in this scope call it before its definition is reached.
+  // eslint-disable-next-line prefer-const
   let reconcileNode: (node: PolicyDataNode) => void;
 
   const startPolicyRefresh = (

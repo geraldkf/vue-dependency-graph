@@ -8,7 +8,6 @@ import type {
   PollUntilPolicy,
   RefreshIntervalOptions,
   RefreshIntervalPolicy,
-  RetryOptions,
   RetryPolicy,
   StaleAfterOptions,
   StaleAfterPolicy,

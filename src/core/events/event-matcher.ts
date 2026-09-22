@@ -1,4 +1,3 @@
-import type { AnyEventDefinition } from "./types";
 import { getEventInvalidationCandidates } from "./event-index";
 import type { AnyNodeDefinition, Graph } from "../graph/types";
 import type { NodeStateRecord } from "../state/state";
