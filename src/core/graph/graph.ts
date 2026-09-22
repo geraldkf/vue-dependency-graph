@@ -179,7 +179,13 @@ const buildEventInvalidationIndex = (
   );
 };
 
+/** Options for {@link createGraph}. */
 export interface CreateGraphOptions {
+  /**
+   * Every node definition that belongs to this graph - context, data, and
+   * derived nodes together, in any order. A node referenced as a
+   * dependency but not included here fails validation.
+   */
   readonly nodes: readonly AnyNodeDefinition[];
 }
 
@@ -226,6 +232,57 @@ const findCycle = (
   return undefined;
 };
 
+/**
+ * Assembles a set of node definitions into a validated {@link Graph},
+ * resolving dependency topology and checking it up front so structural
+ * mistakes surface at startup, not the first time a node happens to load.
+ * The result is what you pass to {@link createGraphRuntime}.
+ *
+ * Validation performed here (all as {@link GraphValidationError}):
+ * duplicate node keys (`DUPLICATE_NODE_KEY`), a node listing the same
+ * dependency twice (`DUPLICATE_DEPENDENCY`), a dependency that points at a
+ * node not included in `nodes` (`MISSING_DEPENDENCY`), a dependency cycle
+ * (`CIRCULAR_DEPENDENCY`), and malformed `invalidatedBy`/`refresh`/`release`
+ * declarations.
+ *
+ * @throws {@link GraphValidationError} - see codes above.
+ *
+ * @example
+ * ```ts
+ * import { createGraph, defineContextNode, defineDataNode, defineDerivedNode } from "vue-dependency-graph/core";
+ *
+ * interface Product {
+ *   readonly id: string;
+ *   readonly priceCents: number;
+ * }
+ *
+ * const currentProductId = defineContextNode({
+ *   key: "currentProductId",
+ *   initialValue: "prod-1",
+ * });
+ *
+ * const product = defineDataNode({
+ *   key: "product",
+ *   dependencies: [currentProductId] as const,
+ *   initialValue: null as Product | null,
+ *   load: async ({ get }) => fetch(`/api/products/${get(currentProductId)}`).then((r) => r.json()),
+ * });
+ *
+ * const displayPrice = defineDerivedNode({
+ *   key: "displayPrice",
+ *   dependencies: [product] as const,
+ *   derive: ({ get }) => {
+ *     const value = get(product);
+ *     return value ? `$${(value.priceCents / 100).toFixed(2)}` : "—";
+ *   },
+ * });
+ *
+ * const graph = createGraph({ nodes: [currentProductId, product, displayPrice] });
+ * ```
+ *
+ * @see {@link createGraphRuntime} for the next step - turning a graph into
+ * something that actually loads, subscribes, and executes.
+ */
 export const createGraph = (options: CreateGraphOptions): Graph => {
   const nodes = [...options.nodes];
   const nodesByKey = new Map<string, AnyNodeDefinition>();

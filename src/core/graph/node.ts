@@ -60,6 +60,40 @@ const freezeInvalidatedBy = <TInvalidatedBy extends readonly unknown[]>(
   invalidatedBy: TInvalidatedBy | undefined,
 ): TInvalidatedBy => Object.freeze([...(invalidatedBy ?? [])]) as unknown as TInvalidatedBy;
 
+/**
+ * Defines a **context node** — a graph root whose value is supplied by the
+ * application, not fetched or computed. Context nodes hold things like the
+ * signed-in user, the currently selected product, or the active currency:
+ * state that originates outside the graph and that other nodes read as a
+ * dependency.
+ *
+ * A context node has no `dependencies` and no loader. Its value starts at
+ * `initialValue` and only changes when {@link GraphRuntime.setContext} is
+ * called. Any data or derived node that needs the value should list the
+ * context node as a dependency, so the graph knows to refetch or recompute
+ * when it changes.
+ *
+ * @throws {@link GraphValidationError} (`INVALID_NODE_KEY`) if `key` is
+ * empty or only whitespace.
+ *
+ * @example
+ * ```ts
+ * import { defineContextNode } from "vue-dependency-graph/core";
+ *
+ * // The product currently being viewed. Every node that depends on it -
+ * // directly or transitively - refetches or recomputes when it changes.
+ * const currentProductId = defineContextNode({
+ *   key: "currentProductId",
+ *   initialValue: "prod-1",
+ * });
+ *
+ * // Elsewhere, once a runtime exists:
+ * // runtime.setContext(currentProductId, "prod-42");
+ * ```
+ *
+ * @see {@link defineDataNode} for nodes that fetch data derived from a context.
+ * @see {@link GraphRuntime.setContext} for how a context node's value changes.
+ */
 export const defineContextNode = <TValue>(
   options: ContextNodeOptions<TValue>,
 ): ContextNodeDefinition<TValue> => {
@@ -74,6 +108,60 @@ export const defineContextNode = <TValue>(
   });
 };
 
+/**
+ * Defines a **data node** — a graph node whose value is fetched
+ * asynchronously via `load`, typically from an API. Data nodes are the
+ * graph's connection to the outside world: product details, cart contents,
+ * an order's status.
+ *
+ * `load` receives `get`, used to read the current value of any declared
+ * `dependencies`, and `signal`, an `AbortSignal` that aborts if the node is
+ * invalidated or released before the load settles - pass it through to
+ * `fetch` so an abandoned request doesn't race a newer one. The node starts
+ * at `initialValue` before the first load resolves.
+ *
+ * Use `refresh` ({@link staleAfter}, {@link refreshInterval},
+ * {@link pollUntil}) to control when the value is refetched, `release`
+ * ({@link retain}, {@link releaseAfter}) to control when it's freed once
+ * unused, and `invalidatedBy` to refetch in response to a
+ * {@link defineEvent}-declared event (e.g. a websocket push) rather than a
+ * timer.
+ *
+ * @throws {@link GraphValidationError} (`INVALID_NODE_KEY`) if `key` is
+ * empty or only whitespace. Dependency and event-invalidation declarations
+ * are validated later, when the node is passed to {@link createGraph}.
+ *
+ * @example
+ * ```ts
+ * import { defineContextNode, defineDataNode } from "vue-dependency-graph/core";
+ *
+ * interface Product {
+ *   readonly id: string;
+ *   readonly name: string;
+ *   readonly priceCents: number;
+ * }
+ *
+ * const currentProductId = defineContextNode({
+ *   key: "currentProductId",
+ *   initialValue: "prod-1",
+ * });
+ *
+ * const product = defineDataNode({
+ *   key: "product",
+ *   dependencies: [currentProductId] as const,
+ *   initialValue: null as Product | null,
+ *   load: async ({ get, signal }) => {
+ *     const response = await fetch(`/api/products/${get(currentProductId)}`, { signal });
+ *     return (await response.json()) as Product;
+ *   },
+ * });
+ * ```
+ *
+ * @see {@link defineDerivedNode} for values computed synchronously from
+ * other nodes, without a fetch.
+ * @see {@link defineEvent} for refetching in response to an external event
+ * instead of - or alongside - a `refresh` policy.
+ */
 export const defineDataNode = <
   TValue,
   const TDependencies extends DependencyList = readonly [],
@@ -108,6 +196,49 @@ export const defineDataNode = <
   return Object.freeze(definition);
 };
 
+/**
+ * Defines a **derived node** — a value computed synchronously from other
+ * nodes via `derive`, with no fetch of its own. Use it for anything you'd
+ * otherwise recompute by hand from data you already have: a formatted
+ * price, a cart total, whether checkout is currently allowed.
+ *
+ * `derive` receives `get`, used to read the current value of any declared
+ * `dependencies`, and runs again whenever one of them changes. Because it's
+ * synchronous, a derived node never shows a loading state of its own - it's
+ * only ever as fresh as its slowest dependency.
+ *
+ * Unlike {@link defineDataNode}, `dependencies` is required: a derived node
+ * with nothing to derive from can't produce a value.
+ *
+ * @throws {@link GraphValidationError} (`INVALID_NODE_KEY`) if `key` is
+ * empty or only whitespace. Dependency and event-invalidation declarations
+ * are validated later, when the node is passed to {@link createGraph}.
+ *
+ * @example
+ * ```ts
+ * import { defineDataNode, defineDerivedNode } from "vue-dependency-graph/core";
+ *
+ * interface Product {
+ *   readonly id: string;
+ *   readonly name: string;
+ *   readonly priceCents: number;
+ * }
+ *
+ * declare const product: ReturnType<typeof defineDataNode<Product | null>>;
+ *
+ * // Pure formatting - recomputes instantly, no network involved.
+ * const displayPrice = defineDerivedNode({
+ *   key: "displayPrice",
+ *   dependencies: [product] as const,
+ *   derive: ({ get }) => {
+ *     const value = get(product);
+ *     return value ? `$${(value.priceCents / 100).toFixed(2)}` : "—";
+ *   },
+ * });
+ * ```
+ *
+ * @see {@link defineDataNode} for nodes that fetch their value.
+ */
 export const defineDerivedNode = <
   TValue,
   const TDependencies extends DependencyList,

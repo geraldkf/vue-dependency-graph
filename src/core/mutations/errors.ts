@@ -1,6 +1,16 @@
 const normalizeNodeKeys = (nodeKeys: readonly string[]): readonly string[] =>
   Object.freeze([...new Set(nodeKeys)].sort());
 
+/**
+ * Thrown when a mutation's `optimistic` or `onSuccess` callback misuses
+ * {@link MutationUpdateEffects.update} - for example, calling `update` on
+ * a node that isn't a data node, updating the same node twice in one
+ * call, mutating the current value in place instead of returning a new
+ * one, or updating a node that has no successful value yet. This is
+ * always a programmer error in how the mutation is wired, not a runtime
+ * condition - fix the `optimistic`/`onSuccess` callback rather than
+ * catching this.
+ */
 export class GraphMutationStateError extends Error {
   public readonly nodeKey: string;
 
@@ -11,6 +21,15 @@ export class GraphMutationStateError extends Error {
   }
 }
 
+/**
+ * Thrown by {@link GraphRuntime.mutate} when this call's optimistic update
+ * targets a node that another in-flight mutation is already optimistically
+ * updating. The classic case is a user clicking a quantity stepper
+ * rapidly: the second click's optimistic update can't safely apply on top
+ * of the first click's still-unconfirmed one. Typical handling is to
+ * disable the control while a mutation on the same node is in flight,
+ * rather than catching this after the fact.
+ */
 export class GraphMutationConflictError extends Error {
   public readonly nodeKeys: readonly string[];
 
@@ -22,6 +41,19 @@ export class GraphMutationConflictError extends Error {
   }
 }
 
+/**
+ * Thrown by {@link GraphRuntime.mutate} when `execute` fails and
+ * `classifyFailure` returns `"unknown"` (or no `classifyFailure` is given
+ * and the failure can't be assumed safe to roll back) - the connection
+ * dropped after `placeOrder`'s request was sent, for instance, so whether
+ * the order actually went through is genuinely unknown. The runtime
+ * deliberately does *not* roll back any optimistic update in this case,
+ * since doing so could hide a write that actually succeeded. The
+ * recommended recovery is to re-fetch authoritative state (e.g. the
+ * user's order history) before deciding whether to retry.
+ *
+ * `cause` holds the original error thrown by `execute`.
+ */
 export class GraphMutationOutcomeUnknownError extends Error {
   public readonly nodeKeys: readonly string[];
 
@@ -33,6 +65,18 @@ export class GraphMutationOutcomeUnknownError extends Error {
   }
 }
 
+/**
+ * Thrown by {@link GraphRuntime.mutate} when `execute` succeeds remotely
+ * but the `onSuccess` callback itself throws while applying the result -
+ * for example, `effects.update` rejecting a malformed server response.
+ * `remoteSucceeded` is always `true`, distinguishing this from a failed
+ * write: the server has already committed the change, only the local
+ * graph update failed to apply. Typical recovery is to invalidate and
+ * refetch the affected nodes rather than trust the local (potentially
+ * partially-applied) state.
+ *
+ * `cause` holds the error thrown by `onSuccess`.
+ */
 export class GraphMutationReconciliationError extends Error {
   public readonly mutationKey: string;
   public readonly nodeKeys: readonly string[];
@@ -50,6 +94,19 @@ export class GraphMutationReconciliationError extends Error {
   }
 }
 
+/**
+ * Thrown by {@link GraphRuntime.mutate} when a failed mutation's rollback
+ * can't cleanly apply, because the affected node has moved on to newer
+ * state since the optimistic update was made - the classic case is an
+ * item you optimistically added to your cart selling out (an inventory
+ * event invalidated it) before the add request itself came back rejected.
+ * Rolling back to the pre-optimistic value would discard that newer
+ * state, so the runtime raises this instead of silently overwriting it.
+ * Typical recovery is to invalidate and refetch the affected nodes so the
+ * UI reflects current server state either way.
+ *
+ * `cause` holds the original mutation failure.
+ */
 export class GraphMutationRollbackConflictError extends Error {
   public readonly nodeKeys: readonly string[];
 

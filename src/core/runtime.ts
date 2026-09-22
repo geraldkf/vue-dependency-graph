@@ -39,6 +39,46 @@ type RequestedOperation = Parameters<
   RuntimeDiagnosticEmitter["emitOperationRequested"]
 >[0]["operation"];
 
+/**
+ * Creates a {@link GraphRuntime} from a validated {@link Graph} - the
+ * object that actually loads data, tracks state, runs mutations, and
+ * notifies subscribers. A graph is a static description; a runtime is the
+ * live instance of it, typically created once per application (or once per
+ * test).
+ *
+ * Call {@link GraphRuntime.dispose} when the runtime is no longer needed
+ * (e.g. in a test's teardown) to stop its background refresh/release
+ * timers.
+ *
+ * @example
+ * ```ts
+ * import { createGraph, createGraphRuntime, defineContextNode, defineDataNode } from "vue-dependency-graph/core";
+ *
+ * interface Product {
+ *   readonly id: string;
+ *   readonly name: string;
+ * }
+ *
+ * const currentProductId = defineContextNode({
+ *   key: "currentProductId",
+ *   initialValue: "prod-1",
+ * });
+ *
+ * const product = defineDataNode({
+ *   key: "product",
+ *   dependencies: [currentProductId] as const,
+ *   initialValue: null as Product | null,
+ *   load: async ({ get }) => fetch(`/api/products/${get(currentProductId)}`).then((r) => r.json()),
+ * });
+ *
+ * const runtime = createGraphRuntime(createGraph({ nodes: [currentProductId, product] }));
+ *
+ * await runtime.execute([product]);
+ * console.log(runtime.getState(product).data);
+ * ```
+ *
+ * @see {@link createGraphRuntimePlugin} for wiring a runtime into a Vue app.
+ */
 export const createGraphRuntime = (graph: Graph, options?: GraphRuntimeOptions): GraphRuntime => {
   const diagnostics = createRuntimeDiagnosticEmitter(options?.diagnostics);
   const {

@@ -84,6 +84,34 @@ const normalizeRetry = (value: unknown): RetryPolicy | undefined => {
   throw new TypeError('retry.strategy must be "fixed" or "exponential".');
 };
 
+/**
+ * A `refresh` policy that marks a data node's value stale after a fixed
+ * duration, rather than refetching on a timer. The value isn't touched
+ * when it goes stale - the next read triggers the refetch. Good for data
+ * that changes occasionally and doesn't need to update in the background:
+ * a product's name and description, say, where refetching only matters if
+ * someone's actually looking at the page again.
+ *
+ * @throws {@link RangeError} if `durationMs` isn't a finite number greater than 0.
+ *
+ * @example
+ * ```ts
+ * import { defineContextNode, defineDataNode, staleAfter } from "vue-dependency-graph/core";
+ *
+ * const currentProductId = defineContextNode({ key: "currentProductId", initialValue: "prod-1" });
+ *
+ * const product = defineDataNode({
+ *   key: "product",
+ *   dependencies: [currentProductId] as const,
+ *   initialValue: null,
+ *   refresh: staleAfter({ durationMs: 5 * 60 * 1000 }), // 5 minutes
+ *   load: async ({ get }) => fetch(`/api/products/${get(currentProductId)}`).then((r) => r.json()),
+ * });
+ * ```
+ *
+ * @see {@link refreshInterval} to refetch proactively on a timer instead
+ * of waiting for the next read.
+ */
 export const staleAfter = (options: StaleAfterOptions): StaleAfterPolicy => {
   const value = requireObject(options, "staleAfter options");
   return Object.freeze({
@@ -92,6 +120,39 @@ export const staleAfter = (options: StaleAfterOptions): StaleAfterPolicy => {
   });
 };
 
+/**
+ * A `refresh` policy that refetches a data node on a fixed timer for as
+ * long as it has subscribers - a background poll rather than a lazy
+ * refetch-on-read. Good as a backstop for data that's supposed to update
+ * via an event but might occasionally miss one: stock levels, kept fresh
+ * every 10 seconds while a product page is open even if a `stock-changed`
+ * event gets dropped.
+ *
+ * @throws {@link RangeError} if `intervalMs` isn't a finite number greater than 0.
+ *
+ * @example
+ * ```ts
+ * import { defineContextNode, defineDataNode, refreshInterval } from "vue-dependency-graph/core";
+ *
+ * const currentProductId = defineContextNode({ key: "currentProductId", initialValue: "prod-1" });
+ *
+ * const inventory = defineDataNode({
+ *   key: "inventory",
+ *   dependencies: [currentProductId] as const,
+ *   initialValue: null,
+ *   refresh: refreshInterval({
+ *     intervalMs: 10_000,
+ *     retry: { strategy: "fixed", maxRetries: 3, delayMs: 1000 },
+ *   }),
+ *   load: async ({ get }) => fetch(`/api/inventory/${get(currentProductId)}`).then((r) => r.json()),
+ * });
+ * ```
+ *
+ * @see {@link pollUntil} to poll only until a specific condition is met,
+ * rather than indefinitely.
+ * @see {@link defineDataNode}'s `invalidatedBy` option for refetching on
+ * an explicit event instead of - or alongside - a timer.
+ */
 export const refreshInterval = (options: RefreshIntervalOptions): RefreshIntervalPolicy => {
   const value = requireObject(options, "refreshInterval options");
   return Object.freeze({
@@ -101,6 +162,48 @@ export const refreshInterval = (options: RefreshIntervalOptions): RefreshInterva
   });
 };
 
+/**
+ * A `refresh` policy that refetches on a timer until `stopWhen` returns
+ * `true`, then stops. The canonical use is watching an operation through
+ * to completion: an order's status after checkout, polled every few
+ * seconds until it reaches `"shipped"`.
+ *
+ * Polling ends one of three ways: `stopWhen` returns `true` (success -
+ * the node settles on that value), `failWhen` returns `true` (the node
+ * rejects with {@link GraphPollingConditionError} - e.g. the order was
+ * cancelled), or `timeoutMs` elapses first (the node rejects with
+ * {@link GraphPollingTimeoutError}).
+ *
+ * @throws {@link RangeError} if `intervalMs` or `timeoutMs` isn't a finite
+ * number greater than 0. `TypeError` if `stopWhen` isn't a function, or
+ * `failWhen` is provided and isn't a function.
+ *
+ * @example
+ * ```ts
+ * import { defineContextNode, defineDataNode, pollUntil } from "vue-dependency-graph/core";
+ *
+ * interface Order {
+ *   readonly status: "pending" | "confirmed" | "shipped" | "cancelled";
+ * }
+ *
+ * const currentOrderId = defineContextNode({ key: "currentOrderId", initialValue: "" });
+ *
+ * const order = defineDataNode({
+ *   key: "order",
+ *   dependencies: [currentOrderId] as const,
+ *   initialValue: null as Order | null,
+ *   refresh: pollUntil<Order | null>({
+ *     intervalMs: 3000,
+ *     timeoutMs: 60_000,
+ *     stopWhen: (value) => value?.status === "shipped",
+ *     failWhen: (value) => value?.status === "cancelled",
+ *   }),
+ *   load: async ({ get }) => fetch(`/api/orders/${get(currentOrderId)}`).then((r) => r.json()),
+ * });
+ * ```
+ *
+ * @see {@link refreshInterval} to poll indefinitely instead of until a condition.
+ */
 export const pollUntil = <TValue>(options: PollUntilOptions<TValue>): PollUntilPolicy<TValue> => {
   const value = requireObject(options, "pollUntil options");
   if (typeof value.stopWhen !== "function") {

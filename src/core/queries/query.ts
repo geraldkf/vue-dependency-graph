@@ -7,6 +7,41 @@ import type {
   QueryNodeMap,
 } from "./types";
 
+/**
+ * Bundles several nodes into a single named result, so a component or page
+ * can request everything it needs in one call rather than juggling
+ * individual nodes. A product page might query the product, its reviews,
+ * and current stock together; a checkout page might query the cart, its
+ * total, and available shipping options.
+ *
+ * A query is a read-time grouping only - it doesn't add nodes to the
+ * graph or change how they load. `nodes` maps a short alias to each node
+ * definition; the alias is what you'll destructure from
+ * {@link useQuery}'s result.
+ *
+ * @throws {@link Error} if `key`, or any node alias, is empty or only whitespace.
+ *
+ * @example
+ * ```ts
+ * import { defineDataNode, defineDerivedNode, defineQuery } from "vue-dependency-graph/core";
+ *
+ * declare const product: ReturnType<typeof defineDataNode<unknown>>;
+ * declare const productReviews: ReturnType<typeof defineDataNode<unknown>>;
+ * declare const averageRating: ReturnType<typeof defineDerivedNode<number, never>>;
+ *
+ * const productPageQuery = defineQuery({
+ *   key: "productPage",
+ *   nodes: { product, productReviews, averageRating },
+ * });
+ *
+ * // Elsewhere, in a Vue component:
+ * // const { product, productReviews, averageRating } = useQuery(productPageQuery);
+ * ```
+ *
+ * @see {@link useQuery} for reading a query's nodes reactively in a Vue component.
+ * @see {@link GraphRuntime.prefetchQuery} / {@link GraphRuntime.refreshQuery}
+ * for loading or refreshing every node a query bundles at once.
+ */
 export const defineQuery = <const TNodes extends QueryNodeMap>(
   options: DefineQueryOptions<TNodes>,
 ): QueryDefinition<TNodes> => {
