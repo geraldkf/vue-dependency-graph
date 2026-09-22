@@ -1,5 +1,21 @@
 # Public API
 
+## Package entry points
+
+The package has no root export. Import from the explicit entry point that owns the capability:
+
+```ts
+import { createGraph, createGraphRuntime } from "vue-dependency-graph/core";
+import { createGraphRuntimePlugin, useNode } from "vue-dependency-graph/vue";
+import { GraphDevtoolsPanel } from "vue-dependency-graph/devtools";
+```
+
+- `vue-dependency-graph/core` contains framework-independent graph, runtime, policy, mutation, transaction, query, and diagnostic contracts.
+- `vue-dependency-graph/vue` contains Vue composables, plugin integration, and the browser timer environment.
+- `vue-dependency-graph/devtools` contains the single supported `GraphDevtoolsPanel`, devtools composables, and framework-independent protocol transforms.
+
+Importing directly from `vue-dependency-graph` is not supported.
+
 ## Define nodes
 
 Node definitions are immutable typed handles. Mutable values and execution state belong to a `GraphRuntime`.
@@ -139,6 +155,16 @@ app.use(createGraphRuntimePlugin(runtime));
 ```
 
 The plugin disposes the runtime (`runtime.dispose()`) when the app unmounts. Pass `createGraphRuntimePlugin(runtime, { disposeOnUnmount: false })` if the runtime is shared between apps or owned elsewhere.
+
+`useGraphRuntime()` returns the runtime installed by the nearest plugin provider:
+
+```ts
+import { useGraphRuntime } from "vue-dependency-graph/vue";
+
+const runtime = useGraphRuntime();
+```
+
+Call it inside `setup()` or another active Vue injection context. It throws `GraphRuntime was not provided` when no runtime has been installed. Use it when a component or composable needs direct access to runtime operations; prefer `useNode(...)`, `useNodes(...)`, or `useQuery(...)` for reactive graph state.
 
 Components can then use:
 
@@ -398,7 +424,21 @@ Exported terminal error types are `GraphPollingConditionError` and `GraphPolling
 
 ### Retry and lifecycle environment
 
-Interval and poll-until policies now apply their declared fixed or exponential retry metadata to policy-owned failures. Exhaustion exposes `GraphRefreshRetryExhaustedError` while retaining prior successful data.
+Interval and poll-until policies apply their declared fixed or exponential retry metadata to policy-owned failures. Exhaustion exposes `GraphRefreshRetryExhaustedError` while retaining prior successful data.
+
+Core runtimes use `TimerEnvironment` for clocks, timeouts, randomness, and pause state:
+
+```ts
+import {
+  createDefaultTimerEnvironment,
+  type TimerEnvironment,
+} from "vue-dependency-graph/core";
+
+const environment: TimerEnvironment = createDefaultTimerEnvironment();
+const runtime = createGraphRuntime(graph, { timerEnvironment: environment });
+```
+
+`createDefaultTimerEnvironment()` uses the platform clock, `setTimeout`, `clearTimeout`, and `Math.random`, and is never paused. Applications normally omit it because `createGraphRuntime(...)` creates the default automatically. Tests may inject a deterministic implementation, and browser applications may use the Vue adapter below.
 
 The Vue entry point provides an optional browser adapter:
 
@@ -757,6 +797,8 @@ The `vue-dependency-graph/devtools` entry point provides an embeddable devtools 
 
 ### Panel
 
+`GraphDevtoolsPanel` is the only supported public panel component. Its internal Graph, Node, Timeline, and Metrics views are implementation details rather than separately supported component exports.
+
 ```vue
 <script setup lang="ts">
 import { GraphDevtoolsPanel } from "vue-dependency-graph/devtools";
@@ -808,3 +850,217 @@ const view = computeGraphView(runtime.createDiagnosticSnapshot());
 ```
 
 `computeGraphView` lays nodes out deterministically by dependency depth (column) and alphabetical order within a column (row) - the same snapshot always produces the same layout, with no force-simulation jitter to account for in a UI or a test. Events get their own lane at column `-1`, with edges into every node that declares them in `invalidatedBy`.
+
+## Exported symbol appendix
+
+This appendix lists every supported symbol from the package entry points. Prefer inferred types in ordinary application code, but import the named types below when defining reusable wrappers, adapters, renderers, or strongly typed test helpers.
+
+### Core exports
+
+Entry point: `vue-dependency-graph/core`.
+
+#### Values
+
+- `GraphExecutionError`
+- `GraphMutationConflictError`
+- `GraphMutationOutcomeUnknownError`
+- `GraphMutationReconciliationError`
+- `GraphMutationRollbackConflictError`
+- `GraphMutationStateError`
+- `GraphPollingConditionError`
+- `GraphPollingTimeoutError`
+- `GraphRefreshRetryExhaustedError`
+- `GraphTransactionConflictError`
+- `GraphValidationError`
+- `createDefaultTimerEnvironment`
+- `createGraph`
+- `createGraphRuntime`
+- `createInMemoryGraphDiagnostics`
+- `defineContextNode`
+- `defineDataNode`
+- `defineDerivedNode`
+- `defineEvent`
+- `defineMutation`
+- `defineQuery`
+- `normalizeDiagnosticEvents`
+- `normalizeDiagnosticExport`
+- `normalizeDiagnosticSnapshot`
+- `pollUntil`
+- `refreshInterval`
+- `releaseAfter`
+- `retain`
+- `staleAfter`
+
+#### Types
+
+- `AnyEventDefinition`
+- `AnyNodeDefinition`
+- `AnyQueryDefinition`
+- `ConditionalEventInvalidation`
+- `ContextNodeDefinition`
+- `ContextNodeOptions`
+- `CreateGraphOptions`
+- `DataNodeDefinition`
+- `DataNodeOptions`
+- `DefineMutationOptions`
+- `DefineQueryOptions`
+- `DependencyList`
+- `DeriveContext`
+- `DerivedNodeDefinition`
+- `DerivedNodeOptions`
+- `EventDefinition`
+- `EventInvalidationContext`
+- `EventInvalidationDeclaration`
+- `EventInvalidationList`
+- `EventPayload`
+- `ExponentialRetryOptions`
+- `ExponentialRetryPolicy`
+- `FixedRetryOptions`
+- `FixedRetryPolicy`
+- `GetDependencyValue`
+- `Graph`
+- `GraphContextChangedDiagnosticEvent`
+- `GraphDiagnosticError`
+- `GraphDiagnosticEvent`
+- `GraphDiagnosticEventBase`
+- `GraphDiagnosticEventType`
+- `GraphDiagnosticExport`
+- `GraphDiagnosticNodeDefinitionSnapshot`
+- `GraphDiagnosticNodeStateSnapshot`
+- `GraphDiagnosticOperationKind`
+- `GraphDiagnosticRefreshPolicySnapshot`
+- `GraphDiagnosticSink`
+- `GraphDiagnosticSnapshotV1`
+- `GraphDiagnosticSubscriptionSnapshot`
+- `GraphDiagnosticValue`
+- `GraphDiagnosticsEnvironment`
+- `GraphDiagnosticsOptions`
+- `GraphDurationMetrics`
+- `GraphEventDiagnosticEvent`
+- `GraphExecutionReason`
+- `GraphMetricsSnapshot`
+- `GraphMutationDiagnosticEvent`
+- `GraphNodeAttemptMetrics`
+- `GraphNodeExecutionDiagnosticEvent`
+- `GraphNodeInvalidatedDiagnosticEvent`
+- `GraphNodeValueReleasedDiagnosticEvent`
+- `GraphOperationRequestedDiagnosticEvent`
+- `GraphRefreshPolicyDiagnosticEvent`
+- `GraphRuntime`
+- `GraphRuntimeCreatedDiagnosticEvent`
+- `GraphRuntimeListenerFailedDiagnosticEvent`
+- `GraphRuntimeOptions`
+- `GraphSchedulerDiagnosticEvent`
+- `GraphSerializedError`
+- `GraphSubscriptionDiagnosticEvent`
+- `GraphTransaction`
+- `GraphTransactionDiagnosticEvent`
+- `GraphValidationErrorCode`
+- `InMemoryGraphDiagnostics`
+- `InMemoryGraphDiagnosticsOptions`
+- `LoadContext`
+- `MutationDefinition`
+- `MutationExecuteContext`
+- `MutationFailureKind`
+- `MutationInput`
+- `MutationOptions`
+- `MutationResult`
+- `MutationSuccessEffects`
+- `MutationUpdateEffects`
+- `NodeDefinition`
+- `NodeDiagnosticValueOptions`
+- `NodeDiagnosticsOptions`
+- `NodeExecutionFailure`
+- `NodeExecutionFailureKind`
+- `NodeFreshness`
+- `NodeKind`
+- `NodeOrKey`
+- `NodeRuntimeState`
+- `NodeStatus`
+- `NodeSubscription`
+- `NodeSubscriptionState`
+- `NodeValue`
+- `PollUntilOptions`
+- `PollUntilPolicy`
+- `QueryDefinition`
+- `QueryNodeMap`
+- `QueryNodes`
+- `RefreshIntervalOptions`
+- `RefreshIntervalPolicy`
+- `RefreshPolicy`
+- `RefreshableNodeDefinition`
+- `ReleaseAfterOptions`
+- `ReleaseAfterPolicy`
+- `ReleasePolicy`
+- `RetainPolicy`
+- `RetryOptions`
+- `RetryPolicy`
+- `RetryStrategy`
+- `RuntimeListener`
+- `RuntimeNodeData`
+- `SchedulerState`
+- `StaleAfterOptions`
+- `StaleAfterPolicy`
+- `TimerEnvironment`
+
+### Vue exports
+
+Entry point: `vue-dependency-graph/vue`.
+
+#### Values
+
+- `createBrowserTimerEnvironment`
+- `createGraphRuntimePlugin`
+- `useGraphRuntime`
+- `useNode`
+- `useNodes`
+- `useQuery`
+
+#### Types
+
+- `BrowserTimerEnvironmentOptions`
+- `GraphComposableOptions`
+- `GraphRuntimePluginOptions`
+- `UseNodeResult`
+- `UseNodesAggregate`
+- `UseNodesResult`
+- `UseNodesResults`
+- `UseQueryNodes`
+- `UseQueryResult`
+
+### Devtools exports
+
+Entry point: `vue-dependency-graph/devtools`.
+
+#### Values
+
+- `GraphDevtoolsPanel`
+- `InvalidDevtoolsExportError`
+- `computeGraphView`
+- `computeMetricsView`
+- `computeNodeDetail`
+- `computeTimeline`
+- `useGraphDevtools`
+- `useOfflineDevtoolsSnapshot`
+
+#### Types
+
+- `DevtoolsExport`
+- `InspectorEventNode`
+- `InspectorGraphEdge`
+- `InspectorGraphEdgeKind`
+- `InspectorGraphNode`
+- `InspectorGraphView`
+- `InspectorMetricGroup`
+- `InspectorMetricRow`
+- `InspectorMetricsView`
+- `InspectorNodeDependency`
+- `InspectorNodeDetail`
+- `InspectorNodeFreshness`
+- `InspectorNodeStatus`
+- `InspectorRefreshPolicyDetail`
+- `InspectorTimelineCategory`
+- `InspectorTimelineEntry`
+- `UseGraphDevtoolsOptions`
+- `UseGraphDevtoolsResult`
+- `UseOfflineDevtoolsSnapshotResult`

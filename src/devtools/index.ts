@@ -1,8 +1,3 @@
-import { coreLayerName } from "../core";
-
-/** Identifies the devtools layer during repository bootstrap. */
-export const devtoolsLayerName = `devtools:${coreLayerName}` as const;
-
 // Protocol: pure, framework-agnostic transforms from a diagnostic
 // snapshot/event stream into inspector-ready view models. The Vue
 // components below are one consumer of this; it's exported directly so a
@@ -46,7 +41,3 @@ export type { UseOfflineDevtoolsSnapshotResult } from "./composables/use-offline
 
 // Components
 export { default as GraphDevtoolsPanel } from "./components/GraphDevtoolsPanel.vue";
-export { default as GraphView } from "./components/GraphView.vue";
-export { default as NodeInspector } from "./components/NodeInspector.vue";
-export { default as Timeline } from "./components/Timeline.vue";
-export { default as MetricsPanel } from "./components/MetricsPanel.vue";

@@ -58,7 +58,7 @@ export type {
 } from "./subscriptions/types";
 export { GraphValidationError } from "./graph/errors";
 export type { GraphValidationErrorCode } from "./graph/errors";
-export { GraphExecutionError, isAbortError, toError } from "./execution/types";
+export { GraphExecutionError } from "./execution/types";
 export type {
   NodeExecutionFailure,
   NodeExecutionFailureKind,
@@ -167,5 +167,3 @@ export type {
   NodeValue,
 } from "./graph/types";
 
-/** Identifies the framework-agnostic core layer during repository bootstrap. */
-export const coreLayerName = "core" as const;
