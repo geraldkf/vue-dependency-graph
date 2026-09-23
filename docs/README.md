@@ -16,6 +16,5 @@ Use these maintained documents as the current sources of truth:
   - [Vue and Pinia integration](./architecture/07-vue-and-pinia-integration.md)
 - [Architecture decision records](./decisions/)
 - [Test strategy](./testing/01-test-strategy.md)
-- [Mutation adoption guide](./guides/04-mutation-adoption.md)
 - [Roadmap](./ROADMAP.md)
 - [Playground](./PLAYGROUND.md)

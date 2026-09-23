@@ -1,6 +1,6 @@
 # User Guide
 
-This guide walks through the library end to end, building up one running example - a small task board - a piece at a time. For isolated reference on any one function's exact signature, see [`docs/api/01-public-api.md`](../api/01-public-api.md). For _why_ the library is shaped the way it is, see [`docs/architecture/`](../architecture/) and [`docs/decisions/`](../decisions/).
+This guide walks through the library end to end, building up one running example - a small storefront, "Banksia" - a piece at a time. For isolated reference on any one function's exact signature, see [`docs/api/01-public-api.md`](../api/01-public-api.md). For _why_ the library is shaped the way it is, see [`docs/architecture/`](../architecture/) and [`docs/decisions/`](../decisions/).
 
 > This package is `private` and not published to a registry - it's consumed directly within this repository or a workspace that depends on it locally, not via `npm install vue-dependency-graph`. The import paths throughout this guide (`vue-dependency-graph/core`, `vue-dependency-graph/vue`) match `package.json`'s `exports` map and resolve correctly from a workspace consumer; if you're writing code inside this repository itself, equivalent relative imports into `src/core`/`src/vue` work the same way.
 
@@ -31,7 +31,7 @@ This guide walks through the library end to end, building up one running example
 
 ## 1. What this library is for
 
-If your Vue application has server-backed state with real dependencies between pieces of data - "this list depends on the current user," "this summary depends on that list," "this widget needs to reload when someone books an appointment in a completely different part of the app" - you are usually choosing between two bad options: sprinkling `watch()` and manual `fetch` calls through every component that needs the data, or building an ad hoc cache layer that reinvents loading states, staleness, and cancellation badly and differently in every store.
+If your Vue application has server-backed state with real dependencies between pieces of data - "this price depends on the selected currency," "this page summary depends on that product list," "this stock count needs to reload when a completely different part of the app confirms an order" - you are usually choosing between two bad options: sprinkling `watch()` and manual `fetch` calls through every component that needs the data, or building an ad hoc cache layer that reinvents loading states, staleness, and cancellation badly and differently in every store.
 
 This library is that cache layer, built once, correctly. You declare your data as a graph of typed nodes with explicit dependencies. The runtime figures out what needs to load, when, and in what order; tracks loading/success/error state per node; keeps stale-but-still-useful data visible while a refresh is in flight; cancels obsolete work automatically; and lets you invalidate across unrelated parts of the app through typed events instead of direct store imports.
 
@@ -41,7 +41,7 @@ It is not a replacement for Pinia, and it does not require Vue at all - `src/cor
 
 **A node** is a typed, immutable description of one piece of graph data. There are three kinds:
 
-- **Context node** - a mutable input you set directly (a selected ID, a filter, a feature flag). Always starts with a value.
+- **Context node** - a mutable input you set directly (a selected product, a currency, a feature flag). Always starts with a value.
 - **Data node** - asynchronous work (a network call). Declares its dependencies and a `load` function.
 - **Derived node** - a synchronous calculation over other nodes' values. No network calls.
 
@@ -55,63 +55,62 @@ A node definition _is_ its own typed handle - you pass the object returned by `d
 
 ## 3. Your first graph
 
-Let's build a small task board. Put node definitions in a module your components import from - they're just values, and can be declared once at module scope.
+Let's build a small storefront. Put node definitions in a module your components import from - they're just values, and can be declared once at module scope.
 
 ```ts
 // graph/nodes.ts
 import { defineContextNode, defineDataNode, defineDerivedNode } from "vue-dependency-graph/core";
 import { api } from "../api";
 
-export const CurrentUserId = defineContextNode<string | undefined>({
-  key: "currentUserId",
-  initialValue: undefined,
+export const CurrentProductId = defineContextNode<string>({
+  key: "currentProductId",
+  initialValue: "prod-1",
 });
 
-export interface Task {
+export interface Product {
   id: string;
-  title: string;
-  done: boolean;
+  name: string;
+  priceCents: number;
 }
 
-export const Tasks = defineDataNode({
-  key: "tasks",
-  dependencies: [CurrentUserId] as const,
-  initialValue: [] as Task[],
-  load: ({ get, signal }) => api.getTasks(get(CurrentUserId), signal),
+export const ProductDetails = defineDataNode({
+  key: "productDetails",
+  dependencies: [CurrentProductId] as const,
+  initialValue: null as Product | null,
+  load: ({ get, signal }) => api.getProduct(get(CurrentProductId), signal),
 });
 
-export const TaskFilter = defineContextNode<"all" | "open" | "done">({
-  key: "taskFilter",
-  initialValue: "open",
+export const CurrentCurrency = defineContextNode<"USD" | "AUD" | "EUR">({
+  key: "currentCurrency",
+  initialValue: "USD",
 });
 
-export const VisibleTasks = defineDerivedNode({
-  key: "visibleTasks",
-  dependencies: [Tasks, TaskFilter] as const,
+export const DisplayPrice = defineDerivedNode({
+  key: "displayPrice",
+  dependencies: [ProductDetails, CurrentCurrency] as const,
   derive: ({ get }) => {
-    const tasks = get(Tasks);
-    const filter = get(TaskFilter);
-    if (filter === "all") return tasks;
-    return tasks.filter((task) => (filter === "done" ? task.done : !task.done));
+    const product = get(ProductDetails);
+    if (!product) return "—";
+    return formatPrice(product.priceCents, get(CurrentCurrency));
   },
 });
 ```
 
 A few things worth noticing already:
 
-- `Tasks.load` receives `get`, which only accepts handles declared in `dependencies` and returns their _value_ type, and `signal`, an `AbortSignal` the runtime manages for you - pass it straight to `fetch` or your API client so an obsolete load is actually cancelled, not just ignored. If your loader ignores the signal, the runtime still stops waiting for an obsolete load (its result is discarded and it does not hold up other loads), but the request itself keeps running.
-- `CurrentUserId` starts `undefined`. That's a real, valid value - `Tasks.load` will run with `get(CurrentUserId)` returning `undefined` the moment something subscribes, unless you guard against that in `api.getTasks` or in the node itself. There's no built-in "wait until defined" - if you need that, make the dependency explicit in your loader logic.
-- `VisibleTasks` never calls `api`. Anything asynchronous belongs in a data node so it shares the one loading/error/cancellation model; a derived node is pure and synchronous.
+- `ProductDetails.load` receives `get`, which only accepts handles declared in `dependencies` and returns their _value_ type, and `signal`, an `AbortSignal` the runtime manages for you - pass it straight to `fetch` or your API client so an obsolete load is actually cancelled, not just ignored. If your loader ignores the signal, the runtime still stops waiting for an obsolete load (its result is discarded and it does not hold up other loads), but the request itself keeps running.
+- `CurrentProductId` starts at `"prod-1"`, a real value from the first render - there's nothing wrong with that, but if a node instead legitimately starts `undefined` (no product selected yet), `ProductDetails.load` will run with `get(CurrentProductId)` returning `undefined` the moment something subscribes, unless you guard against that in `api.getProduct` or in the node itself. There's no built-in "wait until defined" - if you need that, make the dependency explicit in your loader logic.
+- `DisplayPrice` never calls `api`. Anything asynchronous belongs in a data node so it shares the one loading/error/cancellation model; a derived node is pure and synchronous.
 
 Now build the graph and a runtime:
 
 ```ts
 // graph/runtime.ts
 import { createGraph, createGraphRuntime } from "vue-dependency-graph/core";
-import { CurrentUserId, Tasks, TaskFilter, VisibleTasks } from "./nodes";
+import { CurrentProductId, ProductDetails, CurrentCurrency, DisplayPrice } from "./nodes";
 
 export const graph = createGraph({
-  nodes: [CurrentUserId, Tasks, TaskFilter, VisibleTasks],
+  nodes: [CurrentProductId, ProductDetails, CurrentCurrency, DisplayPrice],
 });
 
 export const runtime = createGraphRuntime(graph);
@@ -124,44 +123,43 @@ Registration order in the `nodes` array doesn't matter - the graph resolves it. 
 ```vue
 <script setup lang="ts">
 import { useNode } from "vue-dependency-graph/vue";
-import { VisibleTasks, TaskFilter } from "../graph/nodes";
+import { ProductDetails, DisplayPrice } from "../graph/nodes";
 
-const { data: tasks, status, error } = useNode(VisibleTasks);
-const { data: filter } = useNode(TaskFilter);
+const { data: product, status, error } = useNode(ProductDetails);
+const { data: price } = useNode(DisplayPrice);
 </script>
 
 <template>
-  <p v-if="status === 'loading'">Loading tasks...</p>
-  <p v-else-if="error">Couldn't load tasks: {{ error.message }}</p>
-  <ul v-else>
-    <li v-for="task in tasks" :key="task.id">{{ task.title }}</li>
-  </ul>
+  <p v-if="status === 'loading'">Loading product...</p>
+  <p v-else-if="error">Couldn't load product: {{ error.message }}</p>
+  <div v-else>
+    <h1>{{ product?.name }}</h1>
+    <p>{{ price }}</p>
+  </div>
 </template>
 ```
 
 `useNode` creates a graph subscription when the component's effect scope starts and releases it via `onScopeDispose` automatically - no cleanup code to write. Calling it outside `setup()` or an active effect scope throws immediately, rather than silently leaking a subscription.
 
-Mounting this component subscribes to `VisibleTasks`, which pulls in `Tasks` and `TaskFilter` as required ancestors automatically - you never subscribe to a node's dependencies yourself.
+Mounting this component subscribes to `DisplayPrice`, which pulls in `ProductDetails` and `CurrentCurrency` as required ancestors automatically - you never subscribe to a node's dependencies yourself.
 
-Two components both rendering `Tasks` (directly, or transitively through `VisibleTasks`) share one load. The runtime deduplicates in-flight work by node and generation; it does not matter how many components are asking.
+Two components both rendering `ProductDetails` (directly, or transitively through `DisplayPrice`) share one load. The runtime deduplicates in-flight work by node and generation; it does not matter how many components are asking.
 
 For several nodes at once, use `useNodes`:
 
 ```ts
-const { results, isLoading, isError, errors } = useNodes([Tasks, TaskFilter] as const);
-const [tasksState, filterState] = results;
-// tasksState.value.data -> Task[], filterState.value.data -> "all" | "open" | "done"
+const { results, isLoading, isError, errors } = useNodes([ProductDetails, CurrentCurrency] as const);
+const [productState, currencyState] = results;
+// productState.value.data -> Product | null, currencyState.value.data -> "USD" | "AUD" | "EUR"
 ```
 
 `isLoading` is true while _any_ of the nodes is loading or refreshing; `isError`/`errors` aggregate across all of them, while each entry in `results` still holds its own full, independently-readable state (`.data`, `.status`, `.freshness`, `.error`, `.hasSuccessfulValue`) if you need to distinguish which node is the problem.
 
-Remember `status`/`freshness`/`hasSuccessfulValue` are independent facts (see [ADR-007](../decisions/ADR-007-status-freshness-separation.md)): after a failed refresh, `useNode(Tasks)` can report `status: "error"` while `data` still holds the last successful list. Don't treat "there's an error" as "there's no data" - render both, if useful:
+Remember `status`/`freshness`/`hasSuccessfulValue` are independent facts (see [ADR-007](../decisions/ADR-007-status-freshness-separation.md)): after a failed refresh, `useNode(ProductDetails)` can report `status: "error"` while `data` still holds the last successful product. Don't treat "there's an error" as "there's no data" - render both, if useful:
 
 ```vue
-<p v-if="error" class="warning">Couldn't refresh - showing last known tasks.</p>
-<ul>
-  <li v-for="task in tasks" :key="task.id">{{ task.title }}</li>
-</ul>
+<p v-if="error" class="warning">Couldn't refresh - showing last known details.</p>
+<h1>{{ product?.name }}</h1>
 ```
 
 ## 5. Writing context values
@@ -169,12 +167,12 @@ Remember `status`/`freshness`/`hasSuccessfulValue` are independent facts (see [A
 Context is the only kind of node you write to directly:
 
 ```ts
-runtime.setContext(TaskFilter, "done");
+runtime.setContext(CurrentCurrency, "AUD");
 ```
 
-This is synchronous - it doesn't return a promise. It updates the value, invalidates every descendant (here, `VisibleTasks`), and requests one coalesced scheduler pass for whatever is currently subscribed and now stale. If a component has `useNode(VisibleTasks)` mounted, it re-renders once the microtask runs; you don't await anything.
+This is synchronous - it doesn't return a promise. It updates the value, invalidates every descendant (here, `DisplayPrice`), and requests one coalesced scheduler pass for whatever is currently subscribed and now stale. If a component has `useNode(DisplayPrice)` mounted, it re-renders once the microtask runs; you don't await anything.
 
-Setting `CurrentUserId` invalidates `Tasks`, which invalidates `VisibleTasks` transitively - one `setContext` call, one coalesced re-execution of everything downstream that's actually subscribed.
+Setting `CurrentProductId` invalidates `ProductDetails`, which invalidates `DisplayPrice` transitively - one `setContext` call, one coalesced re-execution of everything downstream that's actually subscribed.
 
 ## 6. Explicit execution: execute, prefetch, and refresh
 
@@ -184,27 +182,27 @@ Sometimes you want to load data without waiting for a component to subscribe, wi
 // The base primitive: resolve targets and their ancestors, skipping
 // anything already fresh. Ownership isn't persistent - this doesn't
 // keep the node loaded the way a subscription would.
-await runtime.execute([Tasks]);
+await runtime.execute([ProductDetails]);
 
 // prefetch(...) is execute(...) tagged with a distinct diagnostic
 // origin ("prefetch" instead of "explicit") - same behavior, clearer
 // intent and diagnostics when you're specifically warming a cache
-// ahead of navigation:
-await runtime.prefetch([Tasks]);
+// ahead of navigation (e.g. on hover over a product card):
+await runtime.prefetch([ProductDetails]);
 
 // A refresh button:
 async function onRefreshClick() {
-  await runtime.refresh([Tasks]);
+  await runtime.refresh([ProductDetails]);
 }
 ```
 
 `refresh` is the odd one out: unlike `execute`/`prefetch`, it forces re-execution even if the node is currently fresh, and only accepts data and derived nodes (context nodes are changed through `setContext`, not refreshed). A `prefetch` and a component mounting at the same time share one request rather than firing two, since both go through the same execution engine and the same in-flight deduplication.
 
-A refresh that returns a value equal (via `Object.is`) to the previous one does not invalidate descendants - `VisibleTasks` won't recompute if `Tasks.load()` happens to return the exact same array reference (which, for a fresh network response, it normally won't, but matters for derived nodes reacting to a no-op refresh).
+A refresh that returns a value equal (via `Object.is`) to the previous one does not invalidate descendants - `DisplayPrice` won't recompute if `ProductDetails.load()` happens to return the exact same object reference (which, for a fresh network response, it normally won't, but matters for derived nodes reacting to a no-op refresh).
 
 ## 7. Understanding failure
 
-If `Tasks.load` throws, `Tasks` records `status: "error"`. `VisibleTasks`, which depends on it, does not execute at all - it's **blocked**, not failed, because it never got a chance to run. This distinction matters for anything else in the same `execute`/subscription pass that _doesn't_ depend on the failure - it keeps loading normally. One broken data source blocks its own descendants, not everything on the page (see [ADR-008](../decisions/ADR-008-branch-scoped-failures.md)).
+If `ProductDetails.load` throws, `ProductDetails` records `status: "error"`. `DisplayPrice`, which depends on it, does not execute at all - it's **blocked**, not failed, because it never got a chance to run. This distinction matters for anything else in the same `execute`/subscription pass that _doesn't_ depend on the failure - it keeps loading normally. One broken data source blocks its own descendants, not everything on the page (see [ADR-008](../decisions/ADR-008-branch-scoped-failures.md)).
 
 If you call `runtime.execute(...)`, `runtime.prefetch(...)`, or `runtime.refresh(...)` explicitly and something in the requested set fails, the call rejects with `GraphExecutionError`, which aggregates every failure and every blocked node from that call:
 
@@ -212,7 +210,7 @@ If you call `runtime.execute(...)`, `runtime.prefetch(...)`, or `runtime.refresh
 import { GraphExecutionError } from "vue-dependency-graph/core";
 
 try {
-  await runtime.refresh([Tasks]);
+  await runtime.refresh([ProductDetails]);
 } catch (error) {
   if (error instanceof GraphExecutionError) {
     for (const failure of error.failures) {
@@ -226,50 +224,50 @@ Automatic (subscription-driven) failures don't throw anywhere - there's no promi
 
 ## 8. Cross-domain invalidation with events
 
-Say booking an appointment somewhere else in the app should invalidate a compliance-status node here, without either module importing the other's store. Typed events are how:
+Say a warehouse system confirming a stock update somewhere else in the app should invalidate inventory data here, without either module importing the other's store. Typed events are how:
 
 ```ts
-// events/appointments.ts
+// events/inventory.ts
 import { defineEvent } from "vue-dependency-graph/core";
 
-export const AppointmentBooked = defineEvent<{
-  userId: string;
-  appointmentId: string;
-}>("appointment.booked");
+export const StockChanged = defineEvent<{
+  productId: string;
+  inStock: boolean;
+}>("stock.changed");
 ```
 
 ```ts
-// graph/nodes.ts (compliance module - never imports the appointments module)
+// graph/nodes.ts (product module - never imports the warehouse module)
 import type { EventInvalidationContext } from "vue-dependency-graph/core";
 
-export const CapabilityStatus = defineDataNode({
-  key: "capabilityStatus",
-  dependencies: [CurrentUserId] as const,
+export const Inventory = defineDataNode({
+  key: "inventory",
+  dependencies: [CurrentProductId] as const,
   initialValue: null,
   invalidatedBy: [
     {
-      event: AppointmentBooked,
+      event: StockChanged,
       when: ({
         payload,
         get,
-      }: EventInvalidationContext<typeof AppointmentBooked, readonly [typeof CurrentUserId]>) =>
-        payload.userId === get(CurrentUserId),
+      }: EventInvalidationContext<typeof StockChanged, readonly [typeof CurrentProductId]>) =>
+        payload.productId === get(CurrentProductId),
     },
   ] as const,
-  load: ({ get }) => api.getCapabilityStatus(get(CurrentUserId)),
+  load: ({ get }) => api.getInventory(get(CurrentProductId)),
 });
 ```
 
 ```ts
-// somewhere in the appointments module, after a successful booking:
-runtime.publish(AppointmentBooked, { userId, appointmentId });
+// somewhere in the warehouse module, after a confirmed stock update:
+runtime.publish(StockChanged, { productId, inStock });
 ```
 
-The predicate (`when`) is synchronous and side-effect free, and is checked against committed dependency values, not against the event payload alone - here, only a booking for the _currently selected_ user invalidates `CapabilityStatus`. A publication that matches nothing is silent; there's no error for "nobody was listening."
+The predicate (`when`) is synchronous and side-effect free, and is checked against committed dependency values, not against the event payload alone - here, only a stock update for the _currently viewed_ product invalidates `Inventory`. A publication that matches nothing is silent; there's no error for "nobody was listening."
 
 Note the explicit `EventInvalidationContext<...>` annotation on `when`'s parameters - TypeScript can't reliably infer `payload`'s and `get`'s types from context here, so leaving it off produces confusing type errors elsewhere in the object rather than a clear one on the callback itself. Every `when` predicate in this codebase (and its own tests) types it explicitly for exactly this reason.
 
-This is in-memory, single-runtime delivery only - it does not cross tabs, does not hit a server, and doesn't guarantee replay. If you need server-driven invalidation, have your transport layer validate the incoming message and call `runtime.publish(...)` itself.
+This is in-memory, single-runtime delivery only - it does not cross tabs, does not hit a server, and doesn't guarantee replay. If you need server-driven invalidation (e.g. a websocket push from the warehouse system), have your transport layer validate the incoming message and call `runtime.publish(...)` itself.
 
 ## 9. Keeping data fresh: refresh policies and polling
 
@@ -279,36 +277,41 @@ A refresh policy is graph metadata - attach it to a data node and the runtime ha
 import { staleAfter, refreshInterval, pollUntil } from "vue-dependency-graph/core";
 
 // Reload automatically once the data is more than 30 seconds old
-// and something is still subscribed.
-export const Tasks = defineDataNode({
-  key: "tasks",
-  dependencies: [CurrentUserId] as const,
-  initialValue: [] as Task[],
-  load: ({ get, signal }) => api.getTasks(get(CurrentUserId), signal),
+// and something is still subscribed. Good for details that rarely
+// change - a product's name and description don't need to be
+// refetched on every render, just occasionally.
+export const ProductDetails = defineDataNode({
+  key: "productDetails",
+  dependencies: [CurrentProductId] as const,
+  initialValue: null as Product | null,
+  load: ({ get, signal }) => api.getProduct(get(CurrentProductId), signal),
   refresh: staleAfter({ durationMs: 30_000 }),
 });
 
-// Or: reload every 10 seconds on a fixed interval while subscribed.
+// Or: reload every 10 seconds on a fixed interval while subscribed -
+// a backstop for data that's supposed to update via an event (like
+// Inventory above) but might occasionally miss one.
 refresh: refreshInterval({ intervalMs: 10_000 });
 
-// Or: for long-running server-side jobs, poll until a condition is met.
-export const ExportJobStatus = defineDataNode({
-  key: "exportJobStatus",
-  dependencies: [ExportJobId] as const,
+// Or: for a long-running server-side process, poll until a condition
+// is met - here, an order making its way to "shipped" after checkout.
+export const OrderStatus = defineDataNode({
+  key: "orderStatus",
+  dependencies: [CurrentOrderId] as const,
   initialValue: null,
-  load: ({ get, signal }) => api.getExportStatus(get(ExportJobId), signal),
+  load: ({ get, signal }) => api.getOrderStatus(get(CurrentOrderId), signal),
   refresh: pollUntil({
-    intervalMs: 2_000,
-    stopWhen: (result) => result?.state === "completed",
-    failWhen: (result) => result?.state === "failed",
-    timeoutMs: 10 * 60_000,
+    intervalMs: 3_000,
+    stopWhen: (order) => order?.status === "shipped",
+    failWhen: (order) => order?.status === "cancelled",
+    timeoutMs: 60_000,
   }),
 });
 ```
 
 A node has at most one policy. Context and derived nodes cannot declare one - `createGraph` rejects that at validation time. Polling stops automatically when the last subscriber goes away, and resumes from a clean cycle on the next subscription, so you don't need to manually tear down timers when a component unmounts.
 
-`pollUntil` reads progress the same way any other data node does - through `data`, on every intermediate response, not through a separate callback. If your progress endpoint returns `{ state: "running", percent: 40 }`, render `percent` straight from `useNode(ExportJobStatus).data` as it updates on each poll.
+`pollUntil` reads progress the same way any other data node does - through `data`, on every intermediate response, not through a separate callback. If your order-status endpoint returns `{ status: "confirmed" }` then later `{ status: "shipped" }`, render `status` straight from `useNode(OrderStatus).data` as it updates on each poll.
 
 ## 10. Releasing idle data
 
@@ -317,11 +320,11 @@ A node's value stays in memory for as long as the runtime exists - by default, f
 ```ts
 import { releaseAfter, retain } from "vue-dependency-graph/core";
 
-export const Tasks = defineDataNode({
-  key: "tasks",
-  dependencies: [CurrentUserId] as const,
-  initialValue: [] as Task[],
-  load: ({ get, signal }) => api.getTasks(get(CurrentUserId), signal),
+export const ProductDetails = defineDataNode({
+  key: "productDetails",
+  dependencies: [CurrentProductId] as const,
+  initialValue: null as Product | null,
+  load: ({ get, signal }) => api.getProduct(get(CurrentProductId), signal),
   release: releaseAfter({ durationMs: 60_000 }),
 });
 ```
@@ -331,11 +334,11 @@ Or set one default for every data node in the graph, and opt specific nodes out:
 ```ts
 const runtime = createGraphRuntime(graph, { releaseAfterMs: 5 * 60_000 });
 
-export const ReferenceCatalogue = defineDataNode({
-  key: "referenceCatalogue",
-  initialValue: [],
-  load: () => api.getCatalogue(),
-  release: retain(), // never released automatically, even though the runtime has a default
+export const Cart = defineDataNode({
+  key: "cart",
+  initialValue: { items: [] },
+  load: () => api.getCart(),
+  release: retain(), // never released automatically, even though the runtime has a default - the cart is needed everywhere in the app
 });
 ```
 
@@ -345,7 +348,7 @@ The timer starts the moment a node has _no_ subscribers at all - not just no dir
 
 When the timer fires, the node resets to exactly the shape it had before it ever loaded - `data` back to `initialValue`, no successful value, `status: "idle"` - so a later subscribe triggers a genuinely fresh `load()`, not a stale cached value. Context and derived nodes can't declare a release policy at all: a context value is caller-provided input, not cache, and releasing it would silently discard state you set rather than just cost a reload.
 
-A release shows up in diagnostics as a `node.value-released` event, and in the devtools Timeline under its own "release" filter - useful for confirming large data actually gets reclaimed on a long-running page rather than just trusting the configuration. See [ADR-016](../decisions/ADR-016-value-release-policies.md) for the full design reasoning, including why this is timer-based rather than, say, an LRU-style bounded count.
+A release shows up in diagnostics as a `node.value-released` event, and in the devtools Timeline under its own "release" filter - useful for confirming large data actually gets reclaimed on a long-running page (browsing a big catalog, say) rather than just trusting the configuration. See [ADR-016](../decisions/ADR-016-value-release-policies.md) for the full design reasoning, including why this is timer-based rather than, say, an LRU-style bounded count.
 
 ## 11. Query groups
 
@@ -354,21 +357,21 @@ When a screen needs several related nodes together - and you don't want to repea
 ```ts
 import { defineQuery } from "vue-dependency-graph/core";
 
-export const TaskBoardPage = defineQuery({
-  key: "task-board-page",
+export const ProductPage = defineQuery({
+  key: "product-page",
   nodes: {
-    tasks: Tasks,
-    filter: TaskFilter,
-    visible: VisibleTasks,
+    product: ProductDetails,
+    price: DisplayPrice,
+    inventory: Inventory,
   },
 });
 ```
 
 ```ts
-const page = useQuery(TaskBoardPage);
+const page = useQuery(ProductPage);
 
-page.nodes.tasks.data.value; // Task[]
-page.nodes.visible.data.value; // Task[], filtered
+page.nodes.product.data.value; // Product | null
+page.nodes.price.data.value; // string, formatted
 page.isLoading.value; // true if any aliased node is loading
 page.isError.value; // true if any aliased node has an error
 page.errors.value; // the errors, aggregated
@@ -377,8 +380,8 @@ page.isSuccess.value;
 await page.prefetch();
 await page.refresh();
 // equivalently, from the runtime directly:
-await runtime.prefetchQuery(TaskBoardPage);
-await runtime.refreshQuery(TaskBoardPage); // context aliases excluded - use setContext for those
+await runtime.prefetchQuery(ProductPage);
+await runtime.refreshQuery(ProductPage); // context aliases excluded - use setContext for those
 ```
 
 Each aliased entry under `page.nodes` exposes the same computed refs `useNode` would give you individually. A query definition doesn't create new runtime state - it's a typed, named grouping of the same underlying nodes `useNodes` would subscribe to anyway, declared once and reused everywhere the page needs that combination.
@@ -387,55 +390,122 @@ Each aliased entry under `page.nodes` exposes the same computed refs `useNode` w
 
 Reads go through data nodes. Writes - commands with a server round-trip that should update the cache on success - go through mutations. A mutation is not a node: it doesn't participate in dependency execution, isn't deduplicated, and doesn't consume `maxConcurrentLoads`.
 
-Start with the simplest case - no optimistic update, just reconciling the cache after a confirmed success:
+### Start with confirmed success only
+
+Prefer the smallest integration first - no optimistic update, just reconciling the cache after a confirmed success:
 
 ```ts
 import { defineMutation } from "vue-dependency-graph/core";
 
-const CreateTask = defineMutation({
-  key: "task.create",
-  execute: ({ input, signal }: { input: { title: string } }) => api.createTask(input, signal),
+interface AddToCartInput {
+  productId: string;
+  quantity: number;
+}
+
+const AddToCart = defineMutation({
+  key: "cart.add",
+  execute: ({ input, signal }: { input: AddToCartInput; signal: AbortSignal }) =>
+    api.addToCart(input, signal),
 });
 
-async function onAddTask(title: string) {
+async function onAddToCart(productId: string, quantity: number) {
   await runtime.mutate(
-    CreateTask,
-    { title },
+    AddToCart,
+    { productId, quantity },
     {
-      onSuccess: (effects, created) => {
-        effects.update(Tasks, (current) => [...current, created]);
+      onSuccess: (effects, updatedCart) => {
+        effects.update(Cart, () => updatedCart);
+        effects.invalidate([Inventory]);
       },
     },
   );
 }
 ```
 
-`effects.update(...)` requires `current` to be treated as read-only - return a new array/object, never mutate `current` in place. Development and test builds actively detect and reject in-place writes through plain arrays and objects; production builds skip that check for performance, so don't rely on it catching a bug you haven't already caught in tests.
+Use `update(...)` when the response contains enough authoritative data to update a successful data node immediately - here, the server's returned cart. Use `invalidate(...)` when the server remains authoritative or the node has never loaded successfully - here, `Inventory`, since the add-to-cart response doesn't itself carry updated stock counts. Use `publish(...)` for typed cross-domain invalidation already represented by graph event declarations (see [§8](#8-cross-domain-invalidation-with-events)).
 
-Add an optimistic update only once the plain success-reconciliation version works and you've decided the UX benefit is worth it:
+For event `when` predicates checked as part of a mutation's success effects, read direct data or context dependencies whenever those values participate in the same draft. Don't read a derived dependency affected by the mutation's optimistic targets, a direct success update, or explicit invalidation - it hasn't recomputed during preparation, so the runtime rejects that read instead of evaluating stale data. Unaffected derived dependencies remain valid to read.
+
+The success callback and all update functions must be synchronous. The runtime validates the complete draft before changing graph state.
+
+`effects.update(...)` requires `current` to be treated as read-only - return a new array/object, never mutate `current` in place:
+
+```ts
+// Supported
+effects.update(Cart, (current) => ({ ...current, items: [...current.items, newItem] }));
+
+// Invalid
+effects.update(Cart, (current) => {
+  current.items.push(newItem);
+  return current;
+});
+```
+
+Development and test builds actively detect and reject in-place writes through plain arrays and plain objects, including nested plain values - production builds skip that check for performance, so don't rely on it catching a bug you haven't already caught in tests. Non-plain values aren't guarded either way, so immutable replacement remains required for `Date`, `Map`, `Set`, class instances, and similar.
+
+### Add optimistic behaviour only once the user benefit is clear
+
+Optimistic updates require an existing successful value - they must not reinterpret a placeholder `initialValue` as loaded server state.
 
 ```ts
 await runtime.mutate(
-  CreateTask,
-  { title },
+  AddToCart,
+  { productId, quantity },
   {
     optimistic: (effects, input) => {
-      effects.update(Tasks, (current) => [
+      effects.update(Cart, (current) => ({
         ...current,
-        { id: `pending-${Date.now()}`, title: input.title, done: false },
-      ]);
+        items: [...current.items, { productId: input.productId, quantity: input.quantity }],
+      }));
     },
-    onSuccess: (effects, created) => {
-      effects.update(Tasks, (current) =>
-        current.map((task) => (task.id.startsWith("pending-") ? created : task)),
-      );
+    onSuccess: (effects, updatedCart) => {
+      effects.update(Cart, () => updatedCart);
+      effects.invalidate([Inventory]);
     },
-    classifyFailure: (error) => (isValidationError(error) ? "rejected" : "unknown"),
+    classifyFailure: (error) =>
+      error instanceof Error && error.message === "OUT_OF_STOCK" ? "rejected" : "unknown",
   },
 );
 ```
 
-`classifyFailure` matters: only classify `"rejected"` when you have real evidence the server didn't commit the command (a validation response, an explicit business rejection). Anything ambiguous - a timeout, a dropped connection, a malformed response - must be `"unknown"`, which keeps the optimistic value visible as unconfirmed rather than risking a false rollback of a command that may have actually succeeded. See [the mutation adoption guide](./04-mutation-adoption.md) for the full error-handling reference (`GraphMutationConflictError`, `GraphMutationOutcomeUnknownError`, `GraphMutationRollbackConflictError`, `GraphMutationReconciliationError`, `GraphMutationStateError`).
+`classifyFailure` matters: only classify `"rejected"` when you have real evidence the server didn't commit the command (a validation response, an explicit business rejection - here, a confirmed "out of stock"). Anything ambiguous - a timeout, a dropped connection, a malformed response - must be `"unknown"`, which keeps the optimistic value visible as unconfirmed rather than risking a false rollback of a command that may have actually succeeded.
+
+### Idempotency keys
+
+The framework does not generate or persist idempotency keys. Commands that may be retried after an unknown outcome should use a domain-appropriate key generated before the first request and reused for retries of that logical command - `placeOrder` is the clearest case: if the connection drops after the request was sent, you must not let a naive retry double-charge the customer.
+
+```ts
+const input = {
+  commandId: crypto.randomUUID(), // generated once, before the first attempt
+  cartId,
+  shippingAddressId,
+};
+
+await runtime.mutate(PlaceOrder, input, {
+  classifyFailure: (error) => (isKnownRejectedResponse(error) ? "rejected" : "unknown"),
+});
+// If this rejects with GraphMutationOutcomeUnknownError, retry with the
+// *same* input.commandId - never generate a new one for a retry of the
+// same logical order.
+```
+
+The server must define the key's scope, retention period, duplicate response, and conflict behaviour. Do not generate a new key for each retry of the same logical action, and do not assume an HTTP method is automatically idempotent.
+
+### Handling mutation errors
+
+`runtime.mutate` can reject with one of five error types, each corresponding to a distinct situation:
+
+**`GraphMutationConflictError`** - another unresolved optimistic mutation already owns at least one of the nodes this call would update. The classic case is a quantity stepper on a cart line clicked rapidly: the second click's optimistic update can't safely apply on top of the first click's still-unconfirmed one. The conflicting request never started. Typical handling is disabling the control while a mutation on the same node is in flight, rather than catching this after the fact.
+
+**`GraphMutationOutcomeUnknownError`** - the server outcome is ambiguous, e.g. the connection dropped after `placeOrder`'s request was sent. Read `cause` for the original remote failure and `nodeKeys` for the affected optimistic state. Tell the user confirmation is pending, avoid firing an automatic duplicate command, and let the scheduled authoritative reload complete - or retry with the same idempotency key, per the section above.
+
+**`GraphMutationRollbackConflictError`** - a known rejection arrived after newer graph work changed the captured state. The classic case: you optimistically added an item to the cart, but it sold out (an `Inventory`-invalidating event arrived) before the add request itself came back rejected. Rolling back to the pre-optimistic value would discard that newer state, so no old snapshot is restored - `cause` holds the original rejection, `nodeKeys` the affected nodes. Preserve the newer values and let authoritative reconciliation run.
+
+A successful known-rejection rollback restores prior logical values and statuses, but not old generation numbers - rollback is a new committed transition, so generations keep increasing and obsolete asynchronous work remains obsolete. If the restored snapshot was already stale and remains subscribed, rollback automatically resumes authoritative graph work through the existing scheduler; you don't need a second refresh just because rollback restored stale state, and `whenSettled()` waits for this recovery work too.
+
+**`GraphMutationStateError`** - the local effect draft itself was invalid: a never-successful update target, a malformed runtime target, an `update` call that mutated `current` in place. This is an application integration error rather than a remote outcome - fix the `optimistic`/`onSuccess` callback rather than catching this.
+
+**`GraphMutationReconciliationError`** - the remote command succeeded, but local success reconciliation failed (e.g. `effects.update` rejecting a malformed server response). `remoteSucceeded` is always `true` here: the server has already committed the change, only the local graph update failed to apply. Don't retry or roll back automatically - read `mutationKey`, `nodeKeys`, and `cause`, keep any optimistic values presented as stale confirmation-pending state, and let an authoritative reload settle. For non-optimistic mutations, a local success-effect failure surfaces as its original error instead, since there's no optimistic projection to recover.
 
 ## 13. Transactions
 
@@ -443,15 +513,15 @@ A transaction batches several `setContext`/`publish` calls so observers only eve
 
 ```ts
 await runtime.transaction(async (transaction) => {
-  transaction.setContext(CurrentUserId, nextUserId);
-  transaction.setContext(TaskFilter, "all");
+  transaction.setContext(CurrentProductId, nextProductId);
+  transaction.setContext(CurrentCurrency, "AUD");
   await someLocalValidation();
 });
 ```
 
-Both context writes above commit together, in one notification and one scheduler pass - no subscribed component sees `CurrentUserId` updated while `TaskFilter` is still the old value. If the callback throws, both staged writes are discarded; nothing was ever visible.
+Both context writes above commit together, in one notification and one scheduler pass - no subscribed component sees `CurrentProductId` updated while `CurrentCurrency` is still the old value. If the callback throws, both staged writes are discarded; nothing was ever visible.
 
-This is local atomicity only - it batches _this runtime's_ state, not a backend transaction. A `runtime.mutate(...)` call inside a transaction body is not part of it; don't hold a transaction open around remote work, since mutation success effects already provide their own single synchronous commit.
+This is local atomicity only - it batches _this runtime's_ state, not a backend transaction. A `runtime.mutate(...)` call inside a transaction body is not part of it and cannot see staged context values; don't hold a transaction open around remote work, since mutation success effects already provide their own single synchronous commit.
 
 Plain `runtime.setContext(...)` calls made elsewhere while a transaction is open are unaffected by it - they commit immediately, independent of whatever the transaction eventually does. Two transactions that stage the same context concurrently resolve by first-commit-wins: the second to commit gets `GraphTransactionConflictError`, and its staged work is discarded, not partially applied.
 
@@ -463,7 +533,7 @@ By default there's no cap on how many data-node loads can be in flight. If a con
 const runtime = createGraphRuntime(graph, { maxConcurrentLoads: 6 });
 ```
 
-This only gates `load()` calls (derived nodes are synchronous and never queue). It applies across explicit execution, scheduler work, prefetch, and refresh alike - one shared budget, not one per call site. A queued load that gets aborted (its subscriber went away, or it was superseded) leaves the queue without ever calling `load()`.
+This only gates `load()` calls (derived nodes are synchronous and never queue). It applies across explicit execution, scheduler work, prefetch, and refresh alike - one shared budget, not one per call site. A queued load that gets aborted (its subscriber went away, or it was superseded) leaves the queue without ever calling `load()`. Mutation `execute` calls don't consume this budget either - a `placeOrder` command can start even while a burst of product loads is queued behind it.
 
 ## 15. Pinia integration
 
@@ -487,10 +557,10 @@ export const useDependencyGraphStore = defineStore("dependencyGraph", () => {
 <script setup lang="ts">
 import { useNode } from "vue-dependency-graph/vue";
 import { useDependencyGraphStore } from "../stores/dependency-graph";
-import { Tasks } from "../graph/nodes";
+import { ProductDetails } from "../graph/nodes";
 
 const { runtime } = useDependencyGraphStore();
-const { data: tasks } = useNode(Tasks, { runtime });
+const { data: product } = useNode(ProductDetails, { runtime });
 </script>
 ```
 
@@ -510,7 +580,7 @@ The plugin disposes the runtime when the app unmounts. If the runtime is shared 
 
 ```ts
 // any component, no explicit runtime option needed:
-const { data } = useNode(Tasks);
+const { data } = useNode(ProductDetails);
 ```
 
 An explicit `{ runtime }` option always takes precedence over the injected one, so the two approaches can coexist if you need to point one specific component at a different runtime (a test double, for instance).
@@ -530,7 +600,7 @@ const recentEvents = diagnostics.getEvents();
 const metrics = diagnostics.getMetrics();
 ```
 
-Every event carries a deterministic operation ID and, where relevant, a cause ID linking it back to whatever triggered it - a subscription, a context change, an event publication, a transaction commit. This is how you answer "why did `Tasks` reload just now" without adding `console.log` to a loader. Diagnostics are entirely observational: a sink that throws doesn't affect runtime behavior, and nothing here changes if you omit the option.
+Every event carries a deterministic operation ID and, where relevant, a cause ID linking it back to whatever triggered it - a subscription, a context change, an event publication, a transaction commit. This is how you answer "why did `ProductDetails` reload just now" without adding `console.log` to a loader. Diagnostics are entirely observational: a sink that throws doesn't affect runtime behavior, and nothing here changes if you omit the option.
 
 For a point-in-time export (bug reports, a debug panel), take a snapshot:
 
@@ -569,28 +639,26 @@ function deferred<T>() {
   return { promise, resolve, reject };
 }
 
-it("shows the newly created task after a successful mutation", async () => {
-  const created = deferred<Task>();
-  const CreateTask = defineMutation({
-    key: "task.create",
-    execute: () => created.promise,
+it("shows the updated cart after a successful mutation", async () => {
+  const added = deferred<Cart>();
+  const AddToCart = defineMutation({
+    key: "cart.add",
+    execute: () => added.promise,
   });
   const runtime = createGraphRuntime(graph);
 
   const mutation = runtime.mutate(
-    CreateTask,
-    { title: "Write tests" },
+    AddToCart,
+    { productId: "prod-1", quantity: 1 },
     {
-      onSuccess: (effects, task) => effects.update(Tasks, (current) => [...current, task]),
+      onSuccess: (effects, cart) => effects.update(Cart, () => cart),
     },
   );
-  created.resolve({ id: "1", title: "Write tests", done: false });
+  added.resolve({ items: [{ productId: "prod-1", quantity: 1 }] });
   await mutation;
 
-  expect(runtime.getState(Tasks).data).toContainEqual({
-    id: "1",
-    title: "Write tests",
-    done: false,
+  expect(runtime.getState(Cart).data).toEqual({
+    items: [{ productId: "prod-1", quantity: 1 }],
   });
 });
 ```
@@ -632,14 +700,14 @@ it("reloads once the data is stale", async () => {
   const { environment, advance } = createFakeTimerEnvironment();
   const runtime = createGraphRuntime(graph, { timerEnvironment: environment });
 
-  const subscription = runtime.subscribeNodes([Tasks]);
+  const subscription = runtime.subscribeNodes([ProductDetails]);
   await runtime.whenSettled();
-  const loadCountAfterFirstLoad = api.getTasks.mock.calls.length;
+  const loadCountAfterFirstLoad = api.getProduct.mock.calls.length;
 
-  advance(30_000); // matches Tasks' staleAfter({ durationMs: 30_000 })
+  advance(30_000); // matches ProductDetails' staleAfter({ durationMs: 30_000 })
   await runtime.whenSettled();
 
-  expect(api.getTasks.mock.calls.length).toBe(loadCountAfterFirstLoad + 1);
+  expect(api.getProduct.mock.calls.length).toBe(loadCountAfterFirstLoad + 1);
   subscription.unsubscribe();
 });
 ```
@@ -654,7 +722,7 @@ For Vue components, use real `createGraph`/`createGraphRuntime` instances (not m
 
 **Derived aggregate state across several nodes.** Prefer one derived node over recomputing the same combination inline in every component that needs it - it gets its own status/error/freshness tracking for free, and other nodes can depend on it too.
 
-**Don't reinterpret `initialValue` as loaded data.** A data node's `initialValue` exists so the node has _something_ to render before the first load completes - it is not a cache-primed value. In particular, don't build an optimistic mutation update on top of a node that has never successfully loaded; the guide in [§12](#12-mutations) and the [mutation adoption guide](./04-mutation-adoption.md) call this out explicitly.
+**Don't reinterpret `initialValue` as loaded data.** A data node's `initialValue` exists so the node has _something_ to render before the first load completes - it is not a cache-primed value. In particular, don't build an optimistic mutation update on top of a node that has never successfully loaded; the guide in [§12](#12-mutations) calls this out explicitly.
 
 ## 19. Troubleshooting
 
@@ -668,12 +736,11 @@ For Vue components, use real `createGraph`/`createGraphRuntime` instances (not m
 
 **"A node reloaded even though a component using it is still mounted."** If that node has a `release` policy (its own, or the runtime's `releaseAfterMs` default), check whether it's still subscribed only _indirectly_ - through another node that depends on it, with nothing subscribing to it directly and nothing subscribing to anything that needs it either. Release only fires when a node has no subscribers at all, direct or required, so a reload after release means it genuinely had none for the configured duration - not that the direct/required distinction stopped applying.
 
-**"An optimistic mutation update disappeared without an error."** Check whether newer graph work (a context change, another mutation, a refresh) touched the same node before your mutation settled. A known rejection that arrives after newer state changed rejects with `GraphMutationRollbackConflictError` specifically so this case is visible rather than silently overwriting the newer data - see the [mutation adoption guide](./04-mutation-adoption.md).
+**"An optimistic mutation update disappeared without an error."** Check whether newer graph work (a context change, another mutation, a refresh) touched the same node before your mutation settled. A known rejection that arrives after newer state changed rejects with `GraphMutationRollbackConflictError` specifically so this case is visible rather than silently overwriting the newer data - see [§12](#12-mutations).
 
 ## 20. Where to go next
 
 - [`docs/api/01-public-api.md`](../api/01-public-api.md) - complete reference for every public function and option.
 - [`docs/architecture/`](../architecture/) - how the pieces fit together and why, in depth.
 - [`docs/decisions/`](../decisions/) - the reasoning and alternatives behind each major design choice.
-- [`docs/guides/04-mutation-adoption.md`](./04-mutation-adoption.md) - the full mutation error-handling reference.
 - [`docs/testing/01-test-strategy.md`](../testing/01-test-strategy.md) - how this library's own test suite is organized, useful as a model for your own graph's tests.

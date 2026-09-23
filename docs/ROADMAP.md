@@ -73,7 +73,7 @@ See [Events, refresh policies, and polling](./architecture/04-events-refresh-and
 - Monotonic rollback generations
 - Protection against overwriting newer graph work
 
-See [Mutations, failures, and cache behaviour](./architecture/05-mutations-failures-and-cache.md), [ADR-013](./decisions/ADR-013-mutation-framework.md), and the [Mutation Adoption Guide](./guides/04-mutation-adoption.md).
+See [Mutations, failures, and cache behaviour](./architecture/05-mutations-failures-and-cache.md), [ADR-013](./decisions/ADR-013-mutation-framework.md), and the [user guide's mutations section](./guides/00-user-guide.md#12-mutations).
 
 ### Diagnostics and devtools
 

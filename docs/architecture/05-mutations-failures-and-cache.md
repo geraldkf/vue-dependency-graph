@@ -159,4 +159,4 @@ The current mutation model deliberately does not provide:
 - a global mutation concurrency limit;
 - a generic Vue mutation composable.
 
-Applications should generate and reuse domain-appropriate idempotency keys when retrying a logical command after an unknown outcome. Detailed adoption and error-handling guidance is maintained in the [Mutation Adoption Guide](../guides/04-mutation-adoption.md).
+Applications should generate and reuse domain-appropriate idempotency keys when retrying a logical command after an unknown outcome. Detailed adoption and error-handling guidance is maintained in the [user guide's mutations section](../guides/00-user-guide.md#12-mutations).

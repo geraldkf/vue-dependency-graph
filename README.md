@@ -154,11 +154,11 @@ pnpm install --frozen-lockfile
 
 ## Documentation
 
+- User guide: `docs/guides/00-user-guide.md`
 - Public API: `docs/api/01-public-api.md`
 - Architecture: `docs/architecture/01-system-overview.md`
 - Vue and Pinia integration: `docs/architecture/07-vue-and-pinia-integration.md`
 - Roadmap: `docs/ROADMAP.md`
 - Test strategy: `docs/testing/01-test-strategy.md`
-- Mutation adoption guide: `docs/guides/04-mutation-adoption.md`
 
 Historical implementation notes preserve point-in-time decisions and validation evidence. Use the documents above for the current architecture and API.

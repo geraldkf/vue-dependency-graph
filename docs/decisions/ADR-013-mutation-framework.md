@@ -71,7 +71,7 @@ Do not hold a graph transaction open around remote mutation work. Confirmed muta
 - Same-node optimistic overlap is rejected rather than introducing layered optimistic patches and ordering rules.
 - Mutation retry, idempotency keys, offline queues, and global command concurrency remain application or future concerns.
 
-Detailed usage guidance, public error handling, idempotency considerations, and examples belong in the [Mutation Adoption Guide](../guides/04-mutation-adoption.md).
+Detailed usage guidance, public error handling, idempotency considerations, and examples belong in the [user guide's mutations section](../guides/00-user-guide.md#12-mutations).
 
 ## Alternatives considered
 

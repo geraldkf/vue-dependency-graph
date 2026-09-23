@@ -21,22 +21,22 @@ Importing directly from `vue-dependency-graph` is not supported.
 Node definitions are immutable typed handles. Mutable values and execution state belong to a `GraphRuntime`.
 
 ```ts
-const JobSeekerId = defineContextNode<number | undefined>({
-  key: "jobSeekerId",
+const CurrentProductId = defineContextNode<string | undefined>({
+  key: "currentProductId",
   initialValue: undefined,
 });
 
-const PointPeriods = defineDataNode({
-  key: "pointPeriods",
-  dependencies: [JobSeekerId] as const,
-  initialValue: [] as PointPeriod[],
-  load: ({ get, signal }) => api.getPointPeriods(get(JobSeekerId), signal),
+const ProductReviews = defineDataNode({
+  key: "productReviews",
+  dependencies: [CurrentProductId] as const,
+  initialValue: [] as Review[],
+  load: ({ get, signal }) => api.getReviews(get(CurrentProductId), signal),
 });
 
-const CurrentPointPeriod = defineDerivedNode({
-  key: "currentPointPeriod",
-  dependencies: [PointPeriods] as const,
-  derive: ({ get }) => get(PointPeriods).find((period) => period.isCurrent),
+const FeaturedReview = defineDerivedNode({
+  key: "featuredReview",
+  dependencies: [ProductReviews] as const,
+  derive: ({ get }) => get(ProductReviews).find((review) => review.isFeatured),
 });
 ```
 
@@ -46,7 +46,7 @@ Context nodes hold mutable graph inputs. Data nodes perform asynchronous work. D
 
 ```ts
 const graph = createGraph({
-  nodes: [CurrentPointPeriod, PointPeriods, JobSeekerId],
+  nodes: [FeaturedReview, ProductReviews, CurrentProductId],
 });
 
 const runtime = createGraphRuntime(graph);
@@ -67,7 +67,7 @@ Registration order does not matter. Graph creation validates node keys, duplicat
 ## Read state
 
 ```ts
-const state = runtime.getState(PointPeriods);
+const state = runtime.getState(ProductReviews);
 ```
 
 ```ts
@@ -86,7 +86,7 @@ Context and data nodes expose their declared value type. Derived data is `T | un
 ## Set context
 
 ```ts
-runtime.setContext(JobSeekerId, 123);
+runtime.setContext(CurrentProductId, "prod-42");
 ```
 
 A changed context value synchronously marks transitive descendants stale, preserves their existing data, and aborts affected work. Subscribed stale descendants are scheduled automatically. An `Object.is` equal value is a no-op.
@@ -94,9 +94,9 @@ A changed context value synchronously marks transitive descendants stale, preser
 ## Subscribe and observe
 
 ```ts
-const subscription = runtime.subscribeNodes([PointPeriods]);
+const subscription = runtime.subscribeNodes([ProductReviews]);
 const stopObserving = runtime.onChange(() => {
-  const state = runtime.getState(PointPeriods);
+  const state = runtime.getState(ProductReviews);
 });
 
 await runtime.whenSettled();
@@ -112,8 +112,8 @@ A listener that throws never breaks the runtime: the failure is isolated from th
 Inspect lifecycle and scheduler state:
 
 ```ts
-runtime.getSubscriptionState(PointPeriods);
-runtime.hasSubscribers(PointPeriods);
+runtime.getSubscriptionState(ProductReviews);
+runtime.hasSubscribers(ProductReviews);
 runtime.getSchedulerState();
 ```
 
@@ -124,19 +124,19 @@ runtime.getSchedulerState();
 Explicit execution:
 
 ```ts
-await runtime.execute([CurrentPointPeriod]);
+await runtime.execute([FeaturedReview]);
 ```
 
 One-shot prefetch without persistent subscription ownership:
 
 ```ts
-await runtime.prefetch([PointPeriods]);
+await runtime.prefetch([ProductReviews]);
 ```
 
 Forced data or derived-node refresh:
 
 ```ts
-await runtime.refresh([PointPeriods, CurrentPointPeriod]);
+await runtime.refresh([ProductReviews, FeaturedReview]);
 ```
 
 These operations include required ancestors, deduplicate matching active work, and reject with `GraphExecutionError` after independent executable branches settle. `prefetch()` and `refresh()` are caller-owned operations and must be awaited or have their rejection handled directly. They are not covered by `whenSettled()`.
@@ -168,8 +168,8 @@ Call it inside `setup()` or another active Vue injection context. It throws `Gra
 Components can then use:
 
 ```ts
-const periods = useNode(PointPeriods);
-const query = useNodes([PointPeriods, CurrentPointPeriod]);
+const reviews = useNode(ProductReviews);
+const query = useNodes([ProductReviews, FeaturedReview]);
 ```
 
 `useNode` exposes computed refs for `data`, `status`, `freshness`, `error`, and `hasSuccessfulValue`.
@@ -192,8 +192,8 @@ interface UseNodesAggregate {
 Applications that already own a runtime can pass it directly:
 
 ```ts
-const periods = useNode(PointPeriods, { runtime });
-const query = useNodes([PointPeriods, CurrentPointPeriod], { runtime });
+const reviews = useNode(ProductReviews, { runtime });
+const query = useNodes([ProductReviews, FeaturedReview], { runtime });
 ```
 
 The explicit runtime takes precedence over an injected runtime. Omitting it preserves plugin-based resolution and the existing missing-runtime error.
@@ -214,7 +214,7 @@ export const useDependencyGraphStore = defineStore("dependencyGraph", () => {
 
 ```ts
 const graphStore = useDependencyGraphStore();
-const periods = useNode(PointPeriods, {
+const reviews = useNode(ProductReviews, {
   runtime: graphStore.runtime,
 });
 ```
@@ -227,8 +227,8 @@ Use the callback handle for all work that belongs to one atomic local graph tran
 
 ```ts
 const result = await runtime.transaction(async (transaction) => {
-  transaction.setContext(JobSeekerId, 123);
-  transaction.publish(AppointmentBooked, payload);
+  transaction.setContext(CurrentProductId, "prod-42");
+  transaction.publish(StockChanged, payload);
   return "committed";
 });
 ```
@@ -285,14 +285,14 @@ An open transaction that has not committed has not requested scheduler work and 
 Typed event handles provide compile-time payload safety for local graph invalidation.
 
 ```ts
-const AppointmentBooked = defineEvent<{
-  jobSeekerId: number;
-  appointmentId: number;
-}>("appointment.booked");
+const StockChanged = defineEvent<{
+  productId: string;
+  inStock: boolean;
+}>("stock.changed");
 
-runtime.publish(AppointmentBooked, {
-  jobSeekerId: 123,
-  appointmentId: 456,
+runtime.publish(StockChanged, {
+  productId: "prod-1",
+  inStock: false,
 });
 ```
 
@@ -307,15 +307,15 @@ After confirmed mutation success, `effects.publish(...)` may publish a typed eve
 Immutable query definitions group existing nodes without adding topology or query-owned runtime state:
 
 ```ts
-const AppointmentsPage = defineQuery({
-  key: "appointments-page",
+const ProductPage = defineQuery({
+  key: "product-page",
   nodes: {
-    appointments: Appointments,
-    capabilityStatus: CapabilityStatus,
+    reviews: ProductReviews,
+    featuredReview: FeaturedReview,
   },
 });
 
-type AppointmentsPageNodes = QueryNodes<typeof AppointmentsPage>;
+type ProductPageNodes = QueryNodes<typeof ProductPage>;
 ```
 
 Aliases and exact node-handle types are retained. Query definitions own no runtime state and are not graph topology.
@@ -323,10 +323,10 @@ Aliases and exact node-handle types are retained. Query definitions own no runti
 Vue consumers may subscribe to the complete query through its aliases:
 
 ```ts
-const page = useQuery(AppointmentsPage, { runtime });
+const page = useQuery(ProductPage, { runtime });
 
-page.nodes.appointments.data.value;
-page.nodes.capabilityStatus.status.value;
+page.nodes.reviews.data.value;
+page.nodes.featuredReview.status.value;
 page.isLoading.value;
 page.isError.value;
 page.errors.value;
@@ -338,8 +338,8 @@ Each aliased entry exposes the same computed refs as `useNode(...)`. Aggregate s
 The same definition drives caller-owned prefetch and refresh:
 
 ```ts
-await runtime.prefetchQuery(AppointmentsPage);
-await runtime.refreshQuery(AppointmentsPage);
+await runtime.prefetchQuery(ProductPage);
+await runtime.refreshQuery(ProductPage);
 
 await page.prefetch();
 await page.refresh();
@@ -352,15 +352,15 @@ Query prefetch delegates to the existing prefetch operation for every query node
 Data nodes may declare immutable refresh-policy metadata. Each runtime interprets that metadata and owns its timers and policy sessions.
 
 ```ts
-const Progress = defineDataNode({
-  key: "progress",
-  initialValue: undefined as ReportProgress | undefined,
-  load: ({ signal }) => api.getProgress(signal),
-  refresh: pollUntil<ReportProgress | undefined>({
+const OrderStatus = defineDataNode({
+  key: "orderStatus",
+  initialValue: undefined as Order | undefined,
+  load: ({ signal }) => api.getOrderStatus(signal),
+  refresh: pollUntil<Order | undefined>({
     intervalMs: 2_000,
     timeoutMs: 600_000,
-    stopWhen: (value) => value?.state === "completed",
-    failWhen: (value) => value?.state === "failed",
+    stopWhen: (value) => value?.status === "shipped",
+    failWhen: (value) => value?.status === "cancelled",
   }),
 });
 ```
@@ -384,10 +384,10 @@ const runtime = createGraphRuntime(graph, {
 `refreshInterval(...)` repeatedly refreshes subscribed data nodes after each successful policy cycle settles:
 
 ```ts
-const Notifications = defineDataNode({
-  key: "notifications",
-  initialValue: [] as Notification[],
-  load: ({ signal }) => api.getNotifications(signal),
+const Inventory = defineDataNode({
+  key: "inventory",
+  initialValue: undefined as StockLevel | undefined,
+  load: ({ signal }) => api.getInventory(signal),
   refresh: refreshInterval({ intervalMs: 60_000 }),
 });
 ```
@@ -401,15 +401,15 @@ A failed interval refresh retains existing stale data and applies the configured
 `pollUntil<TValue>(...)` repeatedly refreshes subscribed data nodes until completion, business failure, or timeout:
 
 ```ts
-const ReportProgress = defineDataNode({
-  key: "reportProgress",
-  initialValue: undefined as Progress | undefined,
-  load: ({ signal }) => api.getProgress(signal),
-  refresh: pollUntil<Progress | undefined>({
+const OrderStatus = defineDataNode({
+  key: "orderStatus",
+  initialValue: undefined as Order | undefined,
+  load: ({ signal }) => api.getOrderStatus(signal),
+  refresh: pollUntil<Order | undefined>({
     intervalMs: 2_000,
     timeoutMs: 600_000,
-    failWhen: (value) => value?.state === "failed",
-    stopWhen: (value) => value?.state === "completed",
+    failWhen: (value) => value?.status === "cancelled",
+    stopWhen: (value) => value?.status === "shipped",
   }),
 });
 ```
@@ -450,10 +450,10 @@ It pauses policy timers while the document is hidden or the browser is offline. 
 ```ts
 import { releaseAfter, retain } from "vue-dependency-graph/core";
 
-const Tasks = defineDataNode({
-  key: "tasks",
-  initialValue: [] as Task[],
-  load: ({ signal }) => api.getTasks(signal),
+const ProductDetails = defineDataNode({
+  key: "productDetails",
+  initialValue: undefined as Product | undefined,
+  load: ({ signal }) => api.getProduct(signal),
   release: releaseAfter({ durationMs: 60_000 }),
 });
 ```
@@ -473,24 +473,25 @@ A release emits a `node.value-released` diagnostic event (`{ operationId, nodeKe
 Immutable typed mutation definitions represent caller-owned remote execution:
 
 ```ts
-interface SaveAppointmentInput {
-  readonly jobSeekerId: number;
-  readonly start: string;
+interface AddToCartInput {
+  readonly productId: string;
+  readonly quantity: number;
 }
 
-interface SaveAppointmentResult {
-  readonly appointmentId: number;
+interface Cart {
+  readonly cartId: string;
+  readonly items: readonly { productId: string; quantity: number }[];
 }
 
-const SaveAppointment = defineMutation({
-  key: "appointment.save",
-  execute: async ({ input, signal }: MutationExecuteContext<SaveAppointmentInput>) =>
-    api.saveAppointment(input, signal),
+const AddToCart = defineMutation({
+  key: "cart.add",
+  execute: async ({ input, signal }: MutationExecuteContext<AddToCartInput>) =>
+    api.addToCart(input, signal),
 });
 
-const result = await runtime.mutate(SaveAppointment, {
-  jobSeekerId: 123,
-  start: "2026-09-15T10:00:00+10:00",
+const result = await runtime.mutate(AddToCart, {
+  productId: "prod-1",
+  quantity: 1,
 });
 ```
 
@@ -505,16 +506,12 @@ A plain mutation call remains independent while a graph transaction is open. It 
 Optional synchronous success effects reconcile graph state after confirmed remote success:
 
 ```ts
-const result = await runtime.mutate(SaveAppointment, input, {
+const result = await runtime.mutate(AddToCart, input, {
   onSuccess: (effects, saved, originalInput) => {
-    effects.update(Appointments, (current) =>
-      current.map((appointment) =>
-        appointment.clientId === originalInput.clientId ? saved : appointment,
-      ),
-    );
-    effects.update(AppointmentSummary, (current) => ({
+    effects.update(Cart, () => saved);
+    effects.update(CartSummary, (current) => ({
       ...current,
-      lastAppointmentId: saved.appointmentId,
+      itemCount: saved.items.length,
     }));
   },
 });
@@ -545,13 +542,15 @@ If remote execution succeeded but local reconciliation fails, `runtime.mutate(..
 The same success-effect callback may also invalidate nodes and publish typed events:
 
 ```ts
-await runtime.mutate(SaveAppointment, input, {
+const CartUpdated = defineEvent<{ cartId: string; itemCount: number }>("cart.updated");
+
+await runtime.mutate(AddToCart, input, {
   onSuccess: (effects, saved) => {
-    effects.update(Appointments, (current) => reconcile(current, saved));
-    effects.invalidate([AppointmentSummary]);
-    effects.publish(AppointmentBooked, {
-      jobSeekerId: saved.jobSeekerId,
-      appointmentId: saved.appointmentId,
+    effects.update(Cart, () => saved);
+    effects.invalidate([Inventory]);
+    effects.publish(CartUpdated, {
+      cartId: saved.cartId,
+      itemCount: saved.items.length,
     });
   },
 });
@@ -574,17 +573,18 @@ Remote rejection skips `onSuccess` entirely, so no success invalidation or event
 An optional optimistic update callback and failure classifier provide guarded optimistic behaviour:
 
 ```ts
-await runtime.mutate(BookAppointment, input, {
+await runtime.mutate(AddToCart, input, {
   optimistic: (effects, originalInput) => {
-    effects.update(Appointments, (current) => [
+    effects.update(Cart, (current) => ({
       ...current,
-      createPendingAppointment(originalInput),
-    ]);
+      items: [...current.items, { productId: originalInput.productId, quantity: originalInput.quantity }],
+    }));
   },
   onSuccess: (effects, saved) => {
-    effects.update(Appointments, (current) => replacePendingAppointment(current, saved));
+    effects.update(Cart, () => saved);
   },
-  classifyFailure: (error) => (isKnownRejectedResponse(error) ? "rejected" : "unknown"),
+  classifyFailure: (error) =>
+    error instanceof Error && error.message === "OUT_OF_STOCK" ? "rejected" : "unknown",
 });
 ```
 
@@ -736,9 +736,9 @@ A collector may be owned by one runtime or deliberately shared by multiple runti
 Node values are omitted by default. A node can explicitly include its value or provide a strongly typed synchronous redactor:
 
 ```ts
-const profile = defineContextNode({
-  key: "profile",
-  initialValue: { name: "Gerald", identifier: "sensitive" },
+const customerProfile = defineContextNode({
+  key: "customerProfile",
+  initialValue: { name: "Jordan Smith", accountId: "sensitive" },
   diagnostics: {
     value: (value) => ({ name: value.name }),
   },
