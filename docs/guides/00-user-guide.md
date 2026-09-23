@@ -75,7 +75,7 @@ export interface Product {
 
 export const ProductDetails = defineDataNode({
   key: "productDetails",
-  dependencies: [CurrentProductId] as const,
+  dependencies: [CurrentProductId],
   initialValue: null as Product | null,
   load: ({ get, signal }) => api.getProduct(get(CurrentProductId), signal),
 });
@@ -87,7 +87,7 @@ export const CurrentCurrency = defineContextNode<"USD" | "AUD" | "EUR">({
 
 export const DisplayPrice = defineDerivedNode({
   key: "displayPrice",
-  dependencies: [ProductDetails, CurrentCurrency] as const,
+  dependencies: [ProductDetails, CurrentCurrency],
   derive: ({ get }) => {
     const product = get(ProductDetails);
     if (!product) return "—";
@@ -148,7 +148,7 @@ Two components both rendering `ProductDetails` (directly, or transitively throug
 For several nodes at once, use `useNodes`:
 
 ```ts
-const { results, isLoading, isError, errors } = useNodes([ProductDetails, CurrentCurrency] as const);
+const { results, isLoading, isError, errors } = useNodes([ProductDetails, CurrentCurrency]);
 const [productState, currencyState] = results;
 // productState.value.data -> Product | null, currencyState.value.data -> "USD" | "AUD" | "EUR"
 ```
@@ -242,7 +242,7 @@ import type { EventInvalidationContext } from "vue-dependency-graph/core";
 
 export const Inventory = defineDataNode({
   key: "inventory",
-  dependencies: [CurrentProductId] as const,
+  dependencies: [CurrentProductId],
   initialValue: null,
   invalidatedBy: [
     {
@@ -253,7 +253,7 @@ export const Inventory = defineDataNode({
       }: EventInvalidationContext<typeof StockChanged, readonly [typeof CurrentProductId]>) =>
         payload.productId === get(CurrentProductId),
     },
-  ] as const,
+  ],
   load: ({ get }) => api.getInventory(get(CurrentProductId)),
 });
 ```
@@ -282,7 +282,7 @@ import { staleAfter, refreshInterval, pollUntil } from "vue-dependency-graph/cor
 // refetched on every render, just occasionally.
 export const ProductDetails = defineDataNode({
   key: "productDetails",
-  dependencies: [CurrentProductId] as const,
+  dependencies: [CurrentProductId],
   initialValue: null as Product | null,
   load: ({ get, signal }) => api.getProduct(get(CurrentProductId), signal),
   refresh: staleAfter({ durationMs: 30_000 }),
@@ -297,7 +297,7 @@ refresh: refreshInterval({ intervalMs: 10_000 });
 // is met - here, an order making its way to "shipped" after checkout.
 export const OrderStatus = defineDataNode({
   key: "orderStatus",
-  dependencies: [CurrentOrderId] as const,
+  dependencies: [CurrentOrderId],
   initialValue: null,
   load: ({ get, signal }) => api.getOrderStatus(get(CurrentOrderId), signal),
   refresh: pollUntil({
@@ -322,7 +322,7 @@ import { releaseAfter, retain } from "vue-dependency-graph/core";
 
 export const ProductDetails = defineDataNode({
   key: "productDetails",
-  dependencies: [CurrentProductId] as const,
+  dependencies: [CurrentProductId],
   initialValue: null as Product | null,
   load: ({ get, signal }) => api.getProduct(get(CurrentProductId), signal),
   release: releaseAfter({ durationMs: 60_000 }),

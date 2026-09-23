@@ -33,7 +33,7 @@ const requirePositiveFinite = (value: unknown, fieldName: string): number => {
  *
  * const product = defineDataNode({
  *   key: "product",
- *   dependencies: [currentProductId] as const,
+ *   dependencies: [currentProductId],
  *   initialValue: null,
  *   release: releaseAfter({ durationMs: 30_000 }),
  *   load: async ({ get }) => fetch(`/api/products/${get(currentProductId)}`).then((r) => r.json()),

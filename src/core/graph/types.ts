@@ -152,14 +152,14 @@ export interface EventInvalidationContext<
  *
  * const order = defineDataNode({
  *   key: "order",
- *   dependencies: [currentOrderId] as const,
+ *   dependencies: [currentOrderId],
  *   initialValue: null,
  *   invalidatedBy: [
  *     {
  *       event: orderStatusChanged,
  *       when: ({ payload, get }) => payload.orderId === get(currentOrderId),
  *     },
- *   ] as const,
+ *   ],
  *   load: async ({ get }) => fetch(`/api/orders/${get(currentOrderId)}`).then((r) => r.json()),
  * });
  * ```

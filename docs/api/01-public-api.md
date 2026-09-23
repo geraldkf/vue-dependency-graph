@@ -28,14 +28,14 @@ const CurrentProductId = defineContextNode<string | undefined>({
 
 const ProductReviews = defineDataNode({
   key: "productReviews",
-  dependencies: [CurrentProductId] as const,
+  dependencies: [CurrentProductId],
   initialValue: [] as Review[],
   load: ({ get, signal }) => api.getReviews(get(CurrentProductId), signal),
 });
 
 const FeaturedReview = defineDerivedNode({
   key: "featuredReview",
-  dependencies: [ProductReviews] as const,
+  dependencies: [ProductReviews],
   derive: ({ get }) => get(ProductReviews).find((review) => review.isFeatured),
 });
 ```

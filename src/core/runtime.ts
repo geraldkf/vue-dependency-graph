@@ -66,7 +66,7 @@ type RequestedOperation = Parameters<
  *
  * const product = defineDataNode({
  *   key: "product",
- *   dependencies: [currentProductId] as const,
+ *   dependencies: [currentProductId],
  *   initialValue: null as Product | null,
  *   load: async ({ get }) => fetch(`/api/products/${get(currentProductId)}`).then((r) => r.json()),
  * });

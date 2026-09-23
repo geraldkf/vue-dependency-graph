@@ -30,14 +30,14 @@ import type { EventDefinition } from "./types";
  *
  * const inventory = defineDataNode({
  *   key: "inventory",
- *   dependencies: [currentProductId] as const,
+ *   dependencies: [currentProductId],
  *   initialValue: null,
  *   invalidatedBy: [
  *     {
  *       event: stockChanged,
  *       when: ({ payload, get }) => payload.productId === get(currentProductId),
  *     },
- *   ] as const,
+ *   ],
  *   load: async ({ get }) =>
  *     fetch(`/api/inventory/${get(currentProductId)}`).then((r) => r.json()),
  * });

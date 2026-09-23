@@ -148,7 +148,7 @@ export const defineContextNode = <TValue>(
  *
  * const product = defineDataNode({
  *   key: "product",
- *   dependencies: [currentProductId] as const,
+ *   dependencies: [currentProductId],
  *   initialValue: null as Product | null,
  *   load: async ({ get, signal }) => {
  *     const response = await fetch(`/api/products/${get(currentProductId)}`, { signal });
@@ -229,7 +229,7 @@ export const defineDataNode = <
  * // Pure formatting - recomputes instantly, no network involved.
  * const displayPrice = defineDerivedNode({
  *   key: "displayPrice",
- *   dependencies: [product] as const,
+ *   dependencies: [product],
  *   derive: ({ get }) => {
  *     const value = get(product);
  *     return value ? `$${(value.priceCents / 100).toFixed(2)}` : "—";

@@ -102,7 +102,7 @@ const normalizeRetry = (value: unknown): RetryPolicy | undefined => {
  *
  * const product = defineDataNode({
  *   key: "product",
- *   dependencies: [currentProductId] as const,
+ *   dependencies: [currentProductId],
  *   initialValue: null,
  *   refresh: staleAfter({ durationMs: 5 * 60 * 1000 }), // 5 minutes
  *   load: async ({ get }) => fetch(`/api/products/${get(currentProductId)}`).then((r) => r.json()),
@@ -138,7 +138,7 @@ export const staleAfter = (options: StaleAfterOptions): StaleAfterPolicy => {
  *
  * const inventory = defineDataNode({
  *   key: "inventory",
- *   dependencies: [currentProductId] as const,
+ *   dependencies: [currentProductId],
  *   initialValue: null,
  *   refresh: refreshInterval({
  *     intervalMs: 10_000,
@@ -190,7 +190,7 @@ export const refreshInterval = (options: RefreshIntervalOptions): RefreshInterva
  *
  * const order = defineDataNode({
  *   key: "order",
- *   dependencies: [currentOrderId] as const,
+ *   dependencies: [currentOrderId],
  *   initialValue: null as Order | null,
  *   refresh: pollUntil<Order | null>({
  *     intervalMs: 3000,
