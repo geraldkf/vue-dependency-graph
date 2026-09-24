@@ -5,7 +5,7 @@ New to this library? Start with the [User guide](./guides/00-user-guide.md) - a 
 Use these maintained documents as the current sources of truth:
 
 - [User guide](./guides/00-user-guide.md)
-- [UI, Pinia, and the dependency graph](./guides/01-ui-and-pinia-graph.md) — department default: Pinia owns the runtime; component roles; status UI; migration checklist
+- [UI, Pinia, and the dependency graph](./guides/01-ui-and-pinia-graph.md) — department default: Pinia owns the runtime; component roles; status UI; multi-panel `useNodes` / `isSuccess`; migration checklist
 - [Public API](./api/01-public-api.md)
 - **Architecture**
   - [System overview](./architecture/01-system-overview.md)
@@ -16,7 +16,7 @@ Use these maintained documents as the current sources of truth:
   - [Observability, devtools, and snapshots](./architecture/06-observability-devtools-and-snapshots.md)
   - [Vue and Pinia integration](./architecture/07-vue-and-pinia-integration.md)
 - [Architecture decision records](./decisions/)
-- [Recipes (research phase)](./recipes/) — short patterns for cascades, optimistic mutations, tenancy, stale UI, events, release, and Pinia runtime ownership
+- [Recipes (research phase)](./recipes/) — short patterns for cascades, optimistic mutations, tenancy, stale UI, events, release, Pinia runtime ownership, and multi-node panel `isSuccess`
 - [Test strategy](./testing/01-test-strategy.md)
 - [Roadmap](./ROADMAP.md)
 - [Playground](./PLAYGROUND.md)

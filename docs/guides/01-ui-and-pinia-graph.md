@@ -9,7 +9,7 @@
 - [Vue and Pinia integration (architecture)](../architecture/07-vue-and-pinia-integration.md)
 - [User guide](./00-user-guide.md)
 - [Public API](../api/01-public-api.md)
-- Recipes: [01 cascade](../recipes/01-atomic-cascade.md), [02 optimistic mutation](../recipes/02-optimistic-mutation-reconcile.md), [03 tenancy](../recipes/03-tenancy-auth-context.md), [04 stale vs loading](../recipes/04-stale-vs-loading-rapid-change.md), [05 events](../recipes/05-selective-event-invalidation.md), [06 release](../recipes/06-release-when-unused.md), [07 Pinia ownership](../recipes/07-pinia-runtime-ownership.md)
+- Recipes: [01 cascade](../recipes/01-atomic-cascade.md), [02 optimistic mutation](../recipes/02-optimistic-mutation-reconcile.md), [03 tenancy](../recipes/03-tenancy-auth-context.md), [04 stale vs loading](../recipes/04-stale-vs-loading-rapid-change.md), [05 events](../recipes/05-selective-event-invalidation.md), [06 release](../recipes/06-release-when-unused.md), [07 Pinia ownership](../recipes/07-pinia-runtime-ownership.md), [08 useNodes panel success](../recipes/08-usenodes-panel-success.md)
 
 **How to use this document during migration**
 
@@ -318,7 +318,9 @@ A filter bar may `useNode(ResultCount, { runtime })` to show a badge. That does 
 
 ## 6. Data consumers
 
-### 6.1 Standard subscription
+### 6.1 Standard subscription (single node)
+
+Match the [user guide Pinia pattern](./00-user-guide.md#15-pinia-integration): take `runtime` from the graph store and pass it explicitly.
 
 ```vue
 <script setup lang="ts">
@@ -327,10 +329,10 @@ import { useNode } from "vue-dependency-graph/vue";
 import { Orders } from "./orders-graph-nodes";
 import { useOrdersGraphStore } from "@/stores/orders-graph";
 
-const store = useOrdersGraphStore();
+const { runtime } = useOrdersGraphStore();
 
 const { data, status, freshness, error, hasSuccessfulValue } = useNode(Orders, {
-  runtime: store.runtime,
+  runtime,
 });
 
 const showBlocker = computed(
@@ -361,16 +363,170 @@ const showSoftError = computed(
 </template>
 ```
 
+For a **single** node, `hasSuccessfulValue` is the right “usable data” signal. For **several** nodes that a panel needs together, use `useNodes` and its aggregate `isSuccess` (§6.3).
+
 ### 6.2 Multiple consumers
 
-Several components may `useNode` the same definition with the same runtime. That is intended. Prefer that over fetching once in a parent and prop-drilling large reactive graphs — prop-drill **ids** if needed; let leaves subscribe for live status.
+Several components may `useNode` / `useNodes` the same definitions with the same store `runtime`. That is intended. Prefer that over fetching once in a parent and prop-drilling large reactive graphs — prop-drill **ids** if needed; let each panel subscribe for its own live status.
 
-### 6.3 `useNodes` and `useQuery`
+### 6.3 Multi-node panels and pages: `useNodes` aggregates
 
-- `useNodes` — fixed list of nodes, combined observation.
-- `useQuery` — aliased immutable query definition; `prefetch` / `refresh` delegate to the runtime; still pass `{ runtime }`.
+#### Aggregate flags (public API)
 
-Use queries for page-shaped groups (list + side panel nodes) when the workflow already defines `defineQuery`.
+`useNodes` returns per-node `results` plus aggregates ([public API](../api/01-public-api.md)):
+
+| Flag | Meaning |
+|------|---------|
+| `isSuccess` | **Every** listed node has `hasSuccessfulValue` |
+| `isLoading` | **Any** listed node is `loading` or `refreshing` |
+| `isError` | **Any** listed node has a non-null `error` |
+| `errors` | Those errors, in node list order |
+
+`isSuccess` can be `true` at the same time as `isError` when a **refresh** fails after a prior success (prior data kept). That is intentional.
+
+**Department convention for multi-node UI**
+
+| Intent | Use |
+|--------|-----|
+| Panel/page body is usable | `isSuccess` |
+| First-load skeleton for that region | `isLoading && !isSuccess` |
+| Soft error (keep body) | `isError && isSuccess` |
+| Hard error (no usable set yet) | `isError && !isSuccess` |
+| Enter/leave “usable” side effects | `watch(isSuccess, …)` |
+| Whole runtime scheduler idle | `runtime.whenSettled()` — **not** for panel visibility |
+
+In product language you may say “panel ready”; in code and agents prefer **`isSuccess`**. Do not invent a parallel `isReady` flag that duplicates it. Do not use `whenSettled()` to decide whether a panel shows its body.
+
+#### One panel that needs several nodes
+
+```vue
+<script setup lang="ts">
+import { computed, watch } from "vue";
+import { useNodes } from "vue-dependency-graph/vue";
+import { Orders, OrderMetrics } from "./orders-graph-nodes";
+import { useOrdersGraphStore } from "@/stores/orders-graph";
+
+const { runtime } = useOrdersGraphStore();
+
+const { results, isSuccess, isLoading, isError, errors } = useNodes(
+  [Orders, OrderMetrics],
+  { runtime },
+);
+
+const orders = computed(() => results[0].value);
+const metrics = computed(() => results[1].value);
+
+const showBlocker = computed(() => isLoading.value && !isSuccess.value);
+const showHardError = computed(() => isError.value && !isSuccess.value);
+const showSoftError = computed(() => isError.value && isSuccess.value);
+
+// Optional: side effects when the panel becomes or stops being usable
+watch(isSuccess, (ok, wasOk) => {
+  if (ok && !wasOk) {
+    // e.g. focus search within the panel
+  }
+  if (!ok && wasOk) {
+    // e.g. close an in-panel dialog that depends on loaded rows
+  }
+});
+</script>
+
+<template>
+  <section>
+    <div v-if="showBlocker" class="skeleton" aria-busy="true" />
+    <div v-else-if="showHardError" role="alert">
+      {{ errors[0]?.message }}
+    </div>
+    <div v-else>
+      <p v-if="showSoftError" class="banner" role="status">
+        {{ errors[0]?.message }}
+      </p>
+      <OrderTable :rows="orders.data" />
+      <MetricsStrip :metrics="metrics.data" />
+    </div>
+  </section>
+</template>
+```
+
+#### Page with multiple panels (different node sets)
+
+Each panel owns **its** `useNodes` (or `useNode`) list. Panels stay independent: the list panel can show data while the detail panel is still on a first-load skeleton.
+
+```text
+OrdersPage
+  ├── OrderFilters          ← context writer (store actions only)
+  ├── OrderListPanel        ← useNodes([Orders, OrderMetrics], { runtime })
+  └── OrderDetailPanel      ← useNode(OrderDetail, { runtime })
+        └── (or useNodes([OrderDetail, OrderAudit], { runtime }) if both required)
+```
+
+```vue
+<!-- OrderListPanel.vue -->
+<script setup lang="ts">
+import { computed } from "vue";
+import { useNodes } from "vue-dependency-graph/vue";
+import { Orders, OrderMetrics } from "./orders-graph-nodes";
+import { useOrdersGraphStore } from "@/stores/orders-graph";
+
+const { runtime } = useOrdersGraphStore();
+
+const { results, isSuccess, isLoading, isError, errors } = useNodes(
+  [Orders, OrderMetrics],
+  { runtime },
+);
+
+const showBlocker = computed(() => isLoading.value && !isSuccess.value);
+const showHardError = computed(() => isError.value && !isSuccess.value);
+</script>
+
+<template>
+  <section aria-label="Orders">
+    <div v-if="showBlocker" class="skeleton" aria-busy="true" />
+    <div v-else-if="showHardError" role="alert">{{ errors[0]?.message }}</div>
+    <OrderTable v-else :rows="results[0].value.data" />
+  </section>
+</template>
+```
+
+```vue
+<!-- OrderDetailPanel.vue -->
+<script setup lang="ts">
+import { computed } from "vue";
+import { useNode } from "vue-dependency-graph/vue";
+import { OrderDetail } from "./orders-graph-nodes";
+import { useOrdersGraphStore } from "@/stores/orders-graph";
+
+const { runtime } = useOrdersGraphStore();
+
+const { data, status, error, hasSuccessfulValue } = useNode(OrderDetail, {
+  runtime,
+});
+
+const showBlocker = computed(
+  () => status.value === "loading" && !hasSuccessfulValue.value,
+);
+const showHardError = computed(
+  () => error.value != null && !hasSuccessfulValue.value,
+);
+</script>
+
+<template>
+  <section aria-label="Order detail">
+    <div v-if="showBlocker" class="skeleton" aria-busy="true" />
+    <div v-else-if="showHardError" role="alert">{{ error?.message }}</div>
+    <OrderDetailView v-else-if="hasSuccessfulValue" :order="data" />
+    <p v-else class="muted">Select an order</p>
+  </section>
+</template>
+```
+
+**Do not** wait on a page-level `whenSettled()` before showing any panel. That ties visibility to **all** scheduler work on the runtime (including other features’ subscriptions), and it does not tell you when a panel stops being usable.
+
+**Do** keep blockers **region-scoped**: list skeleton must not replace the whole page if detail is still loading.
+
+#### `useQuery`
+
+When the workflow already defines a `defineQuery` for a page-shaped group, `useQuery(ThatQuery, { runtime })` is appropriate. It still delegates to combined subscription observation; pass the store `runtime` the same way. Prefer `useNodes` when the panel’s node list is local to the component and not a shared query definition.
 
 ### 6.4 Composable rules (Vue)
 
@@ -403,14 +559,23 @@ if (caps.canViewAudit) {
 
 The runtime separates **execution status** from **freshness** (ADR-007). UI must use both.
 
+### 7.0 Single node (`useNode`) vs multi-node (`useNodes`)
+
+| Situation | `useNode` signals | `useNodes` aggregates |
+|-----------|-------------------|------------------------|
+| First paint, no value yet | `status === "loading"`, `!hasSuccessfulValue` | `isLoading && !isSuccess` |
+| Has values, refresh / parent change | `hasSuccessfulValue`, often `stale` / `refreshing` | `isSuccess` (may still `isLoading`) |
+| Hard failure | `error` && `!hasSuccessfulValue` | `isError && !isSuccess` |
+| Soft failure | `error` && `hasSuccessfulValue` | `isError && isSuccess` |
+
 | # | Situation | Typical signals | UI treatment |
 |---|-----------|-----------------|--------------|
-| A | First paint, no value yet | `status === "loading"`, `!hasSuccessfulValue` | Blocking skeleton for **that region** only |
-| B | Has value, reloading / parent changed | `hasSuccessfulValue`, `freshness === "stale"`, and/or `refreshing` / `loading` | **Keep showing data**; quiet updating indicator |
-| C | Current success | `success` + `fresh` | Normal |
-| D | Initial load failed | `error`, `!hasSuccessfulValue` | Hard error + retry |
-| E | Refresh failed, prior value kept | `error`, `hasSuccessfulValue` | Soft banner; keep data |
-| F | Successful empty collection | success, `data` empty array / empty shape | Empty state (not an error) |
+| A | First paint, no value yet | see table above | Blocking skeleton for **that region** only |
+| B | Has value, reloading / parent changed | successful value(s) + loading/stale | **Keep showing data**; quiet updating indicator |
+| C | Current success | `success` + `fresh` (per node) | Normal |
+| D | Initial load failed | hard failure row above | Hard error + retry |
+| E | Refresh failed, prior value kept | soft failure row above | Soft banner; keep data |
+| F | Successful empty collection | success, empty `data` | Empty state (not an error) |
 | G | Forbidden | Gate false; consumer not mounted | Hide or “no access” — not a node error toast |
 | H | Aborted generation | Should not surface as domain error | No error toast for abort (Recipe 02 / ADR-018 direction) |
 
@@ -536,8 +701,10 @@ Aligned with architecture 07 and the test strategy:
 | Plugin *and* Pinia both “owning” without a rule | Department default: Pinia + explicit runtime |
 | Sequential `setContext` for cascades | `runtime.transaction` |
 | Conditional `useNode` | Child component + `v-if` |
-| Full-page spinner on any node loading | Region-scoped status matrix |
-| Wipe table on refresh error | Soft error + keep data |
+| Full-page spinner on any node loading | Region-scoped status matrix / per-panel `isSuccess` |
+| Wipe table on refresh error | Soft error + keep data (`isError && isSuccess`) |
+| Page gated on `whenSettled()` | Per-panel `useNodes` → `isSuccess` |
+| Parallel `isReady` flag duplicating aggregates | Use `isSuccess` / `hasSuccessfulValue` |
 | Closed-over session in `load` | Scope context dependencies |
 | Root subscribe to keep cache forever | Release policy + intentional `retain()` |
 | Auth only in UI hide | Server enforce + scope dependencies |
@@ -566,9 +733,10 @@ Use for the bounded workflow chosen in the roadmap.
 
 - [ ] Writers vs consumers split; no foreign `setContext`.
 - [ ] Every graph-backed view implements status/freshness matrix (§7).
+- [ ] Multi-node panels use `useNodes` → `isSuccess` / `isLoading` / `isError` (Recipe 08); not page-level `whenSettled()` for visibility.
 - [ ] Gates for role-sensitive panels (child mount).
 - [ ] No mirrored node state in Pinia.
-- [ ] Explicit `{ runtime }` on all composables.
+- [ ] Explicit `{ runtime }` on all composables (`const { runtime } = useFeatureGraphStore()`).
 
 ### 14.4 Behaviour validation
 
@@ -697,11 +865,12 @@ See §6.1.
 When generating code for this department:
 
 1. Create or reuse a **Pinia graph store** with `markRaw(runtime)` and `onScopeDispose(() => runtime.dispose())`.
-2. Pass **`{ runtime: store.runtime }`** to every graph composable.
+2. Prefer **`const { runtime } = useOrdersGraphStore()`** (or the feature store) and pass **`{ runtime }`** to every graph composable — same pattern as the user guide Pinia section.
 3. Put cascades and shared mutations on **store actions**.
 4. Never mirror node snapshots into Pinia.
 5. Split **writer** vs **consumer**; update the **ownership table** for new context keys.
-6. Render using the **status/freshness matrix**; do not blank on every loading.
-7. Gate auth-sensitive panels with **child components**, not conditional `useNode`.
-8. Enforce access on the **server**; put scope in **context dependencies**.
-```
+6. **Single-node panel:** `useNode` → body when `hasSuccessfulValue`; skeleton when loading and not yet successful.
+7. **Multi-node panel:** `useNodes([...], { runtime })` → body when **`isSuccess`**; skeleton when **`isLoading && !isSuccess`**; soft error when **`isError && isSuccess`**; hard error when **`isError && !isSuccess`**.
+8. **Multi-panel page:** each panel has its own `useNode` / `useNodes` list; do **not** gate the page on `runtime.whenSettled()`.
+9. Gate auth-sensitive panels with **child components**, not conditional `useNode`.
+10. Enforce access on the **server**; put scope in **context dependencies**.
