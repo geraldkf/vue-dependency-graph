@@ -15,6 +15,7 @@ Use these maintained documents as the current sources of truth:
   - [Observability, devtools, and snapshots](./architecture/06-observability-devtools-and-snapshots.md)
   - [Vue and Pinia integration](./architecture/07-vue-and-pinia-integration.md)
 - [Architecture decision records](./decisions/)
+- [Recipes (research phase)](./recipes/) — short patterns for cascades, optimistic mutations, tenancy, stale UI, events, and release
 - [Test strategy](./testing/01-test-strategy.md)
 - [Roadmap](./ROADMAP.md)
 - [Playground](./PLAYGROUND.md)
