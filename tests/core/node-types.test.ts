@@ -3,25 +3,30 @@ import {
   defineDataNode,
   defineDerivedNode,
   defineEvent,
-  type EventInvalidationContext,
+  whenEvent,
   type EventPayload,
   type NodeValue,
 } from "../../src/core";
 
-const count = defineContextNode({ key: "count", initialValue: 1 });
-const label = defineContextNode({ key: "label", initialValue: "items" });
-const other = defineContextNode({ key: "other", initialValue: true });
+const currentProductId = defineContextNode({ key: "currentProductId", initialValue: "prod-1" });
+const currentCurrency = defineContextNode({ key: "currentCurrency", initialValue: "USD" });
+// Same value type (string) as currentProductId and currentCurrency, but a
+// distinct node - not declared as a dependency below. Proves `get` rejects
+// an undeclared node even when its value type is identical to a declared
+// one, since each node's key carries its own literal type.
+const otherProductId = defineContextNode({ key: "otherProductId", initialValue: "prod-2" });
 
-const data = defineDataNode({
-  key: "data",
-  dependencies: [count, label] as const,
+const productDetails = defineDataNode({
+  key: "productDetails",
+  dependencies: [currentProductId, currentCurrency],
   initialValue: "",
   load: async ({ get }) => {
-    const countValue: number = get(count);
-    const labelValue: string = get(label);
-    // @ts-expect-error other is not a declared dependency
-    get(other);
-    return `${labelValue}:${countValue}`;
+    const productId: string = get(currentProductId);
+    const currency: string = get(currentCurrency);
+    // @ts-expect-error otherProductId is not a declared dependency, even
+    // though it has the exact same value type as currentProductId
+    get(otherProductId);
+    return `${productId}:${currency}`;
   },
 });
 
@@ -29,16 +34,16 @@ const data = defineDataNode({
 // static NodeValue<> type check, not read as a runtime value.
 const _derived = defineDerivedNode({
   key: "derived",
-  dependencies: [count, data] as const,
+  dependencies: [currentProductId, productDetails],
   derive: ({ get }) => {
-    const countValue: number = get(count);
-    const dataValue: string = get(data);
-    return `${dataValue}:${countValue}`;
+    const productId: string = get(currentProductId);
+    const details: string = get(productDetails);
+    return `${details}:${productId}`;
   },
 });
 
-const contextValue: NodeValue<typeof count> = 1;
-const dataValue: NodeValue<typeof data> = "value";
+const contextValue: NodeValue<typeof currentProductId> = "prod-1";
+const dataValue: NodeValue<typeof productDetails> = "value";
 const derivedValue: NodeValue<typeof _derived> = "value";
 void [contextValue, dataValue, derivedValue];
 
@@ -49,67 +54,62 @@ void defineDataNode<number>({
   load: async () => "wrong",
 });
 
-void defineDerivedNode<number, readonly [typeof count]>({
+void defineDerivedNode<number, readonly [typeof currentProductId]>({
   key: "invalid-derived",
-  dependencies: [count] as const,
+  dependencies: [currentProductId],
   // @ts-expect-error explicit derived value type must match the derive result
   derive: () => "wrong",
 });
 
-const appointmentBooked = defineEvent<{
-  jobSeekerId: number;
-  appointmentId: number;
-}>("appointment.booked");
+const stockChanged = defineEvent<{
+  productId: string;
+  inStock: boolean;
+}>("stock.changed");
 
-type AppointmentBookedPayload = EventPayload<typeof appointmentBooked>;
-const appointmentPayload: AppointmentBookedPayload = {
-  jobSeekerId: 123,
-  appointmentId: 456,
+type StockChangedPayload = EventPayload<typeof stockChanged>;
+const stockPayload: StockChangedPayload = {
+  productId: "prod-1",
+  inStock: false,
 };
-void appointmentPayload;
+void stockPayload;
 
 const eventInvalidatedData = defineDataNode({
   key: "event-invalidated-data",
-  dependencies: [count] as const,
+  dependencies: [currentProductId],
   invalidatedBy: [
-    appointmentBooked,
-    {
-      event: appointmentBooked,
-      when: ({
-        payload,
-        get,
-      }: EventInvalidationContext<typeof appointmentBooked, readonly [typeof count]>) => {
-        const jobSeekerId: number = payload.jobSeekerId;
-        const currentCount: number = get(count);
-        // @ts-expect-error event predicates can read only declared dependencies
-        get(other);
-        return jobSeekerId === currentCount;
-      },
-    },
-  ] as const,
+    stockChanged,
+    whenEvent(stockChanged, [currentProductId], ({ payload, get }) => {
+      const inStock: boolean = payload.inStock;
+      const productId: string = get(currentProductId);
+      // @ts-expect-error whenEvent's get accepts only the dependencies
+      // passed as its second argument, not the node's full dependency list
+      get(otherProductId);
+      return payload.productId === productId && inStock;
+    }),
+  ],
   initialValue: "",
   load: async () => "value",
 });
 
 const eventInvalidatedDerived = defineDerivedNode({
   key: "event-invalidated-derived",
-  dependencies: [eventInvalidatedData] as const,
-  invalidatedBy: [appointmentBooked] as const,
+  dependencies: [eventInvalidatedData],
+  invalidatedBy: [stockChanged],
   derive: ({ get }) => get(eventInvalidatedData),
 });
 
 void [eventInvalidatedData, eventInvalidatedDerived];
 
-const invalidAppointmentPayload: AppointmentBookedPayload = {
+const invalidStockPayload: StockChangedPayload = {
+  productId: "prod-1",
   // @ts-expect-error event payload fields retain their declared types
-  jobSeekerId: "invalid",
-  appointmentId: 456,
+  inStock: "invalid",
 };
-void invalidAppointmentPayload;
+void invalidStockPayload;
 
 defineContextNode({
   key: "invalid-event-context",
   initialValue: 1,
   // @ts-expect-error context nodes do not support event invalidation declarations
-  invalidatedBy: [appointmentBooked],
+  invalidatedBy: [stockChanged],
 });

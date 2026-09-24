@@ -8,7 +8,7 @@ import {
   defineEvent,
   defineMutation,
   refreshInterval,
-  type EventInvalidationContext,
+  whenEvent,
   type GraphRuntime,
   type InMemoryGraphDiagnostics,
   type NodeSubscription,
@@ -41,18 +41,11 @@ export const createDevtoolsPlaygroundScenario = (): DevtoolsPlaygroundScenario =
 
   const Appointments = defineDataNode({
     key: "devtools-playground.appointments",
-    dependencies: [UserId] as const,
+    dependencies: [UserId],
     initialValue: emptyAppointments,
     invalidatedBy: [
-      {
-        event: AppointmentBooked,
-        when: ({
-          payload,
-          get,
-        }: EventInvalidationContext<typeof AppointmentBooked, readonly [typeof UserId]>) =>
-          payload.userId === get(UserId),
-      },
-    ] as const,
+      whenEvent(AppointmentBooked, [UserId], ({ payload, get }) => payload.userId === get(UserId)),
+    ],
     load: async ({ get }) => {
       if (failNext) {
         failNext = false;

@@ -42,6 +42,8 @@ const FeaturedReview = defineDerivedNode({
 
 Context nodes hold mutable graph inputs. Data nodes perform asynchronous work. Derived nodes calculate synchronously from successful dependencies.
 
+Each node's `key` carries its own literal type (inferred automatically, no `as const` needed) rather than widening to `string`. This is what makes two nodes of identical shape - two `string`-valued context nodes, say - distinct types: `get(...)` inside `load`, `derive`, or a `whenEvent` predicate rejects any node that isn't a declared dependency, even one with an identical value type.
+
 ## Create a graph and runtime
 
 ```ts
@@ -296,7 +298,27 @@ runtime.publish(StockChanged, {
 });
 ```
 
-Data and derived nodes may declare unconditional or conditional `invalidatedBy` entries. Conditional predicates receive the typed `payload` and a `get(...)` function restricted to the node's declared dependencies. Events published through `transaction.publish(...)` are staged in call order. Successful commit evaluates predicates against final staged context values and applies one combined context/event invalidation commit. Rollback discards staged publications.
+Data and derived nodes may declare unconditional or conditional `invalidatedBy` entries. A bare event definition is unconditional - it invalidates on every publication. A conditional entry, built with `whenEvent(event, dependencies, when)`, invalidates only when `when` returns `true`; `dependencies` is the (possibly empty) subset of the node's own dependencies that `when` needs to read, and is what gives `payload` and `get` full inference with no explicit annotation, and gives `get` the same "declared dependencies only" restriction `load`/`derive` already have.
+
+```ts
+import { whenEvent } from "vue-dependency-graph/core";
+
+const Inventory = defineDataNode({
+  key: "inventory",
+  dependencies: [CurrentProductId],
+  initialValue: undefined as StockLevel | undefined,
+  invalidatedBy: [
+    whenEvent(
+      StockChanged,
+      [CurrentProductId],
+      ({ payload, get }) => payload.productId === get(CurrentProductId),
+    ),
+  ],
+  load: ({ get, signal }) => api.getInventory(get(CurrentProductId), signal),
+});
+```
+
+Events published through `transaction.publish(...)` are staged in call order. Successful commit evaluates predicates against final staged context values and applies one combined context/event invalidation commit. Rollback discards staged publications.
 
 Publication invalidates matched nodes synchronously and schedules subscribed stale work through the existing scheduler. It is silent when no declaration matches. Predicate evaluation completes before mutation, so a predicate failure applies no partial event invalidation. Plain `runtime.publish(...)` is always immediate, even while another transaction is open. Only `transaction.publish(...)` is staged and follows its owning transaction session outcome. Observer notification and automatic scheduling for these plain runtime operations are also immediate and are not held behind the unrelated transaction.
 
@@ -577,7 +599,10 @@ await runtime.mutate(AddToCart, input, {
   optimistic: (effects, originalInput) => {
     effects.update(Cart, (current) => ({
       ...current,
-      items: [...current.items, { productId: originalInput.productId, quantity: originalInput.quantity }],
+      items: [
+        ...current.items,
+        { productId: originalInput.productId, quantity: originalInput.quantity },
+      ],
     }));
   },
   onSuccess: (effects, saved) => {
@@ -870,8 +895,7 @@ Entry point: `vue-dependency-graph/core`.
 - `releaseAfter`
 - `retain`
 - `staleAfter`
-
-#### Types
+- `whenEvent`
 
 - `AnyEventDefinition`
 - `AnyNodeDefinition`

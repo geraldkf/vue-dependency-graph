@@ -18,13 +18,14 @@ Data and derived nodes may declare unconditional or conditional invalidation:
 ```ts
 const CapabilityStatus = defineDataNode({
   key: "capabilityStatus",
-  dependencies: [JobSeekerId] as const,
+  dependencies: [JobSeekerId],
   initialValue: undefined as Status | undefined,
   invalidatedBy: [
-    {
-      event: AppointmentBooked,
-      when: ({ payload, get }) => payload.jobSeekerId === get(JobSeekerId),
-    },
+    whenEvent(
+      AppointmentBooked,
+      [JobSeekerId],
+      ({ payload, get }) => payload.jobSeekerId === get(JobSeekerId),
+    ),
   ],
   load: ({ get, signal }) => api.getCapabilityStatus(get(JobSeekerId), signal),
 });
@@ -34,7 +35,7 @@ const CapabilityStatus = defineDataNode({
 
 Graph creation validates event declaration shape, event keys, duplicate declarations, and node-kind restrictions. It builds an immutable graph-local candidate index keyed by event key. Candidate order follows graph registration order.
 
-A conditional predicate receives the typed payload and a `get(...)` function restricted to the node's declared dependencies. Predicates are synchronous and side-effect free.
+A conditional predicate, built with `whenEvent(event, dependencies, when)`, receives the typed payload and a `get(...)` function restricted to `dependencies` - the (possibly partial) subset of the node's own dependencies the predicate actually reads. Passing `dependencies` explicitly, rather than writing the predicate inline, is what gives `payload` and `get` full type inference with no annotation required. Predicates are synchronous and side-effect free.
 
 All predicates are evaluated before graph mutation. If one throws or attempts an invalid dependency read, publication applies no partial event invalidation.
 

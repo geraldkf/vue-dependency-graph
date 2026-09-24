@@ -31,8 +31,9 @@ export interface NodeDefinition<
   TValue,
   TKind extends NodeKind = NodeKind,
   TDependencies extends readonly AnyNodeDefinition[] = readonly AnyNodeDefinition[],
+  TKey extends string = string,
 > {
-  readonly key: string;
+  readonly key: TKey;
   readonly kind: TKind;
   readonly dependencies: TDependencies;
   readonly diagnostics?: NodeDiagnosticsOptions<TValue>;
@@ -116,10 +117,11 @@ export interface DeriveContext<TDependencies extends DependencyList> {
 }
 
 /** The definition returned by {@link defineContextNode}. */
-export interface ContextNodeDefinition<TValue> extends NodeDefinition<
+export interface ContextNodeDefinition<TValue, TKey extends string = string> extends NodeDefinition<
   TValue,
   "context",
-  readonly []
+  readonly [],
+  TKey
 > {
   readonly initialValue: TValue;
 }
@@ -136,33 +138,12 @@ export interface EventInvalidationContext<
 }
 
 /**
- * A conditional entry in `invalidatedBy`: the node only invalidates for
- * publications of `event` where `when` returns `true`. Compare a value on
- * `payload` against a dependency read via `get` to invalidate only the one
- * matching instance - e.g. only the order whose id matches this node's own.
- *
- * @example
- * ```ts
- * import { defineContextNode, defineDataNode, defineEvent } from "vue-dependency-graph/core";
- *
- * const orderStatusChanged = defineEvent<{ orderId: string; status: string }>(
- *   "order-status-changed",
- * );
- * const currentOrderId = defineContextNode({ key: "currentOrderId", initialValue: "" });
- *
- * const order = defineDataNode({
- *   key: "order",
- *   dependencies: [currentOrderId],
- *   initialValue: null,
- *   invalidatedBy: [
- *     {
- *       event: orderStatusChanged,
- *       when: ({ payload, get }) => payload.orderId === get(currentOrderId),
- *     },
- *   ],
- *   load: async ({ get }) => fetch(`/api/orders/${get(currentOrderId)}`).then((r) => r.json()),
- * });
- * ```
+ * A conditional entry in `invalidatedBy`, produced by {@link whenEvent}: the
+ * node only invalidates for publications of `event` where `when` returns
+ * `true`. Compare a value on `payload` against a dependency read via `get`
+ * to invalidate only the one matching instance - e.g. only the order whose
+ * id matches this node's own. You won't normally construct this directly -
+ * use {@link whenEvent}, which infers `payload` and `get`'s types for you.
  */
 export interface ConditionalEventInvalidation<
   TEvent extends AnyEventDefinition,
@@ -187,7 +168,8 @@ export interface DataNodeDefinition<
   TValue,
   TDependencies extends DependencyList,
   TInvalidatedBy extends EventInvalidationList<TDependencies> = readonly [],
-> extends NodeDefinition<TValue, "data", TDependencies> {
+  TKey extends string = string,
+> extends NodeDefinition<TValue, "data", TDependencies, TKey> {
   readonly initialValue: TValue;
   readonly invalidatedBy: TInvalidatedBy;
   readonly refresh: RefreshPolicy<TValue> | undefined;
@@ -200,19 +182,20 @@ export interface DerivedNodeDefinition<
   TValue,
   TDependencies extends DependencyList,
   TInvalidatedBy extends EventInvalidationList<TDependencies> = readonly [],
-> extends NodeDefinition<TValue, "derived", TDependencies> {
+  TKey extends string = string,
+> extends NodeDefinition<TValue, "derived", TDependencies, TKey> {
   readonly invalidatedBy: TInvalidatedBy;
   readonly derive: (context: DeriveContext<TDependencies>) => TValue;
 }
 
 /** Options for {@link defineContextNode}. */
-export interface ContextNodeOptions<TValue> {
+export interface ContextNodeOptions<TValue, TKey extends string = string> {
   /**
    * Unique identifier for this node within a graph. Used in diagnostics,
    * error messages, and to look the node up by key
    * ({@link Graph.getNode}).
    */
-  readonly key: string;
+  readonly key: TKey;
   /** The node's value before {@link GraphRuntime.setContext} is ever called. */
   readonly initialValue: TValue;
   /** Controls whether this node's value is captured in diagnostic events. */
@@ -224,13 +207,16 @@ export interface DataNodeOptions<
   TValue,
   TDependencies extends DependencyList = readonly [],
   TInvalidatedBy extends EventInvalidationList<TDependencies> = readonly [],
+  TKey extends string = string,
 > {
   /**
    * Unique identifier for this node within a graph. Used in diagnostics,
    * error messages, and to look the node up by key
-   * ({@link Graph.getNode}).
+   * ({@link Graph.getNode}). Each node's key has its own literal type,
+   * which is what lets `get` reject a node that isn't a declared
+   * dependency even when another node has an identical value type.
    */
-  readonly key: string;
+  readonly key: TKey;
   /**
    * The nodes this node reads via `load`'s `get`. Either a plain array, or
    * a function returning one - use a function to declare a forward
@@ -240,9 +226,10 @@ export interface DataNodeOptions<
   /**
    * Events ({@link defineEvent}) that refetch this node when published,
    * instead of - or alongside - a `refresh` policy. Each entry is either
-   * an event definition, or `{ event, when }` to invalidate only for
-   * payloads matching `when` (e.g. an order-status event, invalidated
-   * only when the payload's `orderId` matches this node's own).
+   * an event definition (invalidate on every publication), or a
+   * {@link whenEvent} entry to invalidate only for payloads matching a
+   * predicate (e.g. an order-status event, invalidated only when the
+   * payload's `orderId` matches this node's own).
    */
   readonly invalidatedBy?: TInvalidatedBy;
   /**
@@ -277,13 +264,16 @@ export interface DerivedNodeOptions<
   TValue,
   TDependencies extends DependencyList,
   TInvalidatedBy extends EventInvalidationList<TDependencies> = readonly [],
+  TKey extends string = string,
 > {
   /**
    * Unique identifier for this node within a graph. Used in diagnostics,
    * error messages, and to look the node up by key
-   * ({@link Graph.getNode}).
+   * ({@link Graph.getNode}). Each node's key has its own literal type,
+   * which is what lets `get` reject a node that isn't a declared
+   * dependency even when another node has an identical value type.
    */
-  readonly key: string;
+  readonly key: TKey;
   /**
    * The nodes this node reads via `derive`'s `get`. Either a plain array,
    * or a function returning one - use a function to declare a forward
@@ -294,8 +284,9 @@ export interface DerivedNodeOptions<
   /**
    * Events ({@link defineEvent}) that recompute this node when published,
    * in addition to recomputing whenever a dependency changes. Each entry
-   * is either an event definition, or `{ event, when }` to recompute only
-   * for payloads matching `when`.
+   * is either an event definition (recompute on every publication), or a
+   * {@link whenEvent} entry to recompute only for payloads matching a
+   * predicate.
    */
   readonly invalidatedBy?: TInvalidatedBy;
   /** Controls whether this node's value is captured in diagnostic events. */

@@ -238,21 +238,18 @@ export const StockChanged = defineEvent<{
 
 ```ts
 // graph/nodes.ts (product module - never imports the warehouse module)
-import type { EventInvalidationContext } from "vue-dependency-graph/core";
+import { whenEvent } from "vue-dependency-graph/core";
 
 export const Inventory = defineDataNode({
   key: "inventory",
   dependencies: [CurrentProductId],
   initialValue: null,
   invalidatedBy: [
-    {
-      event: StockChanged,
-      when: ({
-        payload,
-        get,
-      }: EventInvalidationContext<typeof StockChanged, readonly [typeof CurrentProductId]>) =>
-        payload.productId === get(CurrentProductId),
-    },
+    whenEvent(
+      StockChanged,
+      [CurrentProductId],
+      ({ payload, get }) => payload.productId === get(CurrentProductId),
+    ),
   ],
   load: ({ get }) => api.getInventory(get(CurrentProductId)),
 });
@@ -265,7 +262,7 @@ runtime.publish(StockChanged, { productId, inStock });
 
 The predicate (`when`) is synchronous and side-effect free, and is checked against committed dependency values, not against the event payload alone - here, only a stock update for the _currently viewed_ product invalidates `Inventory`. A publication that matches nothing is silent; there's no error for "nobody was listening."
 
-Note the explicit `EventInvalidationContext<...>` annotation on `when`'s parameters - TypeScript can't reliably infer `payload`'s and `get`'s types from context here, so leaving it off produces confusing type errors elsewhere in the object rather than a clear one on the callback itself. Every `when` predicate in this codebase (and its own tests) types it explicitly for exactly this reason.
+`whenEvent`'s second argument is the exact set of dependencies `when` needs to read - it doesn't have to be the node's entire `dependencies` list, just the ones the predicate actually uses. Passing it explicitly (rather than writing `{ event, when }` inline) is what lets `payload` and `get` be fully typed with no annotation, and lets `get` reject a node that isn't in that list - the same guarantee `load` and `derive` already give you.
 
 This is in-memory, single-runtime delivery only - it does not cross tabs, does not hit a server, and doesn't guarantee replay. If you need server-driven invalidation (e.g. a websocket push from the warehouse system), have your transport layer validate the incoming message and call `runtime.publish(...)` itself.
 

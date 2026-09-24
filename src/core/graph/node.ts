@@ -1,7 +1,9 @@
 import { GraphValidationError } from "./errors";
 import { assertValidRefreshPolicy } from "../refresh-policies/policy";
 import { assertValidReleasePolicy } from "../release-policies/policy";
+import type { AnyEventDefinition } from "../events/types";
 import type {
+  ConditionalEventInvalidation,
   ContextNodeDefinition,
   ContextNodeOptions,
   DataNodeDefinition,
@@ -10,6 +12,7 @@ import type {
   DependencySource,
   DerivedNodeDefinition,
   DerivedNodeOptions,
+  EventInvalidationContext,
   EventInvalidationList,
 } from "./types";
 
@@ -61,6 +64,50 @@ const freezeInvalidatedBy = <TInvalidatedBy extends readonly unknown[]>(
 ): TInvalidatedBy => Object.freeze([...(invalidatedBy ?? [])]) as unknown as TInvalidatedBy;
 
 /**
+ * Builds a conditional `invalidatedBy` entry: the node only invalidates for
+ * publications of `event` where `when` returns `true`. Pass the exact
+ * dependencies `when` needs to read as `dependencies` - this is what lets
+ * `payload` and `get` be fully typed with no explicit annotation, and
+ * lets `get` reject a node that isn't in that list, the same way it would
+ * inside `load` or `derive`.
+ *
+ * `dependencies` here doesn't have to be the node's entire `dependencies`
+ * list - just whichever of them (if any) `when` actually needs to read.
+ *
+ * @example
+ * ```ts
+ * import { defineContextNode, defineDataNode, defineEvent, whenEvent } from "vue-dependency-graph/core";
+ *
+ * const currentOrderId = defineContextNode({ key: "currentOrderId", initialValue: "" });
+ * const orderStatusChanged = defineEvent<{ orderId: string; status: string }>(
+ *   "order-status-changed",
+ * );
+ *
+ * const order = defineDataNode({
+ *   key: "order",
+ *   dependencies: [currentOrderId],
+ *   initialValue: null,
+ *   invalidatedBy: [
+ *     whenEvent(orderStatusChanged, [currentOrderId], ({ payload, get }) =>
+ *       payload.orderId === get(currentOrderId),
+ *     ),
+ *   ],
+ *   load: async ({ get }) => fetch(`/api/orders/${get(currentOrderId)}`).then((r) => r.json()),
+ * });
+ * ```
+ *
+ * @see {@link defineDataNode}'s `invalidatedBy` option.
+ */
+export const whenEvent = <
+  TEvent extends AnyEventDefinition,
+  const TDependencies extends DependencyList,
+>(
+  event: TEvent,
+  dependencies: TDependencies,
+  when: (context: EventInvalidationContext<TEvent, TDependencies>) => boolean,
+): ConditionalEventInvalidation<TEvent, TDependencies> => Object.freeze({ event, when });
+
+/**
  * Defines a **context node** — a graph root whose value is supplied by the
  * application, not fetched or computed. Context nodes hold things like the
  * signed-in user, the currently selected product, or the active currency:
@@ -94,9 +141,9 @@ const freezeInvalidatedBy = <TInvalidatedBy extends readonly unknown[]>(
  * @see {@link defineDataNode} for nodes that fetch data derived from a context.
  * @see {@link GraphRuntime.setContext} for how a context node's value changes.
  */
-export const defineContextNode = <TValue>(
-  options: ContextNodeOptions<TValue>,
-): ContextNodeDefinition<TValue> => {
+export const defineContextNode = <TValue, const TKey extends string = string>(
+  options: ContextNodeOptions<TValue, TKey>,
+): ContextNodeDefinition<TValue, TKey> => {
   validateKey(options.key);
 
   return Object.freeze({
@@ -164,11 +211,12 @@ export const defineContextNode = <TValue>(
  */
 export const defineDataNode = <
   TValue,
+  const TKey extends string = string,
   const TDependencies extends DependencyList = readonly [],
   const TInvalidatedBy extends EventInvalidationList<TDependencies> = readonly [],
 >(
-  options: DataNodeOptions<TValue, TDependencies, TInvalidatedBy>,
-): DataNodeDefinition<TValue, TDependencies, TInvalidatedBy> => {
+  options: DataNodeOptions<TValue, TDependencies, TInvalidatedBy, TKey>,
+): DataNodeDefinition<TValue, TDependencies, TInvalidatedBy, TKey> => {
   validateKey(options.key);
 
   const invalidatedBy = freezeInvalidatedBy(options.invalidatedBy);
@@ -242,10 +290,11 @@ export const defineDataNode = <
 export const defineDerivedNode = <
   TValue,
   const TDependencies extends DependencyList,
+  const TKey extends string = string,
   const TInvalidatedBy extends EventInvalidationList<TDependencies> = readonly [],
 >(
-  options: DerivedNodeOptions<TValue, TDependencies, TInvalidatedBy>,
-): DerivedNodeDefinition<TValue, TDependencies, TInvalidatedBy> => {
+  options: DerivedNodeOptions<TValue, TDependencies, TInvalidatedBy, TKey>,
+): DerivedNodeDefinition<TValue, TDependencies, TInvalidatedBy, TKey> => {
   validateKey(options.key);
 
   const invalidatedBy = freezeInvalidatedBy(options.invalidatedBy);

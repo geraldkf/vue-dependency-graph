@@ -69,7 +69,7 @@ export type {
 export type { AnyEventDefinition, EventDefinition, EventPayload } from "./events/types";
 export { createGraph } from "./graph/graph";
 export type { CreateGraphOptions } from "./graph/graph";
-export { defineContextNode, defineDataNode, defineDerivedNode } from "./graph/node";
+export { defineContextNode, defineDataNode, defineDerivedNode, whenEvent } from "./graph/node";
 export { createGraphRuntime } from "./runtime";
 export type { GraphRuntime, GraphRuntimeOptions } from "./runtime";
 export type {

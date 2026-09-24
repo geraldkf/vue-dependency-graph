@@ -1,5 +1,5 @@
 import { ref } from "vue";
-import { defineContextNode, defineDataNode, type EventInvalidationContext } from "../../core";
+import { defineContextNode, defineDataNode, whenEvent } from "../../core";
 import { appointmentBooked, unrelatedAppointmentChanged } from "./appointments-domain";
 
 export const capabilityJobSeekerId = defineContextNode({
@@ -18,19 +18,14 @@ export const capabilityStatusLoader = {
 
 export const capabilityInterviewStatus = defineDataNode({
   key: "typed-events.capability-status",
-  dependencies: [capabilityJobSeekerId] as const,
+  dependencies: [capabilityJobSeekerId],
   invalidatedBy: [
-    {
-      event: appointmentBooked,
-      when: ({
-        payload,
-        get,
-      }: EventInvalidationContext<
-        typeof appointmentBooked,
-        readonly [typeof capabilityJobSeekerId]
-      >) => payload.jobSeekerId === get(capabilityJobSeekerId),
-    },
-  ] as const,
+    whenEvent(
+      appointmentBooked,
+      [capabilityJobSeekerId],
+      ({ payload, get }) => payload.jobSeekerId === get(capabilityJobSeekerId),
+    ),
+  ],
   initialValue: "Not loaded",
   load: async ({ get }) => {
     capabilityStatusLoader.requestCount.value += 1;

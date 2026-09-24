@@ -17,7 +17,7 @@ import type { EventDefinition } from "./types";
  *
  * @example
  * ```ts
- * import { defineContextNode, defineDataNode, defineEvent } from "vue-dependency-graph/core";
+ * import { defineContextNode, defineDataNode, defineEvent, whenEvent } from "vue-dependency-graph/core";
  *
  * const stockChanged = defineEvent<{ productId: string; inStock: boolean }>(
  *   "stock-changed",
@@ -33,10 +33,9 @@ import type { EventDefinition } from "./types";
  *   dependencies: [currentProductId],
  *   initialValue: null,
  *   invalidatedBy: [
- *     {
- *       event: stockChanged,
- *       when: ({ payload, get }) => payload.productId === get(currentProductId),
- *     },
+ *     whenEvent(stockChanged, [currentProductId], ({ payload, get }) =>
+ *       payload.productId === get(currentProductId),
+ *     ),
  *   ],
  *   load: async ({ get }) =>
  *     fetch(`/api/inventory/${get(currentProductId)}`).then((r) => r.json()),
@@ -47,8 +46,7 @@ import type { EventDefinition } from "./types";
  * ```
  *
  * @see {@link defineDataNode}'s `invalidatedBy` option, and
- * {@link ConditionalEventInvalidation} for the `{ event, when }` form used
- * above.
+ * {@link whenEvent} for building a conditional entry.
  * @see {@link GraphRuntime.publish} for triggering an event.
  */
 export const defineEvent = <TPayload>(key: string): EventDefinition<TPayload> => {
