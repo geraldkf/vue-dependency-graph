@@ -29,22 +29,21 @@ import { useOrdersGraphStore } from "@/stores/orders-graph";
 
 const { runtime } = useOrdersGraphStore();
 
-const { results, isSuccess, isLoading, isError, errors } = useNodes(
-  [Orders, OrderMetrics],
-  { runtime },
-);
+const { results, isSuccess, isLoading, isError, errors } = useNodes([Orders, OrderMetrics], {
+  runtime,
+});
 
 const showBlocker = computed(() => isLoading.value && !isSuccess.value);
 const showHardError = computed(() => isError.value && !isSuccess.value);
 const showSoftError = computed(() => isError.value && isSuccess.value);
 ```
 
-| UI | Condition |
-|----|-----------|
-| Skeleton | `isLoading && !isSuccess` |
-| Body | `isSuccess` |
-| Soft banner | `isError && isSuccess` |
-| Hard error | `isError && !isSuccess` |
+| UI          | Condition                 |
+| ----------- | ------------------------- |
+| Skeleton    | `isLoading && !isSuccess` |
+| Body        | `isSuccess`               |
+| Soft banner | `isError && isSuccess`    |
+| Hard error  | `isError && !isSuccess`   |
 
 ## Multi-panel page
 

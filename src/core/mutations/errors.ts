@@ -2,6 +2,49 @@ const normalizeNodeKeys = (nodeKeys: readonly string[]): readonly string[] =>
   Object.freeze([...new Set(nodeKeys)].sort());
 
 /**
+ * Discriminant for {@link GraphMutationError.code} - one value per concrete
+ * subclass, letting you `switch` on a caught error's cause instead of
+ * chaining `instanceof` checks against every subclass by hand.
+ */
+export type GraphMutationErrorCode =
+  "STATE" | "CONFLICT" | "OUTCOME_UNKNOWN" | "RECONCILIATION" | "ROLLBACK_CONFLICT";
+
+/**
+ * The common base of every error {@link GraphRuntime.mutate} can reject
+ * with. Catch this when you just need to know "did the mutation fail",
+ * without caring which of the five specific ways it failed:
+ *
+ * ```ts
+ * try {
+ *   await runtime.mutate(AddToCart, input);
+ * } catch (error) {
+ *   if (error instanceof GraphMutationError) {
+ *     reportMutationFailure(error.code, error);
+ *   } else {
+ *     throw error;
+ *   }
+ * }
+ * ```
+ *
+ * To handle a specific failure differently, narrow further with
+ * `instanceof` on the concrete subclass ({@link GraphMutationStateError},
+ * {@link GraphMutationConflictError},
+ * {@link GraphMutationOutcomeUnknownError},
+ * {@link GraphMutationReconciliationError}, or
+ * {@link GraphMutationRollbackConflictError}) or `switch` on `code` - both
+ * narrow TypeScript's view of the error the same way.
+ */
+export abstract class GraphMutationError extends Error {
+  protected constructor(
+    public readonly code: GraphMutationErrorCode,
+    message: string,
+    options?: ErrorOptions,
+  ) {
+    super(message, options);
+  }
+}
+
+/**
  * Thrown when a mutation's `optimistic` or `onSuccess` callback misuses
  * {@link MutationUpdateEffects.update} - for example, calling `update` on
  * a node that isn't a data node, updating the same node twice in one
@@ -11,11 +54,11 @@ const normalizeNodeKeys = (nodeKeys: readonly string[]): readonly string[] =>
  * condition - fix the `optimistic`/`onSuccess` callback rather than
  * catching this.
  */
-export class GraphMutationStateError extends Error {
+export class GraphMutationStateError extends GraphMutationError {
   public readonly nodeKey: string;
 
   public constructor(nodeKey: string, message: string) {
-    super(message);
+    super("STATE", message);
     this.name = "GraphMutationStateError";
     this.nodeKey = nodeKey;
   }
@@ -30,12 +73,12 @@ export class GraphMutationStateError extends Error {
  * disable the control while a mutation on the same node is in flight,
  * rather than catching this after the fact.
  */
-export class GraphMutationConflictError extends Error {
+export class GraphMutationConflictError extends GraphMutationError {
   public readonly nodeKeys: readonly string[];
 
   public constructor(nodeKeys: readonly string[]) {
     const sortedKeys = normalizeNodeKeys(nodeKeys);
-    super(`Optimistic mutation conflicts with active nodes: ${sortedKeys.join(", ")}.`);
+    super("CONFLICT", `Optimistic mutation conflicts with active nodes: ${sortedKeys.join(", ")}.`);
     this.name = "GraphMutationConflictError";
     this.nodeKeys = sortedKeys;
   }
@@ -54,12 +97,14 @@ export class GraphMutationConflictError extends Error {
  *
  * `cause` holds the original error thrown by `execute`.
  */
-export class GraphMutationOutcomeUnknownError extends Error {
+export class GraphMutationOutcomeUnknownError extends GraphMutationError {
   public readonly nodeKeys: readonly string[];
 
   public constructor(nodeKeys: readonly string[], cause: unknown) {
     const sortedKeys = normalizeNodeKeys(nodeKeys);
-    super(`Mutation outcome is unknown for nodes: ${sortedKeys.join(", ")}.`, { cause });
+    super("OUTCOME_UNKNOWN", `Mutation outcome is unknown for nodes: ${sortedKeys.join(", ")}.`, {
+      cause,
+    });
     this.name = "GraphMutationOutcomeUnknownError";
     this.nodeKeys = sortedKeys;
   }
@@ -77,7 +122,7 @@ export class GraphMutationOutcomeUnknownError extends Error {
  *
  * `cause` holds the error thrown by `onSuccess`.
  */
-export class GraphMutationReconciliationError extends Error {
+export class GraphMutationReconciliationError extends GraphMutationError {
   public readonly mutationKey: string;
   public readonly nodeKeys: readonly string[];
   public readonly remoteSucceeded = true as const;
@@ -85,6 +130,7 @@ export class GraphMutationReconciliationError extends Error {
   public constructor(mutationKey: string, nodeKeys: readonly string[], cause: unknown) {
     const sortedKeys = normalizeNodeKeys(nodeKeys);
     super(
+      "RECONCILIATION",
       `Mutation "${mutationKey}" succeeded remotely but local reconciliation failed for nodes: ${sortedKeys.join(", ")}.`,
       { cause },
     );
@@ -107,12 +153,13 @@ export class GraphMutationReconciliationError extends Error {
  *
  * `cause` holds the original mutation failure.
  */
-export class GraphMutationRollbackConflictError extends Error {
+export class GraphMutationRollbackConflictError extends GraphMutationError {
   public readonly nodeKeys: readonly string[];
 
   public constructor(nodeKeys: readonly string[], cause: unknown) {
     const sortedKeys = normalizeNodeKeys(nodeKeys);
     super(
+      "ROLLBACK_CONFLICT",
       `Optimistic rollback conflicts with newer graph state for nodes: ${sortedKeys.join(", ")}.`,
       { cause },
     );

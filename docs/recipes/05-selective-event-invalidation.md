@@ -11,7 +11,7 @@ Typical symptoms:
 
 - Every inventory tick reloads the entire product catalogue node.
 - Alert flood causes the whole ops dashboard graph to thrash.
-- Event handler that also mutates local state *and* invalidates the same fact twice.
+- Event handler that also mutates local state _and_ invalidates the same fact twice.
 
 ## Rule
 
@@ -46,8 +46,10 @@ const WarehouseStock = defineDataNode({
     return api.stock.list(id, { signal });
   },
   invalidatedBy: [
-    whenEvent(InventoryChanged, [WarehouseId], ({ payload, get }) =>
-      payload.warehouseId === get(WarehouseId),
+    whenEvent(
+      InventoryChanged,
+      [WarehouseId],
+      ({ payload, get }) => payload.warehouseId === get(WarehouseId),
     ),
   ],
 });
@@ -74,10 +76,10 @@ await runtime.transaction(async (tx) => {
 
 ## Prefer narrow nodes
 
-| Approach | When it hurts |
-|----------|----------------|
-| One `Catalogue` node invalidated by any SKU event | High-frequency ticks reload everything |
-| Per-warehouse or per-SKU nodes with selective predicates | More declarations, far less work |
+| Approach                                                 | When it hurts                          |
+| -------------------------------------------------------- | -------------------------------------- |
+| One `Catalogue` node invalidated by any SKU event        | High-frequency ticks reload everything |
+| Per-warehouse or per-SKU nodes with selective predicates | More declarations, far less work       |
 
 Start with the coarsest node that product needs; split when event volume makes cost visible (diagnostics help).
 
@@ -98,7 +100,7 @@ invalidatedBy: [whenEvent(InventoryChanged, [], () => true)],
 
 If a mutation already reconciled a node to server truth, a following event for the same fact should either:
 
-- be a no-op because the predicate does not fire, or  
+- be a no-op because the predicate does not fire, or
 - trigger a cheap refresh that converges to the same value.
 
 Avoid designing events that always force a full reload after every local success unless the server may have additional side effects you must see.

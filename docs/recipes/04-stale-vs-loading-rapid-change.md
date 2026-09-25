@@ -7,8 +7,8 @@
 
 Users thrash filters, dates, or tabs. The UI either:
 
-- fires a request storm, or  
-- blanks the screen on every keystroke/click, or  
+- fires a request storm, or
+- blanks the screen on every keystroke/click, or
 - shows a spinner forever while generations race.
 
 Typical symptoms:
@@ -25,12 +25,12 @@ Separate **execution status** from **freshness**. Let the graph keep the last su
 
 For a node state:
 
-| Field | Meaning |
-|-------|---------|
-| `status` | `idle` \| `loading` \| `success` \| `refreshing` \| `error` |
-| `freshness` | `fresh` \| `stale` |
-| `data` | Last value retained according to node rules |
-| `error` | Current error, if any |
+| Field       | Meaning                                                     |
+| ----------- | ----------------------------------------------------------- |
+| `status`    | `idle` \| `loading` \| `success` \| `refreshing` \| `error` |
+| `freshness` | `fresh` \| `stale`                                          |
+| `data`      | Last value retained according to node rules                 |
+| `error`     | Current error, if any                                       |
 
 A node can be `status: "loading"` or `"refreshing"` while still exposing previous `data` with `freshness: "stale"`. That is intentional (ADR-007).
 
@@ -40,13 +40,9 @@ A node can be `status: "loading"` or `"refreshing"` while still exposing previou
 const { data, status, freshness, error, hasSuccessfulValue } = useNode(Services);
 
 // Product choice example: keep showing stale rows with a quiet indicator
-const showStaleBanner = computed(
-  () => hasSuccessfulValue.value && freshness.value === "stale",
-);
+const showStaleBanner = computed(() => hasSuccessfulValue.value && freshness.value === "stale");
 
-const showBlockingSpinner = computed(
-  () => status.value === "loading" && !hasSuccessfulValue.value,
-);
+const showBlockingSpinner = computed(() => status.value === "loading" && !hasSuccessfulValue.value);
 ```
 
 Avoid:
@@ -106,7 +102,7 @@ watch(status, (s) => {
 - [ ] UI distinguishes first load (`!hasSuccessfulValue`) from refresh/stale.
 - [ ] Cascading context changes use one transaction.
 - [ ] Runtime concurrency limit is set if the API requires it.
-- [ ] High-frequency input is debounced *before* `setContext` / transactions.
+- [ ] High-frequency input is debounced _before_ `setContext` / transactions.
 - [ ] Aborted generations are not shown as user-facing failures.
 
 ## What this recipe does not own

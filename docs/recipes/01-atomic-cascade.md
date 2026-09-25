@@ -114,7 +114,7 @@ See ADR-005 for session ownership and composition rules.
 
 ## What this recipe does not own
 
-- Product policy for *which* dependents must clear (always vs only when incompatible).
+- Product policy for _which_ dependents must clear (always vs only when incompatible).
 - Whether to preserve `SelectedEnv` across org changes.
 - Multi-runtime coordination (each runtime has its own sessions).
 

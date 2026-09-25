@@ -41,13 +41,13 @@
 
 ### 1.3 Source of truth
 
-| Kind of state | Source of truth |
-|---------------|-----------------|
-| Node data, status, freshness, error, generations, subscriptions, scheduler | `GraphRuntime` |
-| Which runtime instance exists for this workflow | Pinia store |
-| Ephemeral UI (dialog open, local draft before submit) | Component or ordinary Pinia UI store |
-| Session token / transport headers | Existing auth/HTTP layer |
-| Row/field access on the server | API / policy engine |
+| Kind of state                                                              | Source of truth                      |
+| -------------------------------------------------------------------------- | ------------------------------------ |
+| Node data, status, freshness, error, generations, subscriptions, scheduler | `GraphRuntime`                       |
+| Which runtime instance exists for this workflow                            | Pinia store                          |
+| Ephemeral UI (dialog open, local draft before submit)                      | Component or ordinary Pinia UI store |
+| Session token / transport headers                                          | Existing auth/HTTP layer             |
+| Row/field access on the server                                             | API / policy engine                  |
 
 ---
 
@@ -82,11 +82,11 @@ Migration code should **always pass explicit `runtime`** so behaviour does not d
 
 ### 2.3 One runtime per coherent workflow
 
-| Scope | Recommendation |
-|-------|----------------|
-| One product workflow (e.g. orders console) | One graph store, one runtime |
-| Entire SPA with unrelated domains | Prefer separate stores/runtimes per domain, or one carefully namespaced graph — decide per migration; default to **one workflow = one runtime** for the trial |
-| One runtime per table row / widget | **Forbidden** — explodes subscriptions and timers |
+| Scope                                      | Recommendation                                                                                                                                                |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| One product workflow (e.g. orders console) | One graph store, one runtime                                                                                                                                  |
+| Entire SPA with unrelated domains          | Prefer separate stores/runtimes per domain, or one carefully namespaced graph — decide per migration; default to **one workflow = one runtime** for the trial |
+| One runtime per table row / widget         | **Forbidden** — explodes subscriptions and timers                                                                                                             |
 
 ### 2.4 `markRaw`
 
@@ -122,11 +122,11 @@ Mirrored state diverges on abort, refresh failure, optimistic rollback, and rele
 
 ### 2.6 Lifetime and dispose
 
-| Event | What happens |
-|-------|----------------|
-| Component unmount | Composable `onScopeDispose` → unsubscribe only |
-| Store `$dispose` / Pinia `disposePinia` | Runtime `dispose()` → stop refresh/release timers, drop runtime resources |
-| User navigates away from feature but store kept | Runtime stays; inactive views should unmount so subscriptions drop |
+| Event                                           | What happens                                                              |
+| ----------------------------------------------- | ------------------------------------------------------------------------- |
+| Component unmount                               | Composable `onScopeDispose` → unsubscribe only                            |
+| Store `$dispose` / Pinia `disposePinia`         | Runtime `dispose()` → stop refresh/release timers, drop runtime resources |
+| User navigates away from feature but store kept | Runtime stays; inactive views should unmount so subscriptions drop        |
 
 Who disposes Pinia is an **application shell** decision. Document it once for the host app (playground uses `app.onUnmount(() => disposePinia(pinia))`). Feature stores should still `onScopeDispose(() => runtime.dispose())` when the store itself is disposed.
 
@@ -136,13 +136,13 @@ Who disposes Pinia is an **application shell** decision. Document it once for th
 
 ### 3.1 Role definitions
 
-| Role | Responsibility | Typical files |
-|------|----------------|---------------|
-| **Graph store** | Create graph + runtime; optional use-case actions; dispose runtime | `stores/orders-graph.ts` |
-| **Context writer** | Translate user intent into context changes / events / mutations that *start* from this UI | Filter bar, org switcher, wizard step, date picker |
-| **Data consumer** | Subscribe via composables; render data and status signals | Tables, detail panes, summary cards |
-| **Gate** | Decide whether a consumer subtree mounts (capabilities / feature flags) | Layout wrappers, admin sections |
-| **Presentational** | Props in, events out; no runtime | Pure row components, dumb badges |
+| Role               | Responsibility                                                                            | Typical files                                      |
+| ------------------ | ----------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| **Graph store**    | Create graph + runtime; optional use-case actions; dispose runtime                        | `stores/orders-graph.ts`                           |
+| **Context writer** | Translate user intent into context changes / events / mutations that _start_ from this UI | Filter bar, org switcher, wizard step, date picker |
+| **Data consumer**  | Subscribe via composables; render data and status signals                                 | Tables, detail panes, summary cards                |
+| **Gate**           | Decide whether a consumer subtree mounts (capabilities / feature flags)                   | Layout wrappers, admin sections                    |
+| **Presentational** | Props in, events out; no runtime                                                          | Pure row components, dumb badges                   |
 
 A single SFC may be writer + light consumer (e.g. filter bar that also shows a count). It must still obey **context ownership** for keys it writes.
 
@@ -150,29 +150,29 @@ A single SFC may be writer + light consumer (e.g. filter bar that also shows a c
 
 Before coding, list every context node the workflow uses:
 
-| Context key | Type (summary) | Owner (module/component) | Written when | Cleared / reset when |
-|-------------|----------------|--------------------------|--------------|----------------------|
-| `SelectedOrgId` | `string \| null` | `OrgSwitcher` / `ordersGraph.selectOrganisation` | User picks org | Logout (session handler) |
-| `SelectedTeamId` | `string \| null` | Team picker + org cascade owner | User picks team; **null on org change** | Org change, leave feature |
-| `SelectedOrderId` | `string \| null` | Order list selection | Row click | Org/team change, route leave |
-| `ViewerRole` | role union | Session bootstrap / auth bridge | Login, role switch | Logout |
+| Context key       | Type (summary)   | Owner (module/component)                         | Written when                            | Cleared / reset when         |
+| ----------------- | ---------------- | ------------------------------------------------ | --------------------------------------- | ---------------------------- |
+| `SelectedOrgId`   | `string \| null` | `OrgSwitcher` / `ordersGraph.selectOrganisation` | User picks org                          | Logout (session handler)     |
+| `SelectedTeamId`  | `string \| null` | Team picker + org cascade owner                  | User picks team; **null on org change** | Org change, leave feature    |
+| `SelectedOrderId` | `string \| null` | Order list selection                             | Row click                               | Org/team change, route leave |
+| `ViewerRole`      | role union       | Session bootstrap / auth bridge                  | Login, role switch                      | Logout                       |
 
 **Rules**
 
-1. Each key has **one owner family**. Other components may *request* a change only by calling the owner’s API (store action or injected writer composable).
+1. Each key has **one owner family**. Other components may _request_ a change only by calling the owner’s API (store action or injected writer composable).
 2. Parent changes that invalidate children use **one transaction** (Recipe 01).
 3. New context keys in a PR must update this table (or the feature’s copy of it).
 
 ### 3.3 Who may call what
 
-| API | Store | Writer | Consumer | Gate |
-|-----|-------|--------|----------|------|
-| `createGraph` / `createGraphRuntime` | yes | no | no | no |
-| `runtime.transaction` / `setContext` | yes (actions) | yes (owned keys) | no (foreign keys) | no |
-| `runtime.mutate` | yes (actions) | yes | sometimes (row actions — prefer store action) | no |
-| `runtime.publish` | yes | yes (documented events) | rare | no |
-| `useNode` / `useNodes` / `useQuery` | no (store is not a component setup) | optional | yes | no (child mounts instead) |
-| `runtime.dispose` | yes (on store dispose) | no | no | no |
+| API                                  | Store                               | Writer                  | Consumer                                      | Gate                      |
+| ------------------------------------ | ----------------------------------- | ----------------------- | --------------------------------------------- | ------------------------- |
+| `createGraph` / `createGraphRuntime` | yes                                 | no                      | no                                            | no                        |
+| `runtime.transaction` / `setContext` | yes (actions)                       | yes (owned keys)        | no (foreign keys)                             | no                        |
+| `runtime.mutate`                     | yes (actions)                       | yes                     | sometimes (row actions — prefer store action) | no                        |
+| `runtime.publish`                    | yes                                 | yes (documented events) | rare                                          | no                        |
+| `useNode` / `useNodes` / `useQuery`  | no (store is not a component setup) | optional                | yes                                           | no (child mounts instead) |
+| `runtime.dispose`                    | yes (on store dispose)              | no                      | no                                            | no                        |
 
 ---
 
@@ -183,11 +183,7 @@ Before coding, list every context node the workflow uses:
 ```ts
 import { defineStore } from "pinia";
 import { markRaw, onScopeDispose } from "vue";
-import {
-  createGraph,
-  createGraphRuntime,
-  type GraphRuntime,
-} from "vue-dependency-graph/core";
+import { createGraph, createGraphRuntime, type GraphRuntime } from "vue-dependency-graph/core";
 import { ordersGraphNodes } from "./orders-graph-nodes";
 
 export const useOrdersGraphStore = defineStore("ordersGraph", () => {
@@ -335,18 +331,10 @@ const { data, status, freshness, error, hasSuccessfulValue } = useNode(Orders, {
   runtime,
 });
 
-const showBlocker = computed(
-  () => status.value === "loading" && !hasSuccessfulValue.value,
-);
-const showStale = computed(
-  () => hasSuccessfulValue.value && freshness.value === "stale",
-);
-const showHardError = computed(
-  () => error.value != null && !hasSuccessfulValue.value,
-);
-const showSoftError = computed(
-  () => error.value != null && hasSuccessfulValue.value,
-);
+const showBlocker = computed(() => status.value === "loading" && !hasSuccessfulValue.value);
+const showStale = computed(() => hasSuccessfulValue.value && freshness.value === "stale");
+const showHardError = computed(() => error.value != null && !hasSuccessfulValue.value);
+const showSoftError = computed(() => error.value != null && hasSuccessfulValue.value);
 </script>
 
 <template>
@@ -375,25 +363,25 @@ Several components may `useNode` / `useNodes` the same definitions with the same
 
 `useNodes` returns per-node `results` plus aggregates ([public API](../api/01-public-api.md)):
 
-| Flag | Meaning |
-|------|---------|
-| `isSuccess` | **Every** listed node has `hasSuccessfulValue` |
+| Flag        | Meaning                                          |
+| ----------- | ------------------------------------------------ |
+| `isSuccess` | **Every** listed node has `hasSuccessfulValue`   |
 | `isLoading` | **Any** listed node is `loading` or `refreshing` |
-| `isError` | **Any** listed node has a non-null `error` |
-| `errors` | Those errors, in node list order |
+| `isError`   | **Any** listed node has a non-null `error`       |
+| `errors`    | Those errors, in node list order                 |
 
 `isSuccess` can be `true` at the same time as `isError` when a **refresh** fails after a prior success (prior data kept). That is intentional.
 
 **Department convention for multi-node UI**
 
-| Intent | Use |
-|--------|-----|
-| Panel/page body is usable | `isSuccess` |
-| First-load skeleton for that region | `isLoading && !isSuccess` |
-| Soft error (keep body) | `isError && isSuccess` |
-| Hard error (no usable set yet) | `isError && !isSuccess` |
-| Enter/leave “usable” side effects | `watch(isSuccess, …)` |
-| Whole runtime scheduler idle | `runtime.whenSettled()` — **not** for panel visibility |
+| Intent                              | Use                                                    |
+| ----------------------------------- | ------------------------------------------------------ |
+| Panel/page body is usable           | `isSuccess`                                            |
+| First-load skeleton for that region | `isLoading && !isSuccess`                              |
+| Soft error (keep body)              | `isError && isSuccess`                                 |
+| Hard error (no usable set yet)      | `isError && !isSuccess`                                |
+| Enter/leave “usable” side effects   | `watch(isSuccess, …)`                                  |
+| Whole runtime scheduler idle        | `runtime.whenSettled()` — **not** for panel visibility |
 
 In product language you may say “panel ready”; in code and agents prefer **`isSuccess`**. Do not invent a parallel `isReady` flag that duplicates it. Do not use `whenSettled()` to decide whether a panel shows its body.
 
@@ -408,10 +396,9 @@ import { useOrdersGraphStore } from "@/stores/orders-graph";
 
 const { runtime } = useOrdersGraphStore();
 
-const { results, isSuccess, isLoading, isError, errors } = useNodes(
-  [Orders, OrderMetrics],
-  { runtime },
-);
+const { results, isSuccess, isLoading, isError, errors } = useNodes([Orders, OrderMetrics], {
+  runtime,
+});
 
 const orders = computed(() => results[0].value);
 const metrics = computed(() => results[1].value);
@@ -470,10 +457,9 @@ import { useOrdersGraphStore } from "@/stores/orders-graph";
 
 const { runtime } = useOrdersGraphStore();
 
-const { results, isSuccess, isLoading, isError, errors } = useNodes(
-  [Orders, OrderMetrics],
-  { runtime },
-);
+const { results, isSuccess, isLoading, isError, errors } = useNodes([Orders, OrderMetrics], {
+  runtime,
+});
 
 const showBlocker = computed(() => isLoading.value && !isSuccess.value);
 const showHardError = computed(() => isError.value && !isSuccess.value);
@@ -502,12 +488,8 @@ const { data, status, error, hasSuccessfulValue } = useNode(OrderDetail, {
   runtime,
 });
 
-const showBlocker = computed(
-  () => status.value === "loading" && !hasSuccessfulValue.value,
-);
-const showHardError = computed(
-  () => error.value != null && !hasSuccessfulValue.value,
-);
+const showBlocker = computed(() => status.value === "loading" && !hasSuccessfulValue.value);
+const showHardError = computed(() => error.value != null && !hasSuccessfulValue.value);
 </script>
 
 <template>
@@ -561,23 +543,23 @@ The runtime separates **execution status** from **freshness** (ADR-007). UI must
 
 ### 7.0 Single node (`useNode`) vs multi-node (`useNodes`)
 
-| Situation | `useNode` signals | `useNodes` aggregates |
-|-----------|-------------------|------------------------|
-| First paint, no value yet | `status === "loading"`, `!hasSuccessfulValue` | `isLoading && !isSuccess` |
+| Situation                           | `useNode` signals                                  | `useNodes` aggregates               |
+| ----------------------------------- | -------------------------------------------------- | ----------------------------------- |
+| First paint, no value yet           | `status === "loading"`, `!hasSuccessfulValue`      | `isLoading && !isSuccess`           |
 | Has values, refresh / parent change | `hasSuccessfulValue`, often `stale` / `refreshing` | `isSuccess` (may still `isLoading`) |
-| Hard failure | `error` && `!hasSuccessfulValue` | `isError && !isSuccess` |
-| Soft failure | `error` && `hasSuccessfulValue` | `isError && isSuccess` |
+| Hard failure                        | `error` && `!hasSuccessfulValue`                   | `isError && !isSuccess`             |
+| Soft failure                        | `error` && `hasSuccessfulValue`                    | `isError && isSuccess`              |
 
-| # | Situation | Typical signals | UI treatment |
-|---|-----------|-----------------|--------------|
-| A | First paint, no value yet | see table above | Blocking skeleton for **that region** only |
-| B | Has value, reloading / parent changed | successful value(s) + loading/stale | **Keep showing data**; quiet updating indicator |
-| C | Current success | `success` + `fresh` (per node) | Normal |
-| D | Initial load failed | hard failure row above | Hard error + retry |
-| E | Refresh failed, prior value kept | soft failure row above | Soft banner; keep data |
-| F | Successful empty collection | success, empty `data` | Empty state (not an error) |
-| G | Forbidden | Gate false; consumer not mounted | Hide or “no access” — not a node error toast |
-| H | Aborted generation | Should not surface as domain error | No error toast for abort (Recipe 02 / ADR-018 direction) |
+| #   | Situation                             | Typical signals                     | UI treatment                                             |
+| --- | ------------------------------------- | ----------------------------------- | -------------------------------------------------------- |
+| A   | First paint, no value yet             | see table above                     | Blocking skeleton for **that region** only               |
+| B   | Has value, reloading / parent changed | successful value(s) + loading/stale | **Keep showing data**; quiet updating indicator          |
+| C   | Current success                       | `success` + `fresh` (per node)      | Normal                                                   |
+| D   | Initial load failed                   | hard failure row above              | Hard error + retry                                       |
+| E   | Refresh failed, prior value kept      | soft failure row above              | Soft banner; keep data                                   |
+| F   | Successful empty collection           | success, empty `data`               | Empty state (not an error)                               |
+| G   | Forbidden                             | Gate false; consumer not mounted    | Hide or “no access” — not a node error toast             |
+| H   | Aborted generation                    | Should not surface as domain error  | No error toast for abort (Recipe 02 / ADR-018 direction) |
 
 ### 7.1 Region scope
 
@@ -613,8 +595,8 @@ Full policy discussion: Recipe 03 and the separate auth modelling notes. UI rule
 
 Capabilities may live in:
 
-- ordinary session Pinia (fine for gates), or  
-- a graph derived node  
+- ordinary session Pinia (fine for gates), or
+- a graph derived node
 
 Pick **one** convention for the migrated workflow and state it in the feature’s ownership notes.
 
@@ -642,7 +624,7 @@ Single pipeline, e.g. router guard or page-level writer:
 await store.selectOrganisation(route.params.orgId as string);
 ```
 
-Avoid two writers (guard *and* page filter) fighting the same keys without a defined order.
+Avoid two writers (guard _and_ page filter) fighting the same keys without a defined order.
 
 ### 10.2 Route leave
 
@@ -662,13 +644,13 @@ If you use `<KeepAlive>`, subscriptions may survive tab switches. That is a prod
 
 ## 11. Errors, empty, forbidden (summary)
 
-| User-facing case | Cause | UI |
-|------------------|-------|-----|
-| Empty | Successful load, no rows | Empty state |
-| Hard error | Failed with no prior value | Error + retry |
-| Soft error | Failed refresh, prior value | Banner + prior data |
-| Forbidden | Capability / route | Gate; no subscription |
-| Validation | Mutation business rule | Inline form errors from mutation result |
+| User-facing case | Cause                       | UI                                      |
+| ---------------- | --------------------------- | --------------------------------------- |
+| Empty            | Successful load, no rows    | Empty state                             |
+| Hard error       | Failed with no prior value  | Error + retry                           |
+| Soft error       | Failed refresh, prior value | Banner + prior data                     |
+| Forbidden        | Capability / route          | Gate; no subscription                   |
+| Validation       | Mutation business rule      | Inline form errors from mutation result |
 
 Do not use one generic toast for all four of empty, hard error, soft error, and forbidden.
 
@@ -694,20 +676,20 @@ Aligned with architecture 07 and the test strategy:
 
 ## 13. Anti-patterns (quick reference)
 
-| Anti-pattern | Replace with |
-|--------------|--------------|
-| Mirror node state in Pinia | `useNode({ runtime })` |
-| Runtime per widget | One store-owned runtime per workflow |
-| Plugin *and* Pinia both “owning” without a rule | Department default: Pinia + explicit runtime |
-| Sequential `setContext` for cascades | `runtime.transaction` |
-| Conditional `useNode` | Child component + `v-if` |
-| Full-page spinner on any node loading | Region-scoped status matrix / per-panel `isSuccess` |
-| Wipe table on refresh error | Soft error + keep data (`isError && isSuccess`) |
-| Page gated on `whenSettled()` | Per-panel `useNodes` → `isSuccess` |
-| Parallel `isReady` flag duplicating aggregates | Use `isSuccess` / `hasSuccessfulValue` |
-| Closed-over session in `load` | Scope context dependencies |
-| Root subscribe to keep cache forever | Release policy + intentional `retain()` |
-| Auth only in UI hide | Server enforce + scope dependencies |
+| Anti-pattern                                    | Replace with                                        |
+| ----------------------------------------------- | --------------------------------------------------- |
+| Mirror node state in Pinia                      | `useNode({ runtime })`                              |
+| Runtime per widget                              | One store-owned runtime per workflow                |
+| Plugin _and_ Pinia both “owning” without a rule | Department default: Pinia + explicit runtime        |
+| Sequential `setContext` for cascades            | `runtime.transaction`                               |
+| Conditional `useNode`                           | Child component + `v-if`                            |
+| Full-page spinner on any node loading           | Region-scoped status matrix / per-panel `isSuccess` |
+| Wipe table on refresh error                     | Soft error + keep data (`isError && isSuccess`)     |
+| Page gated on `whenSettled()`                   | Per-panel `useNodes` → `isSuccess`                  |
+| Parallel `isReady` flag duplicating aggregates  | Use `isSuccess` / `hasSuccessfulValue`              |
+| Closed-over session in `load`                   | Scope context dependencies                          |
+| Root subscribe to keep cache forever            | Release policy + intentional `retain()`             |
+| Auth only in UI hide                            | Server enforce + scope dependencies                 |
 
 ---
 
@@ -759,12 +741,12 @@ Use for the bounded workflow chosen in the roadmap.
 
 ## 15. Lessons learned (fill after trial)
 
-| Date | Observation | Guide change |
-|------|-------------|--------------|
-| | Request counts higher because … | e.g. adjust debounce guidance |
-| | Ownership confusion on key X | e.g. tighten table / store action |
-| | Status matrix insufficient for case Y | e.g. extend §7 |
-| | | |
+| Date | Observation                           | Guide change                      |
+| ---- | ------------------------------------- | --------------------------------- |
+|      | Request counts higher because …       | e.g. adjust debounce guidance     |
+|      | Ownership confusion on key X          | e.g. tighten table / store action |
+|      | Status matrix insufficient for case Y | e.g. extend §7                    |
+|      |                                       |                                   |
 
 This section is intentionally empty until the migration produces evidence.
 
@@ -850,15 +832,15 @@ See §6.1.
 
 ## Appendix D — Mapping to library concepts
 
-| Guide concept | Library concept |
-|---------------|-----------------|
+| Guide concept            | Library concept                          |
+| ------------------------ | ---------------------------------------- |
 | Graph store owns runtime | `createGraphRuntime` + Pinia + `markRaw` |
-| Context writer | `transaction` / `setContext` / `publish` |
-| Consumer | `useNode` / `useNodes` / `useQuery` |
-| Status matrix | `NodeRuntimeState` status + freshness |
-| Cascade | ADR-005 sessions |
-| Release on unmount | Subscription dispose + ADR-016 policies |
-| No mirror | Architecture 07 “No mirrored state” |
+| Context writer           | `transaction` / `setContext` / `publish` |
+| Consumer                 | `useNode` / `useNodes` / `useQuery`      |
+| Status matrix            | `NodeRuntimeState` status + freshness    |
+| Cascade                  | ADR-005 sessions                         |
+| Release on unmount       | Subscription dispose + ADR-016 policies  |
+| No mirror                | Architecture 07 “No mirrored state”      |
 
 ## Appendix E — Agent-oriented summary
 

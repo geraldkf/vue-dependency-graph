@@ -490,7 +490,25 @@ The server must define the key's scope, retention period, duplicate response, an
 
 ### Handling mutation errors
 
-`runtime.mutate` can reject with one of five error types, each corresponding to a distinct situation:
+`runtime.mutate` can reject with one of five error types, each extending a common `GraphMutationError` base with a `code` field (`"CONFLICT"`, `"OUTCOME_UNKNOWN"`, `"ROLLBACK_CONFLICT"`, `"STATE"`, or `"RECONCILIATION"`). Catch `GraphMutationError` for a single broad handler - log it, show a generic "that didn't work" toast, whatever your default is - and narrow with `instanceof` on a specific subclass (or `switch` on `.code`) wherever a failure needs different handling:
+
+```ts
+import { GraphMutationError, GraphMutationOutcomeUnknownError } from "vue-dependency-graph/core";
+
+try {
+  await runtime.mutate(AddToCart, { productId: "prod-1", quantity: 1 });
+} catch (error) {
+  if (error instanceof GraphMutationOutcomeUnknownError) {
+    showPendingConfirmationBanner();
+  } else if (error instanceof GraphMutationError) {
+    showGenericMutationError(error);
+  } else {
+    throw error;
+  }
+}
+```
+
+The five, each corresponding to a distinct situation:
 
 **`GraphMutationConflictError`** - another unresolved optimistic mutation already owns at least one of the nodes this call would update. The classic case is a quantity stepper on a cart line clicked rapidly: the second click's optimistic update can't safely apply on top of the first click's still-unconfirmed one. The conflicting request never started. Typical handling is disabling the control while a mutation on the same node is in flight, rather than catching this after the fact.
 

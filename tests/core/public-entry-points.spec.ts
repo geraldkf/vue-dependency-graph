@@ -23,6 +23,8 @@ describe("public entry points", () => {
     expect(core).not.toHaveProperty("isAbortError");
     expect(core).not.toHaveProperty("toError");
     expect(core).toHaveProperty("createDefaultTimerEnvironment");
+    expect(core).toHaveProperty("whenEvent");
+    expect(core).toHaveProperty("GraphMutationError");
   });
 
   it("keeps the Vue layer marker private", () => {

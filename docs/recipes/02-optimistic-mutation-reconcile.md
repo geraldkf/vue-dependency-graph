@@ -33,11 +33,11 @@ const Availability = defineDataNode({
   initialValue: [] as Slot[],
   load: ({ get, signal }) => api.availability.list(get(SelectedDate), { signal }),
   invalidatedBy: [
-    whenEvent(SlotTaken, [SelectedDate], ({ payload, get }) =>
-      payload.date === get(SelectedDate),
-    ),
-    whenEvent(HoldExpired, [SelectedDate], ({ payload, get }) =>
-      payload.date === get(SelectedDate),
+    whenEvent(SlotTaken, [SelectedDate], ({ payload, get }) => payload.date === get(SelectedDate)),
+    whenEvent(
+      HoldExpired,
+      [SelectedDate],
+      ({ payload, get }) => payload.date === get(SelectedDate),
     ),
   ],
 });
@@ -107,12 +107,12 @@ execute: async ({ input }) => api.holds.create(input.slotId),
 
 Choose explicitly and document in the product:
 
-| Strategy | Client behaviour |
-|----------|------------------|
-| Version check | Mutation payload carries version; 409 → rollback + reload |
-| Last write wins | Accept server body; replace local node values |
-| Force refresh | Rollback optimistic nodes and invalidate related queries |
-| User choice | Surface conflict UI; apply one of the above on decision |
+| Strategy        | Client behaviour                                          |
+| --------------- | --------------------------------------------------------- |
+| Version check   | Mutation payload carries version; 409 → rollback + reload |
+| Last write wins | Accept server body; replace local node values             |
+| Force refresh   | Rollback optimistic nodes and invalidate related queries  |
+| User choice     | Surface conflict UI; apply one of the above on decision   |
 
 The mutation framework gives you hooks (`optimistic`, `execute`, `reconcile`, errors). The policy table lives in application code.
 

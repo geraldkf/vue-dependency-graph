@@ -17,7 +17,7 @@ Typical symptoms:
 
 Anything that **affects which rows a load may return** must be:
 
-1. expressed as a context node (or a derived node of contexts), and  
+1. expressed as a context node (or a derived node of contexts), and
 2. listed in that data node’s `dependencies`.
 
 The type system ensures you only `get` declared dependencies. It does **not** ensure you declared the tenancy dependency in the first place.
@@ -78,7 +78,7 @@ Scattering `ViewerOrgId` into dozens of dependency lists works but is easy to mi
 
 If some nodes need only `orgId` and others need `orgId + role`, either:
 
-- depend on `EffectiveScope` everywhere (simple), or  
+- depend on `EffectiveScope` everywhere (simple), or
 - keep both `ViewerOrgId` and `EffectiveScope` and document which nodes need which.
 
 ## Common wrong shapes
@@ -97,7 +97,7 @@ load: () => api.projects.listAll(), // then filter by org in the component
 
 ## Auth tokens and headers
 
-Tokens often live outside the graph (HTTP client interceptor). That is fine **if** the token does not change the *identity of the result set* independently of context nodes. When impersonation or “act as org” changes results, model that as context and list it in dependencies.
+Tokens often live outside the graph (HTTP client interceptor). That is fine **if** the token does not change the _identity of the result set_ independently of context nodes. When impersonation or “act as org” changes results, model that as context and list it in dependencies.
 
 ## Checklist
 

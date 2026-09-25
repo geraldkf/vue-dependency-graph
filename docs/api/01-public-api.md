@@ -615,6 +615,8 @@ await runtime.mutate(AddToCart, input, {
 
 The optimistic callback exposes direct data-node updates only. It runs before remote execution, must be synchronous, and uses the same successful-value, target-kind, duplicate-target, and updater validation as success reconciliation. Invalid optimistic work rejects before the remote request starts.
 
+Every rejection below extends `GraphMutationError`, which carries a `code` discriminant (`"CONFLICT"`, `"OUTCOME_UNKNOWN"`, `"ROLLBACK_CONFLICT"`, `"STATE"`, `"RECONCILIATION"`) - catch the base for one handler across all five, or narrow by subclass or `code` where a specific failure needs different handling.
+
 Effective optimistic values commit atomically as successful fresh data. Changed-result descendants are invalidated through the existing graph path. The runtime captures complete target and affected-descendant snapshots before commit.
 
 Optimistic invalidation immediately participates in normal subscription scheduling. Subscribed derived descendants may recompute and subscribed data descendants may reload before the remote mutation settles. Data descendants continue to use `maxConcurrentLoads`; mutation execution remains outside that limiter. A changed data descendant that settles before known rejection is treated as newer graph state, so snapshot rollback is skipped and `GraphMutationRollbackConflictError` preserves that descendant. An active descendant that has not settled remains eligible for safe rollback and is made obsolete by generation advancement before abort.
@@ -868,6 +870,7 @@ Entry point: `vue-dependency-graph/core`.
 
 - `GraphExecutionError`
 - `GraphMutationConflictError`
+- `GraphMutationError`
 - `GraphMutationOutcomeUnknownError`
 - `GraphMutationReconciliationError`
 - `GraphMutationRollbackConflictError`
@@ -944,6 +947,7 @@ Entry point: `vue-dependency-graph/core`.
 - `GraphExecutionReason`
 - `GraphMetricsSnapshot`
 - `GraphMutationDiagnosticEvent`
+- `GraphMutationErrorCode`
 - `GraphNodeAttemptMetrics`
 - `GraphNodeExecutionDiagnosticEvent`
 - `GraphNodeInvalidatedDiagnosticEvent`

@@ -174,10 +174,12 @@ export interface GraphRuntime {
    * Runs a {@link defineMutation}-defined mutation: applies its optimistic
    * update (if any), performs the write, and reconciles the result -
    * rolling the optimistic update back on failure. Rejects with a
-   * `GraphMutation*Error` (see {@link defineMutation}) rather than the
-   * mutation's own thrown error, so callers can distinguish "the write
-   * failed and rolled back cleanly" from "the outcome is unknown" (e.g. a
-   * dropped connection after a payment was submitted).
+   * {@link GraphMutationError} subclass (see {@link defineMutation}) rather
+   * than the mutation's own thrown error, so callers can distinguish "the
+   * write failed and rolled back cleanly" from "the outcome is unknown"
+   * (e.g. a dropped connection after a payment was submitted). Catch
+   * {@link GraphMutationError} for a broad handler, or a specific subclass
+   * (or `switch` on `.code`) to handle one failure differently.
    *
    * @example
    * ```ts
@@ -187,6 +189,21 @@ export interface GraphRuntime {
    * const runtime = createGraphRuntime(createGraph({ nodes: [] }));
    *
    * await runtime.mutate(addToCart, { productId: "prod-1" });
+   * ```
+   *
+   * @example Handling failure broadly, or by specific cause
+   * ```ts
+   * import { GraphMutationError } from "vue-dependency-graph/core";
+   *
+   * try {
+   *   await runtime.mutate(addToCart, { productId: "prod-1" });
+   * } catch (error) {
+   *   if (error instanceof GraphMutationError) {
+   *     reportMutationFailure(error.code, error);
+   *   } else {
+   *     throw error;
+   *   }
+   * }
    * ```
    */
   readonly mutate: <TInput, TResult>(

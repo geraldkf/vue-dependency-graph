@@ -1,10 +1,12 @@
 export {
   GraphMutationConflictError,
+  GraphMutationError,
   GraphMutationOutcomeUnknownError,
   GraphMutationReconciliationError,
   GraphMutationRollbackConflictError,
   GraphMutationStateError,
 } from "./mutations/errors";
+export type { GraphMutationErrorCode } from "./mutations/errors";
 export { defineMutation } from "./mutations/mutation";
 export type {
   DefineMutationOptions,
