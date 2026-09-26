@@ -16,7 +16,7 @@ Use these maintained documents as the current sources of truth:
   - [Observability, devtools, and snapshots](./architecture/06-observability-devtools-and-snapshots.md)
   - [Vue and Pinia integration](./architecture/07-vue-and-pinia-integration.md)
 - [Architecture decision records](./decisions/)
-- [Recipes (research phase)](./recipes/) — short patterns for cascades, optimistic mutations, tenancy, stale UI, events, release, Pinia runtime ownership, and multi-node panel `isSuccess`
+- [Recipes (research phase)](./recipes/) — short patterns for cascades, optimistic mutations, tenancy, stale UI, events, release, Pinia runtime ownership, multi-node panel `isSuccess`, and long-running `pollUntil` operations
 - [Test strategy](./testing/01-test-strategy.md)
 - [Roadmap](./ROADMAP.md)
 - [Playground](./PLAYGROUND.md)

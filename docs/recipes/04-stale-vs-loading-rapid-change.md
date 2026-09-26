@@ -73,8 +73,9 @@ Derived nodes do not consume concurrency slots. Limits are per runtime.
 When context is driven by high-frequency UI (typeahead, scrubbing a slider), debounce the **context write**, not the loader:
 
 ```ts
-// Application-level debounce before touching the graph
-const scheduleOrgFilter = useDebouncedFn((orgId: string) => {
+// Application-level debounce before touching the graph (e.g. VueUse's
+// useDebounceFn, or any equivalent — not something this library provides)
+const scheduleOrgFilter = useDebounceFn((orgId: string) => {
   void runtime.transaction(async (tx) => {
     tx.setContext(SelectedOrgId, orgId);
     tx.setContext(SelectedTeamId, null);
@@ -89,7 +90,7 @@ Do not try to express debounce intervals as graph dependencies.
 ```ts
 // Wrong: manual load after every setContext "to be safe"
 runtime.setContext(SelectedDate, date);
-await runtime.execute(Availability); // usually redundant with subscriptions
+await runtime.execute([Availability]); // usually redundant with subscriptions
 
 // Wrong: clearing data in the component when status flips to loading
 watch(status, (s) => {

@@ -32,7 +32,7 @@ const ServiceDetail = defineDataNode({
     return api.services.get(id, { signal });
   },
   // Drop after the detail pane has been closed for a while
-  release: releaseAfter({ idleMs: 60_000 }),
+  release: releaseAfter({ durationMs: 60_000 }),
 });
 
 // Truly session-global data can opt into retain
@@ -54,23 +54,24 @@ const { data, status } = useNode(ServiceDetail);
 
 ## Runtime default
 
-You can also pass a default release policy when creating the runtime so individual nodes inherit unless they override:
+You can also set a default idle duration when creating the runtime, applied to any node that doesn't declare its own `release` policy (a node's own policy — including `retain()` — always wins over this default):
 
 ```ts
 const runtime = createGraphRuntime(graph, {
-  // example — consult current GraphRuntimeOptions for exact field names
-  // defaultRelease: releaseAfter({ idleMs: 120_000 }),
+  releaseAfterMs: 120_000,
 });
 ```
 
-Prefer explicit per-node policies for heavy payloads; use defaults for bulk leaf data only when measured.
+Note this is a plain number of milliseconds, not a `releaseAfter(...)` policy object — `GraphRuntimeOptions.releaseAfterMs` and a node's own `release: releaseAfter({ durationMs })` are two different (if related) options.
+
+Prefer explicit per-node policies for heavy payloads; use the runtime default for bulk leaf data only when measured.
 
 ## Common wrong shapes
 
 ```ts
 // Wrong: subscribe once at app bootstrap and never dispose
-const stop = runtime.subscribe(ServiceDetail, () => {});
-// ... never called → node stays demanded
+const subscription = runtime.subscribeNodes([ServiceDetail]);
+// ... subscription.unsubscribe() never called → node stays demanded
 
 // Wrong: useNode in a parent that stays mounted for the whole session
 // when the data is only needed inside a rarely opened drawer
