@@ -1,3 +1,4 @@
+import { deepFreeze } from "./deep-freeze";
 import type { GraphMetricsSnapshot } from "./metrics";
 import type { AnyNodeDefinition, Graph, NodeKind } from "../graph/types";
 import type { NodeStateRecord } from "../state/state";
@@ -95,12 +96,6 @@ export interface CreateDiagnosticSnapshotDependencies {
   readonly getRefreshPolicySnapshot: () => readonly GraphDiagnosticRefreshPolicySnapshot[];
   readonly collector?: DiagnosticCollectorInspection;
 }
-
-const deepFreeze = <TValue>(value: TValue): TValue => {
-  if (typeof value !== "object" || value === null || Object.isFrozen(value)) return value;
-  for (const item of Object.values(value)) deepFreeze(item);
-  return Object.freeze(value);
-};
 
 const toDiagnosticValue = (
   value: unknown,

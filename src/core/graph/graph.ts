@@ -1,3 +1,4 @@
+import { isDataNode, isDerivedNode } from "../graph/node-guards";
 import { GraphValidationError } from "./errors";
 import { assertValidRefreshPolicy } from "../refresh-policies/policy";
 import { assertValidReleasePolicy } from "../release-policies/policy";
@@ -6,28 +7,10 @@ import {
   type EventInvalidationCandidate,
 } from "../events/event-index";
 import type { AnyEventDefinition } from "../events/types";
-import type {
-  AnyNodeDefinition,
-  DataNodeDefinition,
-  DerivedNodeDefinition,
-  Graph,
-  NodeOrKey,
-} from "./types";
+import type { AnyNodeDefinition, Graph, NodeOrKey } from "./types";
 
 const isRecord = (value: unknown): value is Readonly<Record<string, unknown>> =>
   typeof value === "object" && value !== null;
-
-// `AnyNodeDefinition` only carries the fields common to every node kind;
-// `refresh` and `invalidatedBy` live on the kind-specific interfaces. These
-// guards (mirroring execution.ts's `isDataNode`/`isDerivedNode`) narrow to
-// those interfaces so the fields can be read without a cast.
-const isDataNode = (
-  node: AnyNodeDefinition,
-): node is DataNodeDefinition<unknown, readonly AnyNodeDefinition[]> => node.kind === "data";
-
-const isDerivedNode = (
-  node: AnyNodeDefinition,
-): node is DerivedNodeDefinition<unknown, readonly AnyNodeDefinition[]> => node.kind === "derived";
 
 const readEventInvalidation = (
   declaration: unknown,
@@ -72,55 +55,28 @@ const readEventInvalidation = (
   };
 };
 
-const validateRefreshPolicy = (node: AnyNodeDefinition): void => {
+/** Validate data-only policies, including graph definitions authored outside TypeScript. */
+const validateNodePolicy = (
+  node: AnyNodeDefinition,
+  field: "refresh" | "release",
+  validate: (policy: unknown, nodeKey: string) => void,
+): void => {
+  const code = field === "refresh" ? "INVALID_REFRESH_POLICY" : "INVALID_RELEASE_POLICY";
   if (isDataNode(node)) {
-    if (node.refresh === undefined) return;
+    if (node[field] === undefined) return;
     try {
-      assertValidRefreshPolicy(node.refresh, node.key);
+      validate(node[field], node.key);
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
       throw new GraphValidationError(
-        "INVALID_REFRESH_POLICY",
-        `Node "${node.key}" has an invalid refresh policy: ${reason}`,
+        code,
+        `Node "${node.key}" has an invalid ${field} policy: ${reason}`,
       );
     }
-    return;
-  }
-
-  // Non-data nodes have no `refresh` field in the type, but graph
-  // definitions can be constructed outside TypeScript, so this guards
-  // against a stray refresh policy on a context/derived node. `in` needs
-  // no cast - it's a safe check on any object, typed or not.
-  if ("refresh" in node) {
+  } else if (field in node) {
     throw new GraphValidationError(
-      "INVALID_REFRESH_POLICY",
-      `Node "${node.key}" cannot declare a refresh policy because it is not a data node.`,
-    );
-  }
-};
-
-const validateReleasePolicy = (node: AnyNodeDefinition): void => {
-  if (isDataNode(node)) {
-    if (node.release === undefined) return;
-    try {
-      assertValidReleasePolicy(node.release, node.key);
-    } catch (error) {
-      const reason = error instanceof Error ? error.message : String(error);
-      throw new GraphValidationError(
-        "INVALID_RELEASE_POLICY",
-        `Node "${node.key}" has an invalid release policy: ${reason}`,
-      );
-    }
-    return;
-  }
-
-  // Same defensive reasoning as `validateRefreshPolicy` above: non-data
-  // nodes have no `release` field in the type, but untyped input can
-  // still carry one.
-  if ("release" in node) {
-    throw new GraphValidationError(
-      "INVALID_RELEASE_POLICY",
-      `Node "${node.key}" cannot declare a release policy because it is not a data node.`,
+      code,
+      `Node "${node.key}" cannot declare a ${field} policy because it is not a data node.`,
     );
   }
 };
@@ -291,8 +247,8 @@ export const createGraph = (options: CreateGraphOptions): Graph => {
     if (nodesByKey.has(node.key)) {
       throw new GraphValidationError("DUPLICATE_NODE_KEY", `Duplicate node key "${node.key}".`);
     }
-    validateRefreshPolicy(node);
-    validateReleasePolicy(node);
+    validateNodePolicy(node, "refresh", assertValidRefreshPolicy);
+    validateNodePolicy(node, "release", assertValidReleasePolicy);
     nodesByKey.set(node.key, node);
   }
 

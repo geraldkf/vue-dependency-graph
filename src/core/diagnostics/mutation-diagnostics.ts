@@ -25,11 +25,7 @@ type MutationOutcomeEventType =
 
 type MutationOutcome = "rollback-conflict" | "unknown" | "reconciliation-failed" | "rejected";
 
-/**
- * Replaces the repeated 4-way `instanceof` ternary chain (once for the
- * event type, once for the outcome label) with a single classification
- * step.
- */
+/** Classifies a mutation failure into its diagnostic event and outcome label. */
 const classifyMutationError = (
   error: unknown,
 ): { readonly type: MutationOutcomeEventType; readonly outcome: MutationOutcome } => {

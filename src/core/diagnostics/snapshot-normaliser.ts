@@ -1,3 +1,4 @@
+import { deepFreeze } from "./deep-freeze";
 import type { GraphDiagnosticEvent } from "./types";
 import type {
   GraphDiagnosticSnapshotV1,
@@ -12,14 +13,6 @@ export interface GraphDiagnosticExport {
 }
 
 const NORMALIZED_RUNTIME_ID = "runtime";
-
-const deepFreeze = <TValue>(value: TValue): TValue => {
-  if (typeof value !== "object" || value === null || Object.isFrozen(value)) {
-    return value;
-  }
-  for (const item of Object.values(value)) deepFreeze(item);
-  return Object.freeze(value);
-};
 
 const cloneDiagnosticValue = (value: GraphDiagnosticValue): GraphDiagnosticValue => {
   if (Array.isArray(value)) {

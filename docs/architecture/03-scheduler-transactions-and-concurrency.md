@@ -82,6 +82,8 @@ A runtime stores one active attempt per node generation. Overlapping explicit, s
 
 Different runtime instances never share attempts. A new generation does not reuse obsolete work.
 
+Shared attempt promises resolve to an explicit outcome: successful, obsolete, or failed with an error. Expected cancellation and loader failures return these outcomes directly. The recursive graph walk uses them to block dependents or abandon superseded branches. Execution diagnostics capture timing in one attempt session while preserving the event order around state transitions and notifications.
+
 ## Generations and cancellation
 
 Each node has a generation. Context changes and refresh preparation can advance generations. Attempts capture their starting generation and a unique token.

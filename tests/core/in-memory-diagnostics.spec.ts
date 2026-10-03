@@ -23,6 +23,43 @@ const event = (
   }) as GraphDiagnosticEvent;
 
 describe("in-memory graph diagnostics", () => {
+  it("keeps nested snapshots immutable and independent across events and reset", () => {
+    const diagnostics = createInMemoryGraphDiagnostics({ capacity: 20 });
+    const empty = diagnostics.getMetrics();
+    diagnostics.emit(event(1, { type: "scheduler.requested", operation: "scheduler" }));
+    diagnostics.emit(event(2, { type: "refresh-policy.started" }));
+    diagnostics.emit(event(3, { type: "transaction.committed", durationMs: 12 }));
+    diagnostics.emit(
+      event(4, {
+        type: "mutation.completed",
+        mutationKey: "save",
+        outcome: "succeeded",
+        durationMs: 8,
+      }),
+    );
+    diagnostics.emit(
+      event(5, { type: "subscription.added", nodeKeys: ["data"], requiredNodeKeys: ["context"] }),
+    );
+    const snapshot = diagnostics.getMetrics();
+    const captured = JSON.stringify(snapshot);
+    expect(snapshot).toMatchObject({
+      scheduler: { requested: 1 },
+      refreshPolicies: { started: 1 },
+      transactions: { committed: 1, duration: { totalMs: 12 } },
+      mutations: { succeeded: 1, duration: { totalMs: 8 } },
+      subscriptions: { direct: 1, required: 1 },
+    });
+    expect(Object.isFrozen(snapshot.transactions.duration)).toBe(true);
+    expect(Object.isFrozen(snapshot.subscriptions)).toBe(true);
+    diagnostics.emit(event(6, { type: "transaction.committed", durationMs: 99 }));
+    diagnostics.reset();
+    expect(diagnostics.getMetrics()).toEqual(empty);
+    diagnostics.emit(
+      event(7, { type: "subscription.added", nodeKeys: ["new"], requiredNodeKeys: [] }),
+    );
+    expect(diagnostics.getMetrics().subscriptions).toEqual({ direct: 1, required: 0 });
+    expect(JSON.stringify(snapshot)).toBe(captured);
+  });
   it("isolates observer failures and supports idempotent cleanup", () => {
     const diagnostics = createInMemoryGraphDiagnostics({ capacity: 1 });
     let calls = 0;

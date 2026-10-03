@@ -1,10 +1,6 @@
+import { isContextNode, isDataNode } from "../graph/node-guards";
 import type { NodeFreshness, NodeRuntimeState, NodeStatus, RuntimeNodeData } from "./types";
-import type {
-  AnyNodeDefinition,
-  ContextNodeDefinition,
-  DataNodeDefinition,
-  Graph,
-} from "../graph/types";
+import type { AnyNodeDefinition, Graph } from "../graph/types";
 import type { NodeAttemptOutcome } from "../execution/types";
 
 /**
@@ -47,13 +43,6 @@ export interface RuntimeStateStore {
 
   readonly getActiveAttempts: () => IterableIterator<[string, ActiveAttempt]>;
 }
-
-const isContextNode = (node: AnyNodeDefinition): node is ContextNodeDefinition<unknown> =>
-  node.kind === "context";
-
-const isDataNode = (
-  node: AnyNodeDefinition,
-): node is DataNodeDefinition<unknown, readonly AnyNodeDefinition[]> => node.kind === "data";
 
 const createInitialState = (node: AnyNodeDefinition): NodeStateRecord => {
   if (isContextNode(node)) {

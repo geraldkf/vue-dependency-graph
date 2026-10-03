@@ -1,10 +1,7 @@
+import { createDevtoolsViews } from "./devtools-views";
 import { computed, onScopeDispose, ref, type ComputedRef, type Ref } from "vue";
 import type { GraphRuntime, InMemoryGraphDiagnostics, GraphDiagnosticSnapshotV1 } from "../../core";
 import { assertActiveEffectScope } from "./scope-guard";
-import { computeGraphView } from "../protocol/graph-view";
-import { computeNodeDetail } from "../protocol/node-inspector";
-import { computeTimeline } from "../protocol/timeline";
-import { computeMetricsView } from "../protocol/metrics-panel";
 import type {
   InspectorGraphView,
   InspectorMetricsView,
@@ -83,25 +80,15 @@ export const useGraphDevtools = (options: UseGraphDevtoolsOptions): UseGraphDevt
     void revision.value;
     return runtime.createDiagnosticSnapshot();
   });
-  const graphView = computed(() => computeGraphView(snapshot.value));
-  const timeline = computed(() => {
+  const events = computed(() => {
     void revision.value;
-    return computeTimeline(diagnostics.getEvents());
+    return diagnostics.getEvents();
   });
-  const metricsView = computed(() => {
+  const metrics = computed(() => {
     void revision.value;
-    return computeMetricsView(diagnostics.getMetrics());
+    return diagnostics.getMetrics();
   });
-
-  const selectedNodeKey = ref<string | undefined>(undefined);
-  const selectedNodeDetail = computed(() =>
-    selectedNodeKey.value === undefined
-      ? undefined
-      : computeNodeDetail(snapshot.value, selectedNodeKey.value),
-  );
-  const select = (key: string | undefined): void => {
-    selectedNodeKey.value = key;
-  };
+  const views = createDevtoolsViews(snapshot, events, metrics);
 
   const exportSnapshot = (): string => {
     const payload: DevtoolsExport = {
@@ -115,12 +102,7 @@ export const useGraphDevtools = (options: UseGraphDevtoolsOptions): UseGraphDevt
 
   return {
     snapshot,
-    graphView,
-    timeline,
-    metricsView,
-    selectedNodeKey,
-    selectedNodeDetail,
-    select,
+    ...views,
     exportSnapshot,
   };
 };

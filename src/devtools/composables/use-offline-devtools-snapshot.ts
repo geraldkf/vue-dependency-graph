@@ -1,9 +1,6 @@
-import { computed, ref, shallowRef, type ComputedRef, type Ref } from "vue";
+import { createDevtoolsViews } from "./devtools-views";
+import { computed, shallowRef, type ComputedRef, type Ref } from "vue";
 import type { GraphDiagnosticSnapshotV1, GraphDiagnosticEvent } from "../../core";
-import { computeGraphView } from "../protocol/graph-view";
-import { computeNodeDetail } from "../protocol/node-inspector";
-import { computeTimeline } from "../protocol/timeline";
-import { computeMetricsView } from "../protocol/metrics-panel";
 import type {
   InspectorGraphView,
   InspectorMetricsView,
@@ -76,42 +73,30 @@ const emptySnapshot: GraphDiagnosticSnapshotV1 = Object.freeze({
 
 export const useOfflineDevtoolsSnapshot = (): UseOfflineDevtoolsSnapshotResult => {
   const loaded = shallowRef<DevtoolsExport | undefined>(undefined);
-  const selectedNodeKey = ref<string | undefined>(undefined);
 
   const snapshot = computed<GraphDiagnosticSnapshotV1>(
     () => loaded.value?.snapshot ?? emptySnapshot,
   );
   const events = computed<readonly GraphDiagnosticEvent[]>(() => loaded.value?.events ?? []);
 
-  const graphView = computed(() => computeGraphView(snapshot.value));
-  const timeline = computed(() => computeTimeline(events.value));
-  const metricsView = computed(() => computeMetricsView(snapshot.value.metrics));
-  const selectedNodeDetail = computed(() =>
-    selectedNodeKey.value === undefined
-      ? undefined
-      : computeNodeDetail(snapshot.value, selectedNodeKey.value),
+  const views = createDevtoolsViews(
+    snapshot,
+    events,
+    computed(() => snapshot.value.metrics),
   );
 
-  const select = (key: string | undefined): void => {
-    selectedNodeKey.value = key;
-  };
   const loadFromJson = (json: string): void => {
     loaded.value = parseDevtoolsExport(json);
-    selectedNodeKey.value = undefined;
+    views.selectedNodeKey.value = undefined;
   };
   const clear = (): void => {
     loaded.value = undefined;
-    selectedNodeKey.value = undefined;
+    views.selectedNodeKey.value = undefined;
   };
 
   return {
     loaded,
-    graphView,
-    timeline,
-    metricsView,
-    selectedNodeKey,
-    selectedNodeDetail,
-    select,
+    ...views,
     loadFromJson,
     clear,
   };

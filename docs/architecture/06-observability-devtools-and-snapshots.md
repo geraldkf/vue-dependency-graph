@@ -64,6 +64,8 @@ A collector may be owned by one runtime or deliberately shared. Shared collector
 
 Metrics are projections of the diagnostic stream and therefore use the same lifecycle vocabulary as the timeline.
 
+The reducer owns one mutable state object. Construction and reset use the same initializer, checked against the public metric snapshot type. Snapshot creation copies and freezes nested counters and durations, so later events and resets cannot change snapshots already returned to consumers.
+
 The metrics snapshot includes:
 
 - operation counts;

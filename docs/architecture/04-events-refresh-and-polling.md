@@ -159,6 +159,8 @@ Active requests continue during pause. Poll timeout uses active elapsed time and
 
 Refresh and release policies share one `TimerEnvironment`, but remain separate controllers with separate policy semantics. Policy composition and disposal are runtime-local.
 
+Each refresh session owns a timer object with mutually exclusive idle, armed, and pending states. It owns the timeout handle, due time, remaining delay, purpose, and callback cancellation token. Pausing retains the remaining delay; clearing cancels both armed and pending work. A canceled callback cannot disturb a newer timer. Retry counts, polling completion, and active elapsed time remain owned by the policy controller.
+
 Future policy timers are outside scheduler settlement, so `runtime.whenSettled()` remains finite for recurring policies. A timer firing may request refresh work, but caller-owned manual refresh must still be awaited directly.
 
 `runtime.dispose()` detaches policy change hooks, clears refresh and release timers, and removes the timer environment pause listener. A policy request that settles after disposal schedules no follow-up work.

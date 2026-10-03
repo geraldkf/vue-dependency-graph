@@ -1,3 +1,4 @@
+import { isContextNode } from "../graph/node-guards";
 import type { ActiveAttempt, NodeStateRecord } from "../state/state";
 import { invalidate, writeValue } from "../state/transitions";
 import type { AnyNodeDefinition, ContextNodeDefinition, Graph } from "../graph/types";
@@ -57,9 +58,6 @@ export interface RuntimeInvalidationDependencies {
     scheduled: boolean,
   ) => void;
 }
-
-const isContextNode = (node: AnyNodeDefinition): node is ContextNodeDefinition<unknown> =>
-  node.kind === "context";
 
 export const createRuntimeInvalidationController = ({
   graph,

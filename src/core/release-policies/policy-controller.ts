@@ -1,4 +1,5 @@
 import type { AnyNodeDefinition, DataNodeDefinition, Graph } from "../graph/types";
+import { isDataNode } from "../graph/node-guards";
 import type { NodeStateRecord } from "../state/state";
 import { releaseValue } from "../state/transitions";
 import type { TimerEnvironment } from "../timer-environment";
@@ -40,7 +41,7 @@ export interface RuntimeReleasePolicyController {
 }
 
 const isReleaseEligibleDataNode = (node: AnyNodeDefinition): node is ReleasePolicyDataNode =>
-  node.kind === "data" && (node as ReleasePolicyDataNode).release?.kind !== "retain";
+  isDataNode(node) && node.release?.kind !== "retain";
 
 const resolveReleaseDurationMs = (
   node: ReleasePolicyDataNode,
