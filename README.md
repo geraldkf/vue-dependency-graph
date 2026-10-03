@@ -64,10 +64,12 @@ core + vue + devtools <--- playground
 
 Transaction-owned context changes and event publications use the explicit callback handle:
 
+These examples use the fictional Banksia storefront defined in the [user guide](docs/guides/00-user-guide.md).
+
 ```ts
 await runtime.transaction(async (transaction) => {
-  transaction.setContext(JobSeekerId, 123);
-  transaction.publish(AppointmentBooked, payload);
+  transaction.setContext(CurrentProductId, "prod-1");
+  transaction.publish(StockChanged, { productId: "prod-1", inStock: true });
   await localWork();
 });
 ```
@@ -75,9 +77,9 @@ await runtime.transaction(async (transaction) => {
 Plain runtime calls do not join another caller's transaction:
 
 ```ts
-runtime.setContext(UnrelatedContext, 999);
-runtime.publish(UnrelatedEvent, payload);
-await runtime.refresh([UnrelatedNode]);
+runtime.setContext(CurrentCurrency, "AUD");
+runtime.publish(StockChanged, { productId: "prod-2", inStock: false });
+await runtime.refresh([Inventory]);
 ```
 
 They use committed graph state and proceed independently. If a transaction staged a context before an independent write changed that same context, commit rejects atomically with `GraphTransactionConflictError` and preserves the independent value. Transactions remain local graph transactions and do not roll back remote work.
@@ -86,9 +88,9 @@ Each top-level `runtime.transaction(...)` call owns an independent session. To c
 
 ```ts
 await runtime.transaction(async (transaction) => {
-  transaction.setContext(JobSeekerId, 123);
+  transaction.setContext(CurrentProductId, "prod-1");
   await transaction.transaction(async (nested) => {
-    nested.publish(AppointmentBooked, payload);
+    nested.publish(StockChanged, { productId: "prod-1", inStock: true });
   });
 });
 ```

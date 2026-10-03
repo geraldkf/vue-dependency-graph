@@ -1,5 +1,7 @@
 # System Overview
 
+Examples throughout these architecture pages use the fictional Banksia storefront from the [user guide](../guides/00-user-guide.md). Product selection, pricing, inventory, orders, and cart updates share the guide's node and event names.
+
 ## Architectural direction
 
 The framework uses one package and one repository. Logical layers are separated by source folders and explicit import boundaries.

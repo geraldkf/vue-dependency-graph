@@ -21,7 +21,7 @@ Context nodes begin successful and fresh. Data nodes begin with their initial va
 ## Dependency-aware execution
 
 ```ts
-await runtime.execute([Targets, Credits]);
+await runtime.execute([ProductDetails, Inventory]);
 ```
 
 Execution starts from requested targets, includes transitive ancestors, skips fresh successful values, and excludes unrelated nodes.
@@ -105,7 +105,7 @@ After executable branches settle, the caller receives `GraphExecutionError`, con
 ## Node subscriptions
 
 ```ts
-const subscription = runtime.subscribeNodes([Targets]);
+const subscription = runtime.subscribeNodes([ProductDetails]);
 ```
 
 A subscription contributes direct ownership for requested targets and required ownership for transitive ancestors. Contributions are deduplicated within one subscription, including shared and diamond ancestors.
@@ -154,8 +154,8 @@ Work remains active when another subscription still requires it or when an expli
 ## Prefetch and refresh
 
 ```ts
-await runtime.prefetch([Targets]);
-await runtime.refresh([Targets, Summary]);
+await runtime.prefetch([ProductDetails]);
+await runtime.refresh([ProductDetails, DisplayPrice]);
 ```
 
 Prefetch is a caller-owned one-shot execution without persistent subscription ownership. It skips fresh successful values.
@@ -214,9 +214,9 @@ Owners ending the runtime's lifetime use `shutdown()`. It aborts active work, ca
 
 ```ts
 await runtime.transaction(async (transaction) => {
-  transaction.setContext(JobSeekerId, firstValue);
+  transaction.setContext(CurrentProductId, "prod-2");
   await localWork();
-  transaction.setContext(JobSeekerId, finalValue);
+  transaction.setContext(CurrentProductId, "prod-3");
 });
 ```
 
@@ -228,9 +228,9 @@ Explicit same-session composition uses the handle:
 
 ```ts
 await runtime.transaction(async (transaction) => {
-  transaction.setContext(ContextA, valueA);
+  transaction.setContext(CurrentProductId, "prod-2");
   await transaction.transaction(async (nested) => {
-    nested.setContext(ContextB, valueB);
+    nested.setContext(CurrentCurrency, "AUD");
   });
 });
 ```

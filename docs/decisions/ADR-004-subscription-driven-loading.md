@@ -22,7 +22,7 @@ Creating a subscription is synchronous and does not invoke loaders synchronously
 
 ## Consequences
 
-- A component that mounts and calls `useNode(Targets)` loads `Targets` (and any ancestors it needs) automatically; there is no public `loadData()` call for a consumer to forget. Unmounting releases the subscription, and the final unsubscribe stops automatic work that only that subscription owned.
+- A component that mounts and calls `useNode(ProductDetails)` loads `ProductDetails` (and any ancestors it needs) automatically; there is no public `loadData()` call for a consumer to forget. Unmounting releases the subscription, and the final unsubscribe stops automatic work that only that subscription owned.
 - The scheduler must coalesce synchronous subscription changes into one microtask pass rather than executing per individual `subscribeNodes` call, or mounting several components in the same tick would each trigger a redundant separate execution pass.
 - A node with no current subscriber, and not targeted by an explicit `execute`/`prefetch`/`refresh` call, simply never runs - there is no background execution of unused parts of the graph.
 - A failed subscribed node does not enter an automatic retry loop; recovery requires an explicit trigger (a context change, a new subscription, or a refresh policy), which keeps failure handling predictable rather than silently hammering a broken endpoint.

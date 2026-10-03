@@ -42,9 +42,15 @@ Caller-owned execution, prefetch, and refresh reject with `GraphExecutionError` 
 A mutation is a typed caller-owned remote command. It is not a graph node, is not deduplicated, and does not consume the data-loader `maxConcurrentLoads` budget.
 
 ```ts
-const SaveAppointment = defineMutation({
-  key: "appointment.save",
-  execute: ({ input, signal }) => api.saveAppointment(input, signal),
+interface AddToCartInput {
+  productId: string;
+  quantity: number;
+}
+
+const AddToCart = defineMutation({
+  key: "cart.add",
+  execute: ({ input, signal }: { input: AddToCartInput; signal: AbortSignal }) =>
+    api.addToCart(input, signal),
 });
 ```
 

@@ -2,6 +2,8 @@
 
 New to this library? Start with the [User guide](./guides/00-user-guide.md) - a narrative walkthrough built around one running example. Everything below is reference material for once you're past the basics.
 
+The architecture pages and decision records use the same fictional Banksia storefront as the user guide. Shared example names are `CurrentProductId`, `ProductDetails`, `CurrentCurrency`, `DisplayPrice`, `Inventory`, `StockChanged`, `ProductPage`, `OrderStatus`, `Cart`, and `AddToCart`. Node definitions, domain types, and application API helpers come from the guide; individual reference snippets show the part relevant to that topic. Playground and test walkthroughs describe the scenario names actually implemented in this repository.
+
 Use these maintained documents as the current sources of truth:
 
 - [User guide](./guides/00-user-guide.md)

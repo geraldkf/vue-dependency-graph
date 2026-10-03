@@ -26,9 +26,9 @@ Both paths also support `useQuery(...)` for immutable aliased query definitions.
 Vue graph composables accept an optional explicit runtime:
 
 ```ts
-useNode(Targets, { runtime });
-useNodes([Targets, Permissions], { runtime });
-useQuery(AppointmentsPage, { runtime });
+useNode(ProductDetails, { runtime });
+useNodes([ProductDetails, Inventory], { runtime });
+useQuery(ProductPage, { runtime });
 ```
 
 Resolution order is:

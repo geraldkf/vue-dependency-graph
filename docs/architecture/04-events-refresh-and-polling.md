@@ -7,27 +7,27 @@ Typed events, manual refresh, refresh policies, and polling all reuse the runtim
 Cross-domain invalidation uses typed events rather than direct store imports. Events identify graph data that may be stale; they are not graph values and do not invoke loaders directly.
 
 ```ts
-const AppointmentBooked = defineEvent<{
-  jobSeekerId: number;
-  appointmentId: number;
-}>("appointment.booked");
+const StockChanged = defineEvent<{
+  productId: string;
+  inStock: boolean;
+}>("stock.changed");
 ```
 
 Data and derived nodes may declare unconditional or conditional invalidation:
 
 ```ts
-const CapabilityStatus = defineDataNode({
-  key: "capabilityStatus",
-  dependencies: [JobSeekerId],
-  initialValue: undefined as Status | undefined,
+const Inventory = defineDataNode({
+  key: "inventory",
+  dependencies: [CurrentProductId],
+  initialValue: null,
   invalidatedBy: [
     whenEvent(
-      AppointmentBooked,
-      [JobSeekerId],
-      ({ payload, get }) => payload.jobSeekerId === get(JobSeekerId),
+      StockChanged,
+      [CurrentProductId],
+      ({ payload, get }) => payload.productId === get(CurrentProductId),
     ),
   ],
-  load: ({ get, signal }) => api.getCapabilityStatus(get(JobSeekerId), signal),
+  load: ({ get, signal }) => api.getInventory(get(CurrentProductId), signal),
 });
 ```
 
@@ -44,7 +44,7 @@ All predicates are evaluated before graph mutation. If one throws or attempts an
 Plain runtime publication is immediate:
 
 ```ts
-runtime.publish(AppointmentBooked, payload);
+runtime.publish(StockChanged, { productId: "prod-1", inStock: true });
 ```
 
 It evaluates against committed graph state. Matching roots and transitive descendants are invalidated through the normal generation, cancellation, notification, and scheduler paths. A no-match or unused event is silent.
@@ -53,7 +53,7 @@ Transaction-owned publication is explicit:
 
 ```ts
 await runtime.transaction((transaction) => {
-  transaction.publish(AppointmentBooked, payload);
+  transaction.publish(StockChanged, { productId: "prod-1", inStock: true });
 });
 ```
 
@@ -70,7 +70,7 @@ Events are local to one `GraphRuntime`. They do not provide cross-tab delivery, 
 ## Manual refresh
 
 ```ts
-await runtime.refresh([Targets, Summary]);
+await runtime.refresh([ProductDetails, DisplayPrice]);
 ```
 
 Manual refresh is a caller-owned operation for registered data and derived nodes. It forces re-execution through the normal refresh preparation and execution path. Context nodes are changed through `setContext(...)` rather than refreshed.
@@ -112,16 +112,16 @@ Context or event invalidation closes the previous timing session. Successful exe
 ## Poll-until behaviour
 
 ```ts
-const ReportProgress = defineDataNode({
-  key: "reportProgress",
-  dependencies: [ReportId] as const,
-  initialValue: undefined as Progress | undefined,
-  load: ({ get, signal }) => api.getProgress(get(ReportId), signal),
+const OrderStatus = defineDataNode({
+  key: "orderStatus",
+  dependencies: [CurrentOrderId],
+  initialValue: null,
+  load: ({ get, signal }) => api.getOrderStatus(get(CurrentOrderId), signal),
   refresh: pollUntil({
-    intervalMs: 2_000,
-    timeoutMs: 600_000,
-    failWhen: (value) => value?.state === "failed",
-    stopWhen: (value) => value?.state === "completed",
+    intervalMs: 3_000,
+    timeoutMs: 60_000,
+    failWhen: (order) => order?.status === "cancelled",
+    stopWhen: (order) => order?.status === "shipped",
   }),
 });
 ```

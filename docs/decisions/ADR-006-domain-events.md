@@ -15,20 +15,21 @@ The framework already owns invalidation, stale-data retention, generation advanc
 Introduce immutable typed event handles and allow data and derived nodes to declare event-driven invalidation.
 
 ```ts
-const AppointmentBooked = defineEvent<{
-  jobSeekerId: number;
-  appointmentId: number;
-}>("appointment.booked");
+const StockChanged = defineEvent<{
+  productId: string;
+  inStock: boolean;
+}>("stock.changed");
 ```
 
 Nodes may declare unconditional invalidation or a synchronous predicate using the typed payload and the node's declared dependencies.
 
 ```ts
 invalidatedBy: [
-  {
-    event: AppointmentBooked,
-    when: ({ payload, get }) => payload.jobSeekerId === get(JobSeekerId),
-  },
+  whenEvent(
+    StockChanged,
+    [CurrentProductId],
+    ({ payload, get }) => payload.productId === get(CurrentProductId),
+  ),
 ];
 ```
 
@@ -41,7 +42,7 @@ Predicates are evaluated before graph mutation. A predicate failure applies no p
 Plain runtime publication is immediate:
 
 ```ts
-runtime.publish(AppointmentBooked, payload);
+runtime.publish(StockChanged, { productId: "prod-1", inStock: true });
 ```
 
 It evaluates against committed graph state and remains independent while another transaction is open.
@@ -50,7 +51,7 @@ Transaction-owned publication is explicit:
 
 ```ts
 await runtime.transaction((transaction) => {
-  transaction.publish(AppointmentBooked, payload);
+  transaction.publish(StockChanged, { productId: "prod-1", inStock: true });
 });
 ```
 

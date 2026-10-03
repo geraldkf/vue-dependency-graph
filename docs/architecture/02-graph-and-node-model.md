@@ -11,14 +11,10 @@ A validated graph and its definitions may therefore be shared by multiple indepe
 A node definition is also its typed handle:
 
 ```ts
-const Credits = defineDataNode({
-  key: "credits",
-  initialValue: [] as Credit[],
-  load: async () => api.getCredits(),
-});
+type ProductData = NodeValue<typeof ProductDetails>; // Product | null
 ```
 
-`NodeValue<typeof Credits>` resolves to `Credit[]`. Consumer APIs normally accept handles and retain their value types. Stable string keys remain the identity used for topology, diagnostics, validation, and future serialisation.
+The `ProductDetails` handle is defined below, using Banksia's `Product` type from the [user guide](../guides/00-user-guide.md#3-your-first-graph). `NodeValue<typeof ProductDetails>` resolves to `Product | null`. Consumer APIs normally accept handles and retain their value types. Stable string keys remain the identity used for topology, diagnostics, validation, and future serialisation.
 
 ## Node kinds
 
@@ -27,9 +23,14 @@ const Credits = defineDataNode({
 A context node declares a mutable graph input and an initial value:
 
 ```ts
-const PointPeriodId = defineContextNode<number | undefined>({
-  key: "pointPeriodId",
-  initialValue: undefined,
+const CurrentProductId = defineContextNode<string>({
+  key: "currentProductId",
+  initialValue: "prod-1",
+});
+
+const CurrentCurrency = defineContextNode<"USD" | "AUD" | "EUR">({
+  key: "currentCurrency",
+  initialValue: "USD",
 });
 ```
 
@@ -40,11 +41,11 @@ Context definitions have no dependencies. A runtime owns the current context val
 A data node declares asynchronous work:
 
 ```ts
-const Targets = defineDataNode({
-  key: "targets",
-  dependencies: [JobSeekerId, PointPeriodId] as const,
-  initialValue: [] as Target[],
-  load: ({ get, signal }) => api.getTargets(get(JobSeekerId), get(PointPeriodId), signal),
+const ProductDetails = defineDataNode({
+  key: "productDetails",
+  dependencies: [CurrentProductId],
+  initialValue: null as Product | null,
+  load: ({ get, signal }) => api.getProduct(get(CurrentProductId), signal),
 });
 ```
 
@@ -55,11 +56,13 @@ The loader's `get` function accepts only declared dependency handles and returns
 A derived node calculates synchronously from dependencies:
 
 ```ts
-const CanModifyCredit = defineDerivedNode({
-  key: "canModifyCredit",
-  dependencies: [Permissions, CurrentCredit] as const,
-  derive: ({ get }) =>
-    get(Permissions).includes("credit.modify") && get(CurrentCredit)?.status !== "Finalised",
+const DisplayPrice = defineDerivedNode({
+  key: "displayPrice",
+  dependencies: [ProductDetails, CurrentCurrency],
+  derive: ({ get }) => {
+    const product = get(ProductDetails);
+    return product ? formatPrice(product.priceCents, get(CurrentCurrency)) : "—";
+  },
 });
 ```
 
@@ -77,13 +80,16 @@ Data-node definitions may carry one immutable release policy, authored as a plai
 
 ## Forward references
 
-A dependency resolver supports definitions that require forward references:
+A dependency resolver supports definitions that require forward references. This alternative declaration allows `ProductDetails` to be defined later in the module:
 
 ```ts
-const A = defineDerivedNode({
-  key: "A",
-  dependencies: () => [B] as const,
-  derive: () => "A",
+const DisplayPrice = defineDerivedNode({
+  key: "displayPrice",
+  dependencies: () => [ProductDetails, CurrentCurrency] as const,
+  derive: ({ get }) => {
+    const product = get(ProductDetails);
+    return product ? formatPrice(product.priceCents, get(CurrentCurrency)) : "—";
+  },
 });
 ```
 
@@ -95,7 +101,7 @@ Nothing outside graph creation reads a node's `dependencies` for topology: the r
 
 ```ts
 const graph = createGraph({
-  nodes: [CurrentPointPeriod, PointPeriods, JobSeekerId],
+  nodes: [DisplayPrice, ProductDetails, CurrentProductId, CurrentCurrency],
 });
 ```
 
@@ -130,9 +136,9 @@ Validation failures use `GraphValidationError` and a narrow `GraphValidationErro
 ## Topology inspection
 
 ```ts
-const node = graph.getNode("targets");
-const parents = graph.getParents(Targets);
-const children = graph.getChildren("pointPeriodId");
+const node = graph.getNode("productDetails");
+const parents = graph.getParents(ProductDetails);
+const children = graph.getChildren("currentProductId");
 const nodes = graph.getNodes();
 ```
 
