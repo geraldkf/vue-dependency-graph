@@ -67,7 +67,8 @@ export class GraphMutationStateError extends GraphMutationError {
 /**
  * Thrown by {@link GraphRuntime.mutate} when this call's optimistic update
  * targets a node that another in-flight mutation is already optimistically
- * updating. The classic case is a user clicking a quantity stepper
+ * updating, or its context changed before the optimistic draft committed.
+ * The classic case is a user clicking a quantity stepper
  * rapidly: the second click's optimistic update can't safely apply on top
  * of the first click's still-unconfirmed one. Typical handling is to
  * disable the control while a mutation on the same node is in flight,
@@ -76,9 +77,12 @@ export class GraphMutationStateError extends GraphMutationError {
 export class GraphMutationConflictError extends GraphMutationError {
   public readonly nodeKeys: readonly string[];
 
-  public constructor(nodeKeys: readonly string[]) {
+  public constructor(nodeKeys: readonly string[], message?: string) {
     const sortedKeys = normalizeNodeKeys(nodeKeys);
-    super("CONFLICT", `Optimistic mutation conflicts with active nodes: ${sortedKeys.join(", ")}.`);
+    super(
+      "CONFLICT",
+      message ?? `Optimistic mutation conflicts with active nodes: ${sortedKeys.join(", ")}.`,
+    );
     this.name = "GraphMutationConflictError";
     this.nodeKeys = sortedKeys;
   }

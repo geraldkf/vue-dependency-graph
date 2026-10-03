@@ -20,7 +20,7 @@ export interface UseNodeResult<TNode extends AnyNodeDefinition> {
  *
  * Returns individual `computed()` refs rather than one nested state ref
  * so `const { data, status } = useNode(userNode)` stays reactive after
- * destructuring — see `docs/implementation/25-vue-adapter-and-playground-plan.md`
+ * destructuring — see `docs/architecture/07-vue-and-pinia-integration.md`
  * for the reasoning.
  */
 export const useNode = <TNode extends AnyNodeDefinition>(

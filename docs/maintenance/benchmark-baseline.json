@@ -1,0 +1,126 @@
+{
+  "node": "v24.19.0",
+  "platform": "win32",
+  "samples": [
+    {
+      "dataNodes": 100,
+      "derivedNodes": 100,
+      "observers": 1,
+      "diagnostics": false,
+      "medianCascadeMs": 5.95,
+      "maximumCascadeMs": 7.31,
+      "requests": 700,
+      "retainedEvents": 0
+    },
+    {
+      "dataNodes": 100,
+      "derivedNodes": 100,
+      "observers": 1,
+      "diagnostics": true,
+      "medianCascadeMs": 8.04,
+      "maximumCascadeMs": 9.12,
+      "requests": 700,
+      "retainedEvents": 1000
+    },
+    {
+      "dataNodes": 100,
+      "derivedNodes": 100,
+      "observers": 100,
+      "diagnostics": false,
+      "medianCascadeMs": 8.31,
+      "maximumCascadeMs": 8.46,
+      "requests": 700,
+      "retainedEvents": 0
+    },
+    {
+      "dataNodes": 100,
+      "derivedNodes": 100,
+      "observers": 100,
+      "diagnostics": true,
+      "medianCascadeMs": 10.59,
+      "maximumCascadeMs": 11.86,
+      "requests": 700,
+      "retainedEvents": 1000
+    },
+    {
+      "dataNodes": 500,
+      "derivedNodes": 500,
+      "observers": 1,
+      "diagnostics": false,
+      "medianCascadeMs": 146.78,
+      "maximumCascadeMs": 151.99,
+      "requests": 3500,
+      "retainedEvents": 0
+    },
+    {
+      "dataNodes": 500,
+      "derivedNodes": 500,
+      "observers": 1,
+      "diagnostics": true,
+      "medianCascadeMs": 159.72,
+      "maximumCascadeMs": 196.78,
+      "requests": 3500,
+      "retainedEvents": 1000
+    },
+    {
+      "dataNodes": 500,
+      "derivedNodes": 500,
+      "observers": 100,
+      "diagnostics": false,
+      "medianCascadeMs": 159.13,
+      "maximumCascadeMs": 162.16,
+      "requests": 3500,
+      "retainedEvents": 0
+    },
+    {
+      "dataNodes": 500,
+      "derivedNodes": 500,
+      "observers": 100,
+      "diagnostics": true,
+      "medianCascadeMs": 172.32,
+      "maximumCascadeMs": 188.21,
+      "requests": 3500,
+      "retainedEvents": 1000
+    },
+    {
+      "dataNodes": 1000,
+      "derivedNodes": 1000,
+      "observers": 1,
+      "diagnostics": false,
+      "medianCascadeMs": 774.22,
+      "maximumCascadeMs": 810.66,
+      "requests": 7000,
+      "retainedEvents": 0
+    },
+    {
+      "dataNodes": 1000,
+      "derivedNodes": 1000,
+      "observers": 1,
+      "diagnostics": true,
+      "medianCascadeMs": 723.64,
+      "maximumCascadeMs": 732.18,
+      "requests": 7000,
+      "retainedEvents": 1000
+    },
+    {
+      "dataNodes": 1000,
+      "derivedNodes": 1000,
+      "observers": 100,
+      "diagnostics": false,
+      "medianCascadeMs": 860.99,
+      "maximumCascadeMs": 888.9,
+      "requests": 7000,
+      "retainedEvents": 0
+    },
+    {
+      "dataNodes": 1000,
+      "derivedNodes": 1000,
+      "observers": 100,
+      "diagnostics": true,
+      "medianCascadeMs": 963.98,
+      "maximumCascadeMs": 989.97,
+      "requests": 7000,
+      "retainedEvents": 1000
+    }
+  ]
+}

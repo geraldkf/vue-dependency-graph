@@ -32,7 +32,7 @@ export const useFeatureGraphStore = defineStore("featureGraph", () => {
   );
 
   onScopeDispose(() => {
-    runtime.dispose();
+    runtime.shutdown();
   });
 
   return {

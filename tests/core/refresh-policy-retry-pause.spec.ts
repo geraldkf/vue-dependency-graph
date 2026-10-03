@@ -208,6 +208,7 @@ describe("refresh policy retry and pause", () => {
     expect(state.freshness).toBe("stale");
     expect((state.error as GraphRefreshRetryExhaustedError).attempts).toBe(2);
     expect(clock.timerCount()).toBe(0);
+    expect(runtime.createDiagnosticSnapshot().refreshPolicies[0]?.terminal).toBe(true);
     subscription.unsubscribe();
   });
 

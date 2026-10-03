@@ -10,7 +10,7 @@ import type { NodeRuntimeState } from "../core";
  * with no indication of which node changed. Without this comparison, every
  * mounted composable would re-render on every unrelated state change
  * anywhere in the graph — see
- * `docs/implementation/25-vue-adapter-and-playground-plan.md` for the
+ * `docs/architecture/07-vue-and-pinia-integration.md` for the
  * empirical basis for this.
  *
  * `generation` is deliberately excluded: it changes on every invalidation

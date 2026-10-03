@@ -1,6 +1,7 @@
 import type { AnyEventDefinition, EventPayload } from "../events/types";
 import type { ContextNodeDefinition } from "../graph/types";
 import { GraphTransactionConflictError } from "./errors";
+import { abortableWork } from "../util/abortable-work";
 import type {
   ContextChange,
   EventPublication,
@@ -40,6 +41,7 @@ interface TransactionSession {
 }
 
 export interface RuntimeTransactionCoordinatorDependencies {
+  readonly lifetimeSignal?: AbortSignal;
   readonly resolveContextNode: <TValue>(
     node: ContextNodeDefinition<TValue>,
   ) => ContextNodeDefinition<TValue>;
@@ -66,9 +68,10 @@ export interface RuntimeTransactionCoordinatorDependencies {
  * possible by explicitly reusing the `GraphTransaction` handle that call
  * already received (see `docs/decisions/ADR-005-atomic-graph-
  * transactions.md`, "Session ownership and composition", and
- * `docs/implementation/114-transaction-overlap-isolation-plan.md`).
+ * `docs/architecture/03-scheduler-transactions-and-concurrency.md`).
  */
 export const createRuntimeTransactionCoordinator = ({
+  lifetimeSignal,
   resolveContextNode,
   getContextGeneration,
   commitImmediate,
@@ -118,6 +121,7 @@ export const createRuntimeTransactionCoordinator = ({
 
   const createGraphTransaction = (session: TransactionSession): GraphTransaction => {
     const assertActive = (): void => {
+      if (lifetimeSignal?.aborted) throw lifetimeSignal.reason;
       if (session.settled) {
         throw new Error("Graph transaction is no longer active.");
       }
@@ -144,7 +148,7 @@ export const createRuntimeTransactionCoordinator = ({
         // reached. Ordinary control flow does the rollback here; nothing
         // bespoke is needed because there is no other, independently
         // racing participant to coordinate with (see C3 in
-        // docs/implementation/114-transaction-overlap-isolation-plan.md
+        // docs/architecture/03-scheduler-transactions-and-concurrency.md
         // for why that coordination was removable).
         return Promise.resolve(work(createGraphTransaction(session)));
       },
@@ -165,12 +169,22 @@ export const createRuntimeTransactionCoordinator = ({
     let succeeded = false;
 
     try {
-      const result = await work(transaction);
+      const result = await (lifetimeSignal
+        ? abortableWork(lifetimeSignal, () => work(transaction))
+        : work(transaction));
+      if (lifetimeSignal?.aborted) throw lifetimeSignal.reason;
       succeeded = true;
       return result;
     } finally {
       session.settled = true;
-      if (succeeded) commitSession(session);
+      try {
+        if (succeeded) {
+          commitSession(session);
+        }
+      } finally {
+        session.stagedContexts.clear();
+        session.stagedEvents.length = 0;
+      }
       // else: nothing to do -- this session's own staged maps are simply
       // discarded, never having been reachable from anywhere else.
     }

@@ -122,13 +122,13 @@ Mirrored state diverges on abort, refresh failure, optimistic rollback, and rele
 
 ### 2.6 Lifetime and dispose
 
-| Event                                           | What happens                                                              |
-| ----------------------------------------------- | ------------------------------------------------------------------------- |
-| Component unmount                               | Composable `onScopeDispose` → unsubscribe only                            |
-| Store `$dispose` / Pinia `disposePinia`         | Runtime `dispose()` → stop refresh/release timers, drop runtime resources |
-| User navigates away from feature but store kept | Runtime stays; inactive views should unmount so subscriptions drop        |
+| Event                                           | What happens                                                                    |
+| ----------------------------------------------- | ------------------------------------------------------------------------------- |
+| Component unmount                               | Composable `onScopeDispose` → unsubscribe only                                  |
+| Store `$dispose` / Pinia `disposePinia`         | Runtime `shutdown()` → end runtime work, subscriptions, and background policies |
+| User navigates away from feature but store kept | Runtime stays; inactive views should unmount so subscriptions drop              |
 
-Who disposes Pinia is an **application shell** decision. Document it once for the host app (playground uses `app.onUnmount(() => disposePinia(pinia))`). Feature stores should still `onScopeDispose(() => runtime.dispose())` when the store itself is disposed.
+Who disposes Pinia is an **application shell** decision. Document it once for the host app (playground uses `app.onUnmount(() => disposePinia(pinia))`). Feature stores should still `onScopeDispose(() => runtime.shutdown())` when the store itself is disposed.
 
 ---
 
@@ -172,7 +172,7 @@ Before coding, list every context node the workflow uses:
 | `runtime.mutate`                     | yes (actions)                       | yes                     | sometimes (row actions — prefer store action) | no                        |
 | `runtime.publish`                    | yes                                 | yes (documented events) | rare                                          | no                        |
 | `useNode` / `useNodes` / `useQuery`  | no (store is not a component setup) | optional                | yes                                           | no (child mounts instead) |
-| `runtime.dispose`                    | yes (on store dispose)              | no                      | no                                            | no                        |
+| `runtime.shutdown`                   | yes (on store dispose)              | no                      | no                                            | no                        |
 
 ---
 
@@ -197,7 +197,7 @@ export const useOrdersGraphStore = defineStore("ordersGraph", () => {
   );
 
   onScopeDispose(() => {
-    runtime.dispose();
+    runtime.shutdown();
   });
 
   return {
@@ -772,7 +772,7 @@ export const useOrdersGraphStore = defineStore("ordersGraph", () => {
   const graph = createGraph({ nodes: ordersNodes });
   const runtime = markRaw(createGraphRuntime(graph));
 
-  onScopeDispose(() => runtime.dispose());
+  onScopeDispose(() => runtime.shutdown());
 
   async function selectOrganisation(orgId: string | null) {
     await runtime.transaction(async (tx) => {
@@ -846,7 +846,7 @@ See §6.1.
 
 When generating code for this department:
 
-1. Create or reuse a **Pinia graph store** with `markRaw(runtime)` and `onScopeDispose(() => runtime.dispose())`.
+1. Create or reuse a **Pinia graph store** with `markRaw(runtime)` and `onScopeDispose(() => runtime.shutdown())`.
 2. Prefer **`const { runtime } = useOrdersGraphStore()`** (or the feature store) and pass **`{ runtime }`** to every graph composable — same pattern as the user guide Pinia section.
 3. Put cascades and shared mutations on **store actions**.
 4. Never mirror node snapshots into Pinia.

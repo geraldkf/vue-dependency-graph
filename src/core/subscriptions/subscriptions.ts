@@ -7,6 +7,7 @@ interface MutableNodeSubscriptionState {
 }
 
 export interface RuntimeSubscriptionController {
+  readonly shutdown: () => void;
   readonly subscribeNodes: (nodes: readonly AnyNodeDefinition[]) => NodeSubscription;
   readonly getSubscriptionState: (node: AnyNodeDefinition) => NodeSubscriptionState;
   readonly hasSubscribers: (node: AnyNodeDefinition) => boolean;
@@ -39,6 +40,7 @@ export const createRuntimeSubscriptionController = ({
   onRemoved,
 }: RuntimeSubscriptionDependencies): RuntimeSubscriptionController => {
   const subscriptionStates = new Map<string, MutableNodeSubscriptionState>();
+  let stopped = false;
 
   for (const node of graph.getNodes()) {
     subscriptionStates.set(node.key, { direct: 0, required: 0 });
@@ -114,7 +116,7 @@ export const createRuntimeSubscriptionController = ({
     return Object.freeze({
       nodes: frozenNodes,
       unsubscribe: () => {
-        if (!active) return;
+        if (stopped || !active) return;
 
         for (const key of directKeys) {
           if (requireSubscriptionState(key).direct <= 0) {
@@ -143,6 +145,18 @@ export const createRuntimeSubscriptionController = ({
   };
 
   return Object.freeze({
+    shutdown: () => {
+      stopped = true;
+      const direct: string[] = [];
+      const required: string[] = [];
+      for (const [key, state] of subscriptionStates) {
+        direct.push(...Array<string>(state.direct).fill(key));
+        required.push(...Array<string>(state.required).fill(key));
+        state.direct = 0;
+        state.required = 0;
+      }
+      if (direct.length || required.length) onRemoved?.(direct, required);
+    },
     subscribeNodes,
     getSubscriptionState,
     hasSubscribers,

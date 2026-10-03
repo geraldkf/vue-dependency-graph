@@ -9,7 +9,7 @@ flowchart TB
     Application["Application and domain stores"]
     Vue["Vue adapter<br/>useNode, useNodes, plugin"]
     Playground["Playground scenarios"]
-    Devtools["Devtools<br/>(future)"]
+    Devtools["Devtools<br/>embeddable inspector"]
     Loaders["Data-node loaders"]
 
     subgraph Core["Framework-agnostic core"]
@@ -56,7 +56,7 @@ flowchart TB
     Transactions --> Scheduler
 ```
 
-The diagram shows the current implemented runtime composition, including typed event indexing, publication matching, and transaction-aware event staging. Devtools remains a future consumer of public inspection contracts. Later roadmap capabilities are described in their dedicated architecture documents and are not presented here as current runtime components.
+The diagram shows runtime composition, including typed event indexing and transaction-aware event staging. The implemented devtools panel consumes public inspection contracts. Refresh, release, mutations, and diagnostics are described in their dedicated architecture documents.
 
 ## Runtime composition layout
 
@@ -181,4 +181,4 @@ Pinia is an application integration choice, not a core dependency. A Pinia store
 
 ## Validation model
 
-The contained environment prepares files and performs static inspection. The developer performs package installation, type checking, tests, builds, and runtime validation offline. Documentation and roadmap status must distinguish prepared changes from validated changes.
+Run the repository checks locally and in CI whenever the environment supports them. Record the exact checkout, runtime versions, and results. Static inspection alone does not establish validation; unavailable checks must be reported as pending.

@@ -20,3 +20,7 @@ Use these maintained documents as the current sources of truth:
 - [Test strategy](./testing/01-test-strategy.md)
 - [Roadmap](./ROADMAP.md)
 - [Playground](./PLAYGROUND.md)
+- [Compatibility and release contract](./maintenance/compatibility.md)
+- [Dependency maintenance](./maintenance/dependencies.md)
+- [Performance baseline](./maintenance/performance.md)
+- [Bounded application migration trial](./maintenance/migration-trial.md)

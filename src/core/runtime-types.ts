@@ -44,6 +44,13 @@ export interface GraphRuntimeOptions {
 }
 
 export interface GraphRuntime {
+  /** Permanently rejects new work, aborts owned loads/mutations and pending transactions,
+   * clears listeners and subscriptions, and prevents late value commits. Idempotent.
+   * Reads and diagnostic snapshots remain available. Remote side effects cannot be undone.
+   */
+  readonly shutdown: () => void;
+  /** Stops policy timers without ending the runtime. Alias of the legacy dispose(). */
+  readonly stopBackgroundPolicies: () => void;
   /**
    * Reads a node's current runtime state: `data` (its value, wrapped per
    * node kind), `status` (e.g. `"idle"`, `"loading"`, `"success"`,

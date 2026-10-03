@@ -143,7 +143,10 @@ export const createRuntimeReleasePolicyController = ({
     }, durationMs);
   };
 
-  const eligibleNodes = graph.getNodes().filter(isReleaseEligibleDataNode);
+  const eligibleNodes = graph
+    .getNodes()
+    .filter(isReleaseEligibleDataNode)
+    .filter((node) => resolveReleaseDurationMs(node, defaultDurationMs) !== undefined);
   const reconcile = (): void => {
     for (const node of eligibleNodes) reconcileNode(node);
   };

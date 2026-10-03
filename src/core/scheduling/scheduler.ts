@@ -3,6 +3,7 @@ import type { AnyNodeDefinition } from "../graph/types";
 import type { SchedulerState } from "./types";
 
 export interface RuntimeSchedulerController {
+  readonly shutdown: () => void;
   readonly schedule: () => void;
   readonly getSchedulerState: () => SchedulerState;
   readonly whenSettled: () => Promise<void>;
@@ -63,6 +64,7 @@ export const createRuntimeSchedulerController = <TContext>({
 }: RuntimeSchedulerDependencies<TContext>): RuntimeSchedulerController => {
   const settlementWaiters = new Set<() => void>();
   let scheduled = false;
+  let stopped = false;
   let inFlight = 0;
   let error: Error | null = null;
 
@@ -110,7 +112,7 @@ export const createRuntimeSchedulerController = <TContext>({
   };
 
   const schedule = (): void => {
-    if (scheduled) return;
+    if (stopped || scheduled) return;
     scheduled = true;
     notify();
     onRequested?.();
@@ -123,6 +125,11 @@ export const createRuntimeSchedulerController = <TContext>({
   };
 
   return Object.freeze({
+    shutdown: () => {
+      stopped = true;
+      scheduled = false;
+      resolveSettlementIfIdle();
+    },
     schedule,
     getSchedulerState,
     whenSettled,

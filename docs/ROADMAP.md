@@ -6,6 +6,8 @@ The initial Vue Dependency Graph framework capabilities are implemented and vali
 
 The framework remains private and its public APIs may change based on evidence from the existing-application migration trial.
 
+The October 2026 maintenance pass adds context-protected mutation updates, generation-aware polling restart, diagnostic collector observation, explicit owner shutdown, parsed architecture boundaries, separate Node/DOM test projects, production Chromium smoke checks, and scale measurements. Dependency advisories were addressed and CI now covers Node 22/24. See [the staged maintenance record](../MAINTENANCE.md) and [application trial plan](./maintenance/migration-trial.md).
+
 ## Completed capabilities
 
 ### Foundation and graph model

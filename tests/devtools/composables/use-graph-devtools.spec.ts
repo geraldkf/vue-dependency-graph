@@ -30,6 +30,29 @@ const mountProbe = (
 };
 
 describe("useGraphDevtools", () => {
+  it("updates diagnostic-only operations and resets, and exports immediately", async () => {
+    const diagnostics = createInMemoryGraphDiagnostics({ capacity: 50 });
+    const runtime = createGraphRuntime(createGraph({ nodes: [] }), {
+      diagnostics: { sink: diagnostics },
+    });
+    const { captured, unmount } = mountProbe(runtime, diagnostics);
+    expect(captured.timeline.value).toHaveLength(1);
+    await runtime.execute([]);
+    const exported = JSON.parse(captured.exportSnapshot());
+    expect(exported.snapshot.diagnostics.retainedEventCount).toBe(exported.events.length);
+    await nextTick();
+    expect(captured.timeline.value).toHaveLength(2);
+    diagnostics.reset();
+    await nextTick();
+    expect(captured.timeline.value).toHaveLength(0);
+    expect(captured.snapshot.value.diagnostics.retainedEventCount).toBe(0);
+    // A queued diagnostic revision must not fire after disposal.
+    void runtime.execute([]);
+    unmount();
+    await nextTick();
+    expect(captured.timeline.value).toHaveLength(0);
+    runtime.dispose();
+  });
   it("throws when called outside an active effect scope", () => {
     const runtime = createGraphRuntime(createGraph({ nodes: [] }));
     const diagnostics = createInMemoryGraphDiagnostics({ capacity: 50 });

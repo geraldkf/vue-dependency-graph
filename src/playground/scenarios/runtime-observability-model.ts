@@ -123,6 +123,7 @@ export const createRuntimeObservabilityScenario = (): RuntimeObservabilityScenar
   const dispose = (): void => {
     subscription?.unsubscribe();
     subscription = undefined;
+    runtime.shutdown();
   };
 
   return Object.freeze({

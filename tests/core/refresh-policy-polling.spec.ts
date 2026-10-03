@@ -57,6 +57,41 @@ const createTestEnvironment = () => {
 };
 
 describe("poll-until refresh policy", () => {
+  it.each(["completed", "failed"] as const)(
+    "restarts after terminal %s when a new job is selected",
+    async (terminal) => {
+      const clock = createTestEnvironment();
+      const job = defineContextNode({ key: "terminal-job", initialValue: 1 });
+      let requests = 0;
+      const node = defineDataNode({
+        key: "terminal-progress",
+        dependencies: [job],
+        initialValue: { state: "running", request: 0 } as Progress,
+        load: async ({ get }) =>
+          ({ state: get(job) === 1 ? terminal : "running", request: ++requests }) as Progress,
+        refresh: pollUntil<Progress>({
+          intervalMs: 100,
+          timeoutMs: 1000,
+          stopWhen: (v) => v.state === "completed",
+          failWhen: (v) => v.state === "failed",
+        }),
+      });
+      const runtime = createGraphRuntime(createGraph({ nodes: [job, node] }), {
+        timerEnvironment: clock.environment,
+      });
+      const subscription = runtime.subscribeNodes([node]);
+      await runtime.whenSettled();
+      expect(clock.timerCount()).toBe(0);
+      runtime.setContext(job, 2);
+      await runtime.whenSettled();
+      expect(clock.timerCount()).toBe(1);
+      expect(runtime.getState(node).error).toBeNull();
+      clock.advanceBy(100);
+      await waitForCondition(() => requests === 3, "new job polled");
+      subscription.unsubscribe();
+      runtime.dispose();
+    },
+  );
   it("progresses until completion and then stops", async () => {
     const clock = createTestEnvironment();
     let requests = 0;

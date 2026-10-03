@@ -60,17 +60,24 @@ export const useGraphDevtools = (options: UseGraphDevtoolsOptions): UseGraphDevt
 
   const revision = ref(0);
   let flushScheduled = false;
+  let active = true;
   const requestFlush = (): void => {
-    if (flushScheduled) return;
+    if (!active || flushScheduled) return;
     flushScheduled = true;
     queueMicrotask(() => {
       flushScheduled = false;
+      if (!active) return;
       revision.value += 1;
     });
   };
 
   const stopWatching = runtime.onChange(requestFlush);
-  onScopeDispose(stopWatching);
+  const stopDiagnostics = diagnostics.onChange(requestFlush);
+  onScopeDispose(() => {
+    active = false;
+    stopWatching();
+    stopDiagnostics();
+  });
 
   const snapshot = computed(() => {
     void revision.value;
@@ -100,7 +107,7 @@ export const useGraphDevtools = (options: UseGraphDevtoolsOptions): UseGraphDevt
     const payload: DevtoolsExport = {
       schemaVersion: 1,
       exportedAt: Date.now(),
-      snapshot: snapshot.value,
+      snapshot: runtime.createDiagnosticSnapshot(),
       events: diagnostics.getEvents(),
     };
     return JSON.stringify(payload, null, 2);

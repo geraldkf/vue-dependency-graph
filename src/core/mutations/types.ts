@@ -7,7 +7,7 @@ export interface MutationExecuteContext<TInput> {
   /** The value passed as `runtime.mutate`'s second argument. */
   readonly input: TInput;
   /**
-   * Aborts if this attempt is superseded before it settles. Pass it to
+   * Aborts when the owning runtime shuts down. Pass it to
    * `fetch` so an abandoned request doesn't race a newer one:
    * `fetch(url, { signal })`.
    */
@@ -178,7 +178,7 @@ export interface MutationOptions<TInput, TResult> {
    * Classifies a thrown error as `"rejected"` (safe to roll back) or
    * `"unknown"` (outcome can't be determined - e.g. the request may have
    * reached the server before the connection dropped). Omitted, every
-   * failure is treated as `"rejected"`.
+   * failure is treated as `"unknown"`.
    */
   readonly classifyFailure?: (error: unknown) => MutationFailureKind;
 }

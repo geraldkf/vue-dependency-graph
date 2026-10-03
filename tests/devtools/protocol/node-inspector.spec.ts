@@ -12,6 +12,30 @@ import {
 import { computeNodeDetail } from "../../../src/devtools/protocol/node-inspector";
 
 describe("computeNodeDetail", () => {
+  it("provides safe defaults for an offline topology with no state or demand rows", () => {
+    const parent = defineContextNode({ key: "parent", initialValue: 1 });
+    const child = defineDataNode({
+      key: "child",
+      dependencies: [parent],
+      initialValue: 0,
+      load: async () => 2,
+    });
+    const runtime = createGraphRuntime(createGraph({ nodes: [parent, child] }));
+    const snapshot = { ...runtime.createDiagnosticSnapshot(), nodes: [], subscriptions: [] };
+    expect(computeNodeDetail(snapshot, "child")).toMatchObject({
+      status: "idle",
+      freshness: "stale",
+      generation: 0,
+      hasSuccessfulValue: false,
+      value: { status: "omitted" },
+      error: null,
+      dependencies: [{ key: "parent", status: "idle" }],
+      subscribers: { direct: 0, required: 0, total: 0 },
+      refreshPolicy: null,
+      attemptMetrics: null,
+    });
+    runtime.shutdown();
+  });
   it("returns undefined for a key not present in the snapshot", () => {
     const runtime = createGraphRuntime(createGraph({ nodes: [] }));
     expect(computeNodeDetail(runtime.createDiagnosticSnapshot(), "missing")).toBeUndefined();

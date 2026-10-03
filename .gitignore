@@ -1,6 +1,8 @@
 node_modules/
 dist/
 coverage/
+vue-dependency-graph/
+browser-results/
 .vite/
 *.tsbuildinfo
 .DS_Store

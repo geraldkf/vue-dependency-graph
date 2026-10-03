@@ -262,6 +262,7 @@ export const createTransactionIsolationScenario = (): TransactionIsolationScenar
     void transactionB?.catch(() => undefined);
     subscription?.unsubscribe();
     subscription = undefined;
+    runtime.shutdown();
   };
 
   return Object.freeze({

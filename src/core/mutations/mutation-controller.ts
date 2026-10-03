@@ -1,5 +1,7 @@
 import type { EventMatchOptions } from "../events/event-matcher";
-import type { AnyNodeDefinition } from "../graph/types";
+import type { AnyNodeDefinition, Graph } from "../graph/types";
+import { captureMutationContext } from "./mutation-context";
+import { abortableWork } from "../util/abortable-work";
 import type { CombinedInvalidationPlan } from "../invalidation/invalidation";
 import type { ActiveAttempt, NodeStateRecord } from "../state/state";
 import type { EventPublication } from "../transactions/types";
@@ -32,6 +34,9 @@ export interface RuntimeMutationController {
 }
 
 export interface RuntimeMutationControllerDependencies {
+  readonly lifetimeSignal: AbortSignal;
+  readonly assertRunning: () => void;
+  readonly graph: Graph;
   readonly resolveRegisteredNode: (node: AnyNodeDefinition, purpose: string) => AnyNodeDefinition;
   readonly getNodeState: (key: string) => NodeStateRecord;
   readonly getActiveAttempt: (key: string) => ActiveAttempt | undefined;
@@ -55,6 +60,9 @@ export interface RuntimeMutationControllerDependencies {
  * private collaborators behind this single runtime-facing controller.
  */
 export const createRuntimeMutationController = ({
+  lifetimeSignal,
+  assertRunning,
+  graph,
   resolveRegisteredNode,
   getNodeState,
   getActiveAttempt,
@@ -84,6 +92,7 @@ export const createRuntimeMutationController = ({
   });
 
   const mutationSettlement = createMutationSettlementCoordinator({
+    assertRunning,
     resolveRegisteredNode,
     matchPublications,
     prepareCombinedInvalidation,
@@ -97,11 +106,13 @@ export const createRuntimeMutationController = ({
     mutationKey: string,
     work: NonNullable<MutationOptions<TInput, unknown>["optimistic"]>,
     input: TInput,
+    assertContext: (nodes: readonly AnyNodeDefinition[]) => void,
     onLifecycle?: MutationLifecycleListener,
   ): OptimisticSession | undefined => {
-    const prepared = updatePlanner.prepare(
-      updatePlanner.collect((effects) => work(effects, input), "optimistic"),
-    );
+    const drafts = updatePlanner.collect((effects) => work(effects, input), "optimistic");
+    assertContext(drafts.map(({ node }) => node));
+    const prepared = updatePlanner.prepare(drafts);
+    assertContext(prepared.map(({ node }) => node));
     const changed = prepared.filter((update) => update.changed);
     if (changed.length === 0) return undefined;
 
@@ -141,7 +152,16 @@ export const createRuntimeMutationController = ({
     result: TResult,
     input: TInput,
     optimistic: OptimisticSession | undefined,
-  ): TResult => mutationSettlement.settleSuccess(mutation.key, options, result, input, optimistic);
+    assertContext: (nodes: readonly AnyNodeDefinition[]) => void,
+  ): TResult =>
+    mutationSettlement.settleSuccess(
+      mutation.key,
+      options,
+      result,
+      input,
+      optimistic,
+      assertContext,
+    );
 
   /** Lifecycle seam: classifies and reconciles a remote failure. */
   const settleRemoteFailure = <TInput, TResult>(
@@ -156,30 +176,54 @@ export const createRuntimeMutationController = ({
     options?: MutationOptions<TInput, TResult>,
     onLifecycle?: MutationLifecycleListener,
   ): Promise<TResult> => {
-    const controller = new AbortController();
+    const checkContext = captureMutationContext(graph, getNodeState, mutation.key);
+    const assertContext = (nodes: readonly AnyNodeDefinition[]): void => {
+      assertRunning();
+      checkContext(nodes);
+    };
     let optimistic: OptimisticSession | undefined;
 
     return Promise.resolve()
       .then(() => {
+        assertRunning();
         if (options?.optimistic) {
           optimistic = startOptimisticSession(
             mutation.key,
             options.optimistic as NonNullable<MutationOptions<TInput, unknown>["optimistic"]>,
             input,
+            (nodes) => {
+              assertRunning();
+              checkContext(nodes, false);
+            },
             onLifecycle,
           );
         }
         onLifecycle?.("remote-started");
-        return executeRemoteMutation(mutation, input, controller.signal);
+        return abortableWork(lifetimeSignal, () =>
+          executeRemoteMutation(mutation, input, lifetimeSignal),
+        );
       })
       .then(
         (result) => {
+          if (lifetimeSignal.aborted) optimisticSessions.release(optimistic);
+          assertRunning();
           onLifecycle?.("remote-succeeded");
-          const settled = settleRemoteSuccess(mutation, options, result, input, optimistic);
+          const settled = settleRemoteSuccess(
+            mutation,
+            options,
+            result,
+            input,
+            optimistic,
+            assertContext,
+          );
           onLifecycle?.("success-committed");
           return settled;
         },
         (error) => {
+          if (lifetimeSignal.aborted) {
+            optimisticSessions.release(optimistic);
+            throw lifetimeSignal.reason;
+          }
           onLifecycle?.("remote-failed");
           return settleRemoteFailure(options, error, optimistic);
         },

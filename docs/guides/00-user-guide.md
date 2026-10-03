@@ -563,7 +563,7 @@ import { graph } from "../graph/runtime";
 
 export const useDependencyGraphStore = defineStore("dependencyGraph", () => {
   const runtime = markRaw(createGraphRuntime(graph));
-  onScopeDispose(() => runtime.dispose());
+  onScopeDispose(() => runtime.shutdown());
   return { runtime };
 });
 ```
@@ -579,7 +579,7 @@ const { data: product } = useNode(ProductDetails, { runtime });
 </script>
 ```
 
-`onScopeDispose(() => runtime.dispose())` stops the runtime's refresh and release timers when the store is disposed (`store.$dispose()` or `disposePinia(pinia)`). Pinia doesn't dispose itself when the app unmounts, so call `app.onUnmount(() => disposePinia(pinia))` in `main.ts` if you want that.
+`onScopeDispose(() => runtime.shutdown())` stops the runtime's refresh and release timers when the store is disposed (`store.$dispose()` or `disposePinia(pinia)`). Pinia doesn't dispose itself when the app unmounts, so call `app.onUnmount(() => disposePinia(pinia))` in `main.ts` if you want that.
 
 `markRaw` matters - the runtime is a closure-based service with its own change notification, not something Vue needs to (or should) make reactive itself. Never copy node data, status, or subscription counts into separate Pinia refs; that creates a second source of truth with its own consistency rules to get right. Read graph state through `useNode`/`useNodes`/`useQuery`, always, even from inside a Pinia store's other actions if you need to read current values there.
 
@@ -762,3 +762,7 @@ For Vue components, use real `createGraph`/`createGraphRuntime` instances (not m
 - [`docs/architecture/`](../architecture/) - how the pieces fit together and why, in depth.
 - [`docs/decisions/`](../decisions/) - the reasoning and alternatives behind each major design choice.
 - [`docs/testing/01-test-strategy.md`](../testing/01-test-strategy.md) - how this library's own test suite is organized, useful as a model for your own graph's tests.
+
+## Mutation context protection
+
+A direct success update checks the transitive context ancestors captured when the mutation was called. If a target context changed, the entire success draft rejects with `GraphMutationReconciliationError` and `remoteSucceeded: true`; it never overwrites the new entity. Same-context refreshes and unrelated context changes remain supported. A switch away and back also counts as changed. Event-only and invalidation-only effects must still carry appropriate scope in their payloads and predicates. See [ADR-020](../decisions/ADR-020-runtime-lifetime-and-mutation-context.md).

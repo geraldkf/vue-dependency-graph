@@ -16,7 +16,7 @@ vi.mock("../../src/core", async (importOriginal) => {
       const runtime = actual.createGraphRuntime(...args);
       const wrapped = {
         ...runtime,
-        dispose: vi.fn(() => runtime.dispose()),
+        shutdown: vi.fn(() => runtime.shutdown()),
       } as GraphRuntime;
       created.push(wrapped);
       return wrapped;
@@ -25,7 +25,7 @@ vi.mock("../../src/core", async (importOriginal) => {
 });
 
 const disposeCalls = (runtime: GraphRuntime): number =>
-  (runtime.dispose as unknown as ReturnType<typeof vi.fn>).mock.calls.length;
+  (runtime.shutdown as unknown as ReturnType<typeof vi.fn>).mock.calls.length;
 
 describe("dependency graph store disposal", () => {
   beforeEach(() => {

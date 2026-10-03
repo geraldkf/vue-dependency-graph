@@ -10,6 +10,30 @@ import {
 import { computeGraphView } from "../../../src/devtools/protocol/graph-view";
 
 describe("computeGraphView", () => {
+  it("lays out offline topology even when state and subscription rows are absent", () => {
+    const node = defineContextNode({ key: "node", initialValue: 1 });
+    const runtime = createGraphRuntime(createGraph({ nodes: [node] }));
+    const view = computeGraphView({
+      ...runtime.createDiagnosticSnapshot(),
+      nodes: [],
+      subscriptions: [],
+    });
+    expect(view.nodes).toEqual([
+      {
+        key: "node",
+        kind: "context",
+        status: "idle",
+        freshness: "stale",
+        hasSuccessfulValue: false,
+        hasError: false,
+        subscriberCount: 0,
+        hasRefreshPolicy: false,
+        column: 0,
+        row: 0,
+      },
+    ]);
+    runtime.shutdown();
+  });
   it("lays out a diamond dependency into deterministic columns and rows, with an event lane", () => {
     const ProfileUpdated = defineEvent<{ userId: string }>("profile.updated");
     const UserId = defineContextNode<string>({ key: "userId", initialValue: "u1" });

@@ -22,7 +22,6 @@ vue-dependency-graph/
 │   ├── vue/           Vue 3.5 integration
 │   ├── devtools/      Optional diagnostics and inspector UI
 │   ├── playground/    Playground application source
-│   └── index.ts       Public library entry point
 ├── tests/
 ├── index.html         Playground entry document
 ├── package.json
@@ -111,29 +110,23 @@ await runtime.transaction(async (transaction) => {
 - TypeScript with strict mode
 - Vue 3.5
 - Vite
-- Vitest 3.0.7
+- Vitest 4.1.11
 - Vue Testing Library for Vue-facing behavioural tests
 - ES modules
 
-Exact dependency versions are established during repository bootstrap and verified offline by the developer.
+Dependency versions are pinned in package.json and pnpm-lock.yaml. See the [dependency maintenance policy](docs/maintenance/dependencies.md).
 
 ## Execution responsibility
 
-Generated implementation changes are prepared in a contained environment where dependency installation and reliable project execution are not assumed. Each implementation prompt therefore separates:
-
-1. File generation and static inspection performed here.
-2. Offline installation, type checking, testing, building, and runtime validation performed by the developer.
-3. Follow-up fixes based on the developer's reported command output.
-
-A milestone must not be marked complete solely because files were generated. Completion occurs only after the developer reports successful offline validation.
+Run validation locally and in CI. Record commands and outcomes against the actual checkout. If an environment cannot execute a check, report it as pending; static inspection is not a passing test run. API compatibility and publication remain gated by the [application migration trial](docs/maintenance/migration-trial.md).
 
 ## Bootstrap commands
 
-Enable Corepack and install dependencies offline:
+Use Node 22.13 or newer, enable Corepack, and install the locked dependencies:
 
 ```bash
 corepack enable
-pnpm install
+pnpm install --frozen-lockfile
 ```
 
 Run validation:
@@ -141,15 +134,20 @@ Run validation:
 ```bash
 pnpm check:boundaries
 pnpm typecheck
-pnpm test:run
+pnpm lint
+pnpm format:check
+pnpm test:coverage
 pnpm build
-pnpm dev
+pnpm check:consumer
+pnpm exec playwright install chromium
+pnpm check:browser
 ```
 
-After the first install generates `pnpm-lock.yaml`, verify it with:
+Run the playground or measure graph cascades:
 
 ```bash
-pnpm install --frozen-lockfile
+pnpm dev
+pnpm benchmark # requires a current build
 ```
 
 ## Documentation
@@ -160,5 +158,8 @@ pnpm install --frozen-lockfile
 - Vue and Pinia integration: `docs/architecture/07-vue-and-pinia-integration.md`
 - Roadmap: `docs/ROADMAP.md`
 - Test strategy: `docs/testing/01-test-strategy.md`
+- Compatibility and lifecycle: `docs/maintenance/compatibility.md`
+- Performance measurements: `docs/maintenance/performance.md`
+- Staged maintenance record: `MAINTENANCE.md`
 
 Historical implementation notes preserve point-in-time decisions and validation evidence. Use the documents above for the current architecture and API.

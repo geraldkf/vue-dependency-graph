@@ -23,6 +23,23 @@ const event = (
   }) as GraphDiagnosticEvent;
 
 describe("in-memory graph diagnostics", () => {
+  it("isolates observer failures and supports idempotent cleanup", () => {
+    const diagnostics = createInMemoryGraphDiagnostics({ capacity: 1 });
+    let calls = 0;
+    diagnostics.onChange(() => {
+      throw new Error("listener");
+    });
+    const stop = diagnostics.onChange(() => {
+      calls += 1;
+    });
+    diagnostics.emit(event(1, { type: "runtime.created", nodeKeys: [] }));
+    diagnostics.reset();
+    expect(calls).toBe(2);
+    stop();
+    stop();
+    diagnostics.reset();
+    expect(calls).toBe(2);
+  });
   it.each([0, -1, 1.5, Number.NaN])("rejects invalid capacity %s", (capacity: number) => {
     expect(() => createInMemoryGraphDiagnostics({ capacity })).toThrow(
       "Diagnostic capacity must be a positive integer.",

@@ -4,14 +4,26 @@ import eslintConfigPrettier from "eslint-config-prettier";
 import eslintPluginVue from "eslint-plugin-vue";
 import globals from "globals";
 import tseslint from "typescript-eslint";
+import { fileURLToPath } from "node:url";
 
 export default tseslint.config(
   {
-    ignores: ["dist/**", "coverage/**", "node_modules/**"],
+    ignores: [
+      "dist/**",
+      "coverage/**",
+      "node_modules/**",
+      "vue-dependency-graph/**",
+      "browser-results/**",
+    ],
   },
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
   ...eslintPluginVue.configs["flat/recommended"],
+  {
+    languageOptions: {
+      parserOptions: { tsconfigRootDir: fileURLToPath(new URL(".", import.meta.url)) },
+    },
+  },
   {
     // Library (core/) and devtools code is DOM-agnostic by design where possible,
     // but the Vue layer, devtools panel, and playground do run in the browser.
@@ -58,6 +70,8 @@ export default tseslint.config(
       globals: { ...globals.browser, ...globals.node },
     },
     rules: {
+      // Integration fixtures intentionally mount several small components together.
+      "vue/one-component-per-file": "off",
       "@typescript-eslint/no-unused-vars": "warn",
       "@typescript-eslint/no-unused-expressions": "warn",
       // Cyclic/forward-referencing graph fixtures declare `let x!: T` and

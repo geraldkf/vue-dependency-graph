@@ -265,8 +265,9 @@ export const createRuntimeRefreshPolicyController = ({
           return;
         }
 
-        completeSession(session);
         const state = getNodeState(node.key);
+        session.generation = state.generation;
+        completeSession(session);
         failPolicyNode(
           node,
           state.generation,
@@ -341,6 +342,8 @@ export const createRuntimeRefreshPolicyController = ({
       return;
     }
 
+    // A terminal result belongs to one generation, not every future job.
+    if (session.terminal && session.generation !== state.generation) resetSession(session);
     if (session.terminal || session.refreshing) return;
 
     if (session.timerPurpose === "retry" && session.remainingDelayMs !== undefined) {

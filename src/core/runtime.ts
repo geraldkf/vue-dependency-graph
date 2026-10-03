@@ -29,6 +29,7 @@ import { createSchedulerRequestTracker } from "./scheduling/request-tracker";
 import { createRuntimeStateStore } from "./state/state";
 import { createRuntimeTransactionCoordinator } from "./transactions/transaction-coordinator";
 import type { GraphTransaction } from "./transactions/types";
+import { GraphRuntimeShutdownError } from "./runtime-errors";
 import type { GraphRuntime, GraphRuntimeOptions } from "./runtime-types";
 
 // The public runtime contract lives in `runtime-types.ts`; re-exported here so
@@ -46,9 +47,8 @@ type RequestedOperation = Parameters<
  * live instance of it, typically created once per application (or once per
  * test).
  *
- * Call {@link GraphRuntime.dispose} when the runtime is no longer needed
- * (e.g. in a test's teardown) to stop its background refresh/release
- * timers.
+ * Call {@link GraphRuntime.shutdown} when the runtime is no longer needed
+ * to stop background policies and terminate its owned work and subscriptions.
  *
  * @example
  * ```ts
@@ -80,6 +80,10 @@ type RequestedOperation = Parameters<
  * @see {@link createGraphRuntimePlugin} for wiring a runtime into a Vue app.
  */
 export const createGraphRuntime = (graph: Graph, options?: GraphRuntimeOptions): GraphRuntime => {
+  const lifetime = new AbortController();
+  const assertRunning = (): void => {
+    if (lifetime.signal.aborted) throw lifetime.signal.reason;
+  };
   const diagnostics = createRuntimeDiagnosticEmitter(options?.diagnostics);
   const {
     getNodeState,
@@ -94,7 +98,11 @@ export const createGraphRuntime = (graph: Graph, options?: GraphRuntimeOptions):
   // their diagnostics to it without threading it through every signature
   // in between. Correctly nests (and restores) via `runObserved`.
   const operationObservation = createOperationObservationTracker();
-  const { notify: emitNotify, onChange } = createRuntimeObserver({
+  const {
+    notify: emitNotify,
+    onChange,
+    dispose: disposeObserver,
+  } = createRuntimeObserver({
     // A throwing listener (an app's `onChange`, or one of the runtime's own
     // policies, which listen the same way) is isolated from the rest; this
     // keeps it visible. Attributed to the operation being committed, if any.
@@ -148,6 +156,7 @@ export const createGraphRuntime = (graph: Graph, options?: GraphRuntimeOptions):
     run: (diagnosticContext: ExecutionDiagnosticContext) => TResult,
     queryKey?: string,
   ): TResult => {
+    assertRunning();
     const operationId = diagnostics.emitOperationRequested({
       type: `operation.${operation}.requested`,
       operation,
@@ -164,7 +173,10 @@ export const createGraphRuntime = (graph: Graph, options?: GraphRuntimeOptions):
 
   const graphCommit = createGraphCommitCoordinator({
     matchPublications: events.matchPublications,
-    commitContexts: invalidation.commitContexts,
+    commitContexts: (changes, roots, dispatch) => {
+      assertRunning();
+      invalidation.commitContexts(changes, roots, dispatch);
+    },
     schedule: scheduler.schedule,
     notify: emitNotify,
     schedulerRequest,
@@ -173,6 +185,7 @@ export const createGraphRuntime = (graph: Graph, options?: GraphRuntimeOptions):
   });
 
   const transactions = createRuntimeTransactionCoordinator({
+    lifetimeSignal: lifetime.signal,
     resolveContextNode: invalidation.resolveContextNode,
     getContextGeneration: (node) => getNodeState(node.key).generation,
     commitImmediate: graphCommit.commitImmediate,
@@ -189,6 +202,9 @@ export const createGraphRuntime = (graph: Graph, options?: GraphRuntimeOptions):
   });
 
   const mutations = createRuntimeMutationController({
+    lifetimeSignal: lifetime.signal,
+    assertRunning,
+    graph,
     resolveRegisteredNode: requireRegisteredNode,
     getNodeState,
     getActiveAttempt,
@@ -215,6 +231,7 @@ export const createGraphRuntime = (graph: Graph, options?: GraphRuntimeOptions):
   return Object.freeze({
     getState: <TNode extends AnyNodeDefinition>(node: TNode) => getSnapshot(node),
     setContext: <TValue>(node: ContextNodeDefinition<TValue>, value: TValue) => {
+      assertRunning();
       const operationId = diagnostics.createOperationId();
       schedulerRequest.request("context-invalidation", operationId);
       operationObservation.runObserved({ operationId, reason: "context-invalidation" }, () =>
@@ -254,6 +271,7 @@ export const createGraphRuntime = (graph: Graph, options?: GraphRuntimeOptions):
       );
     },
     publish: <TEvent extends AnyEventDefinition>(event: TEvent, payload: EventPayload<TEvent>) => {
+      assertRunning();
       const operationId = diagnostics.createOperationId();
       operationObservation.runObserved({ operationId, reason: "context-invalidation" }, () =>
         transactions.publish(event, payload),
@@ -264,17 +282,24 @@ export const createGraphRuntime = (graph: Graph, options?: GraphRuntimeOptions):
       input: TInput,
       mutationOptions?: MutationOptions<TInput, TResult>,
     ) => {
+      assertRunning();
       const session = beginMutationDiagnostics(diagnostics, mutation.key);
       return mutations
         .mutate(mutation, input, mutationOptions, session.onLifecycle)
         .then(session.reportSuccess, session.reportFailure);
     },
-    subscribeNodes: subscriptions.subscribeNodes,
+    subscribeNodes: (nodes: readonly AnyNodeDefinition[]) => {
+      assertRunning();
+      return subscriptions.subscribeNodes(nodes);
+    },
     getSubscriptionState: subscriptions.getSubscriptionState,
     hasSubscribers: subscriptions.hasSubscribers,
     getSchedulerState: scheduler.getSchedulerState,
     whenSettled: scheduler.whenSettled,
-    onChange,
+    onChange: (listener: () => void) => {
+      assertRunning();
+      return onChange(listener);
+    },
     createDiagnosticSnapshot: () =>
       createDiagnosticSnapshot({
         graph,
@@ -291,11 +316,23 @@ export const createGraphRuntime = (graph: Graph, options?: GraphRuntimeOptions):
             }),
       }),
     transaction: <T>(work: (transaction: GraphTransaction) => T | Promise<T>) => {
+      assertRunning();
       const session = beginTransactionDiagnostics(diagnostics);
       return transactions
         .runTransaction(work, { operationId: session.operationId })
         .then(session.reportCommitted, session.reportFailed);
     },
     dispose: policies.dispose,
+    stopBackgroundPolicies: policies.dispose,
+    shutdown: () => {
+      if (lifetime.signal.aborted) return;
+      policies.dispose();
+      disposeObserver();
+      execution.shutdown();
+      scheduler.shutdown();
+      lifetime.abort(new GraphRuntimeShutdownError());
+      for (const [, attempt] of getActiveAttempts()) attempt.controller.abort();
+      subscriptions.shutdown();
+    },
   });
 };

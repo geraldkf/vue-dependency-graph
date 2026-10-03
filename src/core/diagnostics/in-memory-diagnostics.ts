@@ -1,11 +1,14 @@
 import { createGraphMetricsReducer, type GraphMetricsSnapshot } from "./metrics";
 import type { GraphDiagnosticEvent, GraphDiagnosticSink } from "./types";
+import { createRuntimeObserver } from "../observation/observer";
 
 export interface InMemoryGraphDiagnosticsOptions {
   readonly capacity: number;
 }
 
 export interface InMemoryGraphDiagnostics extends GraphDiagnosticSink {
+  /** Observes emitted events and resets. Listener failures are isolated. */
+  readonly onChange: (listener: () => void) => () => void;
   readonly getEvents: () => readonly GraphDiagnosticEvent[];
   readonly getMetrics: () => GraphMetricsSnapshot;
   readonly reset: () => void;
@@ -34,6 +37,7 @@ export const createInMemoryGraphDiagnostics = (
 
   const events: GraphDiagnosticEvent[] = [];
   const metrics = createGraphMetricsReducer();
+  const observer = createRuntimeObserver();
   let droppedEventCount = 0;
 
   const emit = (event: GraphDiagnosticEvent): void => {
@@ -44,6 +48,7 @@ export const createInMemoryGraphDiagnostics = (
       events.shift();
       droppedEventCount += 1;
     }
+    observer.notify();
   };
 
   const getEvents = (): readonly GraphDiagnosticEvent[] => Object.freeze([...events]);
@@ -54,7 +59,8 @@ export const createInMemoryGraphDiagnostics = (
     events.length = 0;
     droppedEventCount = 0;
     metrics.reset();
+    observer.notify();
   };
 
-  return Object.freeze({ emit, getEvents, getMetrics, reset });
+  return Object.freeze({ emit, getEvents, getMetrics, reset, onChange: observer.onChange });
 };

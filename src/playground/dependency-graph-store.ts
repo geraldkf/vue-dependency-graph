@@ -11,11 +11,11 @@ import { playgroundGraph } from "./playground-graph";
  *
  * Pinia also owns its lifetime: the runtime is disposed when the store is
  * disposed (`store.$dispose()`) or its Pinia instance is (`disposePinia`),
- * which stops the runtime's refresh-policy and release-policy timers.
+ * which permanently shuts down its owned work and policies.
  */
 export const useDependencyGraphStore = defineStore("dependencyGraph", () => {
   const runtime = markRaw(createGraphRuntime(playgroundGraph));
-  onScopeDispose(() => runtime.dispose());
+  onScopeDispose(() => runtime.shutdown());
 
   return {
     runtime,

@@ -1,4 +1,5 @@
 import type { RuntimeDiagnosticEmitter } from "../diagnostics/diagnostic-emitter";
+import { GraphRuntimeShutdownError } from "../runtime-errors";
 import type { GraphExecutionReason } from "../diagnostics/types";
 import { abortAttempt, beginAttempt, failAttempt, succeedAttempt } from "../state/transitions";
 import type { ExecutionConcurrencyLimiter } from "./concurrency-limiter";
@@ -25,6 +26,7 @@ export interface ExecutionDiagnosticContext {
 }
 
 export interface RuntimeExecutionController {
+  readonly shutdown: () => void;
   readonly execute: (
     targets: readonly AnyNodeDefinition[],
     origin: ExecutionOrigin,
@@ -141,6 +143,7 @@ export const createRuntimeExecutionController = ({
   onChangedRefreshResult,
   diagnostics,
 }: RuntimeExecutionDependencies): RuntimeExecutionController => {
+  let stopped = false;
   const getDependencyValue = <TNode extends AnyNodeDefinition>(
     dependency: TNode,
   ): NodeValue<TNode> => {
@@ -193,6 +196,7 @@ export const createRuntimeExecutionController = ({
     origin: ExecutionOrigin,
     context: ExecutionDiagnosticContext | undefined,
   ): Promise<NodeAttemptOutcome> => {
+    if (stopped) return Promise.resolve({ status: "obsolete" });
     const state = getNodeState(node.key);
     if (hasFreshSuccessfulValue(state)) {
       emitExecution("node.execution.skipped", node, state.generation, origin, context);
@@ -251,6 +255,7 @@ export const createRuntimeExecutionController = ({
         const current = getNodeState(node.key);
         const currentAttempt = getActiveAttempt(node.key);
         if (
+          stopped ||
           current.generation !== generation ||
           currentAttempt?.token !== token ||
           controller.signal.aborted
@@ -346,6 +351,8 @@ export const createRuntimeExecutionController = ({
       origins: new Set([origin]),
       promise,
     });
+    // beginAttempt's notification can synchronously shut down the runtime.
+    if (stopped) controller.abort();
     return promise;
   };
 
@@ -354,6 +361,7 @@ export const createRuntimeExecutionController = ({
     origin: ExecutionOrigin,
     context?: ExecutionDiagnosticContext,
   ): Promise<void> => {
+    if (stopped) throw new GraphRuntimeShutdownError();
     if (targets.length === 0) return;
 
     const failures = new Map<string, NodeExecutionFailure>();
@@ -435,6 +443,7 @@ export const createRuntimeExecutionController = ({
 
     const registeredTargets = targets.map(resolveRegisteredNode);
     await Promise.allSettled(registeredTargets.map((target) => ensureNode(target)));
+    if (stopped) throw new GraphRuntimeShutdownError();
 
     if (failures.size > 0) {
       throw new GraphExecutionError([...failures.values()]);
@@ -444,5 +453,11 @@ export const createRuntimeExecutionController = ({
   const needsExecution = (node: AnyNodeDefinition): boolean =>
     !hasFreshSuccessfulValue(getNodeState(node.key));
 
-  return Object.freeze({ execute, needsExecution });
+  return Object.freeze({
+    execute,
+    needsExecution,
+    shutdown: () => {
+      stopped = true;
+    },
+  });
 };

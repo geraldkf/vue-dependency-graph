@@ -87,8 +87,8 @@ describe("Vue plugin and injection", () => {
   describe("runtime disposal", () => {
     const makeDisposableRuntime = () => {
       const runtime = makeTestRuntime();
-      const dispose = vi.fn(() => runtime.dispose());
-      return { runtime: { ...runtime, dispose } as GraphRuntime, dispose };
+      const dispose = vi.fn(() => runtime.shutdown());
+      return { runtime: { ...runtime, shutdown: dispose } as GraphRuntime, dispose };
     };
     const Empty = defineComponent({ setup: () => () => null });
 

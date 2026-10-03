@@ -113,6 +113,7 @@ export const createDevtoolsPlaygroundScenario = (): DevtoolsPlaygroundScenario =
   const dispose = (): void => {
     subscription?.unsubscribe();
     subscription = undefined;
+    runtime.shutdown();
   };
 
   return {

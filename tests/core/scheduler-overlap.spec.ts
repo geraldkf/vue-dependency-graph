@@ -832,8 +832,11 @@ describe("storms and reentrancy", () => {
     });
     const { runtime } = build([first, second]);
     let secondSubscription: { unsubscribe: () => void } | undefined;
+    let joining = false;
     runtime.onChange(() => {
-      if (runtime.getSchedulerState().isRunning && secondSubscription === undefined) {
+      if (runtime.getSchedulerState().isRunning && !joining) {
+        // subscribeNodes notifies synchronously: guard before re-entering.
+        joining = true;
         secondSubscription = runtime.subscribeNodes([second]);
       }
     });

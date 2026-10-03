@@ -1,6 +1,7 @@
 import type { RuntimeListener } from "./types";
 
 export interface RuntimeObserver {
+  readonly dispose: () => void;
   readonly onChange: (listener: RuntimeListener) => () => void;
   readonly notify: () => void;
 }
@@ -45,6 +46,7 @@ export const createRuntimeObserver = (options?: RuntimeObserverOptions): Runtime
   };
 
   return Object.freeze({
+    dispose: () => listeners.clear(),
     onChange,
     notify,
   });

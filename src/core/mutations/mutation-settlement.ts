@@ -22,6 +22,7 @@ export interface MutationSettlementCoordinator {
     result: TResult,
     input: TInput,
     optimistic: OptimisticSession | undefined,
+    assertContext: (nodes: readonly AnyNodeDefinition[]) => void,
   ) => TResult;
   readonly settleFailure: <TInput, TResult>(
     options: MutationOptions<TInput, TResult> | undefined,
@@ -31,6 +32,7 @@ export interface MutationSettlementCoordinator {
 }
 
 export interface MutationSettlementDependencies {
+  readonly assertRunning: () => void;
   readonly resolveRegisteredNode: (node: AnyNodeDefinition, purpose: string) => AnyNodeDefinition;
   readonly matchPublications: (
     publications: readonly EventPublication[],
@@ -47,6 +49,7 @@ export interface MutationSettlementDependencies {
 }
 
 export const createMutationSettlementCoordinator = ({
+  assertRunning,
   resolveRegisteredNode,
   matchPublications,
   prepareCombinedInvalidation,
@@ -59,6 +62,7 @@ export const createMutationSettlementCoordinator = ({
     result: TResult,
     input: TInput,
     optimisticTargets: readonly AnyNodeDefinition[] = [],
+    assertContext: (nodes: readonly AnyNodeDefinition[]) => void,
   ): void => {
     if (!options.onSuccess) return;
 
@@ -102,6 +106,7 @@ export const createMutationSettlementCoordinator = ({
       }
     }, "success");
 
+    assertContext(updateDrafts.map(({ node }) => node));
     const prepared = updatePlanner.prepare(updateDrafts);
     const changedUpdates = prepared.filter((update) => update.changed);
     const preliminaryInvalidation = prepareCombinedInvalidation(
@@ -125,6 +130,7 @@ export const createMutationSettlementCoordinator = ({
       [...invalidationRoots.values()],
       prepared.map(({ node }) => node),
     );
+    assertContext(prepared.map(({ node }) => node));
     mutationCommitter.commitSuccess(prepared, invalidation);
   };
 
@@ -147,14 +153,25 @@ export const createMutationSettlementCoordinator = ({
     result: TResult,
     input: TInput,
     optimistic: OptimisticSession | undefined,
+    assertContext: (nodes: readonly AnyNodeDefinition[]) => void,
   ): TResult => {
     try {
       if (options) {
-        applySuccessEffects(options, result, input, optimistic?.targets);
+        applySuccessEffects(options, result, input, optimistic?.targets, assertContext);
       }
       optimisticSessions.release(optimistic);
       return result;
     } catch (error) {
+      try {
+        assertRunning();
+      } catch (shutdown) {
+        optimisticSessions.release(optimistic);
+        throw shutdown;
+      }
+      if (error instanceof GraphMutationReconciliationError) {
+        if (optimistic) mutationCommitter.commitStaleReconciliation(optimistic);
+        throw error;
+      }
       if (!optimistic) throw error;
       return settleReconciliationFailure(mutationKey, optimistic, error);
     }
@@ -207,6 +224,12 @@ export const createMutationSettlementCoordinator = ({
       // unknown-outcome path and retain the remote error as cause.
     }
 
+    try {
+      assertRunning();
+    } catch (shutdown) {
+      optimisticSessions.release(optimistic);
+      throw shutdown;
+    }
     return failureKind === "rejected"
       ? settleKnownRejection(optimistic, error)
       : settleUnknownOutcome(optimistic, error);

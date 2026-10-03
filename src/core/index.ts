@@ -95,6 +95,7 @@ export type {
 export type { NodeFreshness, NodeRuntimeState, NodeStatus, RuntimeNodeData } from "./state/types";
 export type { RuntimeListener } from "./observation/types";
 export { createInMemoryGraphDiagnostics } from "./diagnostics/in-memory-diagnostics";
+export { GraphRuntimeShutdownError } from "./runtime-errors";
 export type {
   InMemoryGraphDiagnostics,
   InMemoryGraphDiagnosticsOptions,

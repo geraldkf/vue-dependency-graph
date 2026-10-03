@@ -10,13 +10,35 @@ export default defineConfig({
     },
   },
   test: {
-    environment: "jsdom",
+    environment: "node",
     // The retention tests (tests/retention) check that values become
     // garbage-collectable, which needs `globalThis.gc`.
     pool: "forks",
-    poolOptions: { forks: { execArgv: ["--expose-gc"] } },
-    include: ["tests/**/*.spec.ts"],
-    setupFiles: ["./tests/setup.ts"],
+    execArgv: ["--expose-gc"],
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: "core",
+          environment: "node",
+          include: ["tests/core/**/*.spec.ts", "tests/tooling/**/*.spec.ts"],
+        },
+      },
+      {
+        extends: true,
+        test: {
+          name: "dom",
+          environment: "jsdom",
+          setupFiles: ["./tests/setup.ts"],
+          include: [
+            "tests/vue/**/*.spec.ts",
+            "tests/playground/**/*.spec.ts",
+            "tests/devtools/**/*.spec.ts",
+            "tests/retention/**/*.spec.ts",
+          ],
+        },
+      },
+    ],
     coverage: {
       provider: "v8",
       reporter: ["text", "html", "lcov"],

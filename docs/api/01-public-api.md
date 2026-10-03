@@ -46,6 +46,10 @@ Each node's `key` carries its own literal type (inferred automatically, no `as c
 
 ## Create a graph and runtime
 
+`shutdown()` permanently ends a runtime, stops policies, aborts owned work, clears listeners and subscriptions, and prevents late value commits. Inspection remains available; new operations throw `GraphRuntimeShutdownError`. Pending mutation and transaction promises reject with that error even when their callbacks ignore cancellation. Remote side effects cannot be undone.
+
+`stopBackgroundPolicies()` and the legacy `dispose()` stop refresh/release policies while leaving normal runtime work available. Owners should use shutdown; policy-only disposal remains compatible. See [compatibility](../maintenance/compatibility.md).
+
 ```ts
 const graph = createGraph({
   nodes: [FeaturedReview, ProductReviews, CurrentProductId],
@@ -155,7 +159,7 @@ Applications may install the graph runtime plugin:
 app.use(createGraphRuntimePlugin(runtime));
 ```
 
-The plugin disposes the runtime (`runtime.dispose()`) when the app unmounts. Pass `createGraphRuntimePlugin(runtime, { disposeOnUnmount: false })` if the runtime is shared between apps or owned elsewhere.
+The plugin permanently shuts down the runtime (`runtime.shutdown()`) when the app unmounts. Pass `createGraphRuntimePlugin(runtime, { disposeOnUnmount: false })` if the runtime is shared between apps or owned elsewhere. The option name remains compatible with existing callers.
 
 `useGraphRuntime()` returns the runtime installed by the nearest plugin provider:
 
@@ -209,7 +213,7 @@ An application with Pinia already installed can expose the runtime through a set
 ```ts
 export const useDependencyGraphStore = defineStore("dependencyGraph", () => {
   const runtime = markRaw(createGraphRuntime(graph));
-  onScopeDispose(() => runtime.dispose());
+  onScopeDispose(() => runtime.shutdown());
   return { runtime };
 });
 ```
@@ -269,7 +273,7 @@ await runtime.refresh([SomeNode]);
 
 Those operations use committed state and dispatch notifications and scheduler work immediately.
 
-`runtime.dispose()` stops the runtime's refresh-policy and release-policy timers and detaches the refresh policy from the timer environment's pause signal. It is idempotent and does not abort in-flight loads or reject later calls. Call it when the runtime's owner is torn down.
+`runtime.shutdown()` stops the runtime's refresh-policy and release-policy timers and detaches the refresh policy from the timer environment's pause signal. It is idempotent and does not abort in-flight loads or reject later calls. Call it when the runtime's owner is torn down.
 
 `runtime.whenSettled()` is scheduler-specific. For transaction-triggered scheduler work, await in this order:
 
@@ -872,6 +876,7 @@ Entry point: `vue-dependency-graph/core`.
 - `GraphMutationError`
 - `GraphMutationOutcomeUnknownError`
 - `GraphMutationReconciliationError`
+- `GraphRuntimeShutdownError`
 - `GraphMutationRollbackConflictError`
 - `GraphMutationStateError`
 - `GraphPollingConditionError`
@@ -1065,3 +1070,7 @@ Entry point: `vue-dependency-graph/devtools`.
 - `UseGraphDevtoolsOptions`
 - `UseGraphDevtoolsResult`
 - `UseOfflineDevtoolsSnapshotResult`
+
+## Mutation context protection
+
+A direct success update checks the transitive context ancestors captured when the mutation was called. If a target context changed, the entire success draft rejects with `GraphMutationReconciliationError` and `remoteSucceeded: true`; it never overwrites the new entity. Same-context refreshes and unrelated context changes remain supported. A switch away and back also counts as changed. Event-only and invalidation-only effects must still carry appropriate scope in their payloads and predicates. See [ADR-020](../decisions/ADR-020-runtime-lifetime-and-mutation-context.md).

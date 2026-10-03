@@ -2,6 +2,14 @@
 
 ## Principles
 
+Core and tooling tests run in Node through the `core` project in `vitest.config.ts`. Vue, playground, devtools UI, and retention tests run in jsdom through `dom`. Retention includes browser-lifecycle checks, so it deliberately keeps the DOM environment. Both inherit the fork pool with `--expose-gc`.
+
+`pnpm check:browser` runs the production playground in real Chromium after `pnpm build`: rapid context changes, subscription cleanup, polling completion, all scenario mounts, and uncaught browser errors. Install its browser with `pnpm exec playwright install chromium`; CI uses `--with-deps`.
+
+Seeded interaction sequences combine subscriptions, context writes, transactions, events, refreshes, and known-rejection optimistic mutations. Failures identify a reproducible seed. Focused regressions additionally cover late mutation context changes, terminal polling restart, diagnostic-only devtools activity, and non-cooperative/reentrant shutdown.
+
+Run `pnpm benchmark` after a current build. Request counts and cleanup are asserted; durations are comparative measurements rather than flaky test thresholds.
+
 - Test observable behaviour rather than private implementation details.
 - Use deterministic clocks, schedulers, and loaders.
 - Avoid real network calls.
@@ -195,7 +203,7 @@ Every check in these suites was confirmed to fail when the cleanup it covers is 
 
 ## Vue and Pinia integration tests
 
-Use Vitest 3.0.7, Vue Testing Library, and real deterministic graph runtimes.
+Use Vitest 4.1.11, Vue Testing Library, and real deterministic graph runtimes.
 
 Verify:
 

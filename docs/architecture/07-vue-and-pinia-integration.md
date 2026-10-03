@@ -50,7 +50,7 @@ The recommended setup store creates one runtime inside the store factory:
 ```ts
 export const useDependencyGraphStore = defineStore("dependencyGraph", () => {
   const runtime = markRaw(createGraphRuntime(graph));
-  onScopeDispose(() => runtime.dispose());
+  onScopeDispose(() => runtime.shutdown());
   return { runtime };
 });
 ```
@@ -67,11 +67,11 @@ Graph definitions remain immutable and may be declared at module scope.
 
 ## Runtime disposal
 
-A runtime owns background resources - refresh-policy and release-policy timers and, with the browser timer environment, a pause-signal listener - so its owner disposes it with `runtime.dispose()` (idempotent; see `docs/architecture/03-scheduler-transactions-and-concurrency.md`). Each ownership path does this:
+A runtime owns background resources - refresh-policy and release-policy timers and, with the browser timer environment, a pause-signal listener - so its owner disposes it with `runtime.shutdown()` (idempotent; see `docs/architecture/03-scheduler-transactions-and-concurrency.md`). Each ownership path does this:
 
-- **Pinia store:** `onScopeDispose(() => runtime.dispose())` inside the setup store. It runs on `store.$dispose()` and on `disposePinia(pinia)`. Pinia does not dispose itself when the app unmounts, so an application that wants that calls `app.onUnmount(() => disposePinia(pinia))` (the playground's `main.ts` does). After a store is disposed, using the store again creates a new runtime.
+- **Pinia store:** `onScopeDispose(() => runtime.shutdown())` inside the setup store. It runs on `store.$dispose()` and on `disposePinia(pinia)`. Pinia does not dispose itself when the app unmounts, so an application that wants that calls `app.onUnmount(() => disposePinia(pinia))` (the playground's `main.ts` does). After a store is disposed, using the store again creates a new runtime.
 - **Runtime plugin:** `createGraphRuntimePlugin(runtime)` disposes the runtime when the app unmounts, because installing the plugin makes that app the runtime's owner. Pass `{ disposeOnUnmount: false }` when the runtime is shared between apps or owned elsewhere.
-- **Directly owned runtime:** whoever calls `createGraphRuntime` calls `dispose()`.
+- **Directly owned runtime:** whoever owns the lifetime calls `shutdown()`.
 
 Unmounting a component never disposes the runtime; components only release their own subscriptions.
 

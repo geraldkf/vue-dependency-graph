@@ -171,6 +171,7 @@ const reset = (): void => {
   consumer?.unsubscribe();
   stopObservingRuntime?.();
   consumer = undefined;
+  harness.runtime.shutdown();
   harness = createPollingProgressHarness();
   mounted.value = false;
   observeRuntime();
@@ -180,5 +181,6 @@ const reset = (): void => {
 onBeforeUnmount(() => {
   consumer?.unsubscribe();
   stopObservingRuntime?.();
+  harness.runtime.shutdown();
 });
 </script>

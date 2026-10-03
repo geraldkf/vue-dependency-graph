@@ -1,69 +1,45 @@
 # Contributing
 
-## Before implementation
+Read the relevant architecture document and active roadmap objective before implementation. Add or update an ADR for material design changes. Keep changes reviewable, add behavioral regressions for correctness changes, and update public API documentation and examples.
 
-1. Read the relevant architecture document.
-2. Confirm the active roadmap milestone and exit criteria.
-3. Add or update an ADR for material design changes.
-4. Keep changes within the active milestone.
-5. Add behavioural tests with the implementation.
-6. Add or update a deterministic playground scenario where applicable.
+## Local and CI validation
 
-## Contained-environment workflow
+Use the package-manager version in package.json, Node 22.13 or newer, and pnpm-lock.yaml. Install with `pnpm install --frozen-lockfile`. Do not create a second package-manager lockfile.
 
-Implementation is prepared in two stages.
+Run:
 
-### Stage 1: File preparation
+```bash
+pnpm check:boundaries
+pnpm typecheck
+pnpm lint
+pnpm format:check
+pnpm test:coverage
+pnpm build
+pnpm check:consumer
+pnpm exec playwright install chromium
+pnpm check:browser
+```
 
-The contained environment may:
+`pnpm benchmark` compares scale behavior after a current build. Compare timing on the same host; exact request counts and cleanup are asserted. CI validates Node 22/24 and uses Chromium's `--with-deps` installation on Linux.
 
-- Create or update source, configuration, test, and documentation files.
-- Perform static inspection of generated files.
-- Check JSON and other formats where this does not require installing project dependencies.
-- Package changed files for offline application.
+Record actual command results and runtime versions for the combined checkout. Use `Prepared`, `Validation pending`, `Validated`, or `Blocked` accurately. If execution is unavailable, explain which checks remain unperformed. File generation or static review alone does not establish a completed milestone. External migration trials require measured application evidence.
 
-It must not spend time installing dependencies, running development servers, or claiming that project commands passed when those commands cannot be executed reliably in the environment.
+## Architecture and lifetime
 
-### Stage 2: Offline validation
+- Core must remain independent of Vue, Pinia, and other source layers.
+- Vue and devtools consume public core entry points. Playground consumes public project layers. Parsed boundary checks cover static imports, re-exports, dynamic/type imports, aliases, and Vue script blocks.
+- Node state fields are readonly outside `src/core/state/transitions.ts`. Extend named transitions instead of creating writable mapped views. Allowed transition owners live in `scripts/boundary-rules.mjs`; additions require an architectural explanation.
+- Runtime owners use `shutdown()` at the end of their lifetime. `stopBackgroundPolicies()` and legacy `dispose()` are policy-only operations. Handle shutdown rejections from pending promises; remote work cannot be undone.
+- Mutation updaters return immutable replacements. Direct success updates reject if their transitive context changed while the command was pending; remote success and local reconciliation failure are distinct.
+- Retention tests require `--expose-gc`, supplied by the configured fork pool. A skipped retention check proves nothing.
 
-The developer applies the files locally and runs the exact validation commands listed in the implementation prompt. The developer then reports:
+Core/tooling tests run in Node. Vue, playground, devtools, and retention tests run in jsdom. Real-browser smoke tests supplement both. Prefer deterministic clocks, condition-based waits, and public-API assertions.
 
-- Command output
-- Version conflicts
-- Type errors
-- Test failures
-- Build failures
-- Runtime observations
+## Maintenance references
 
-The next change should address that evidence with the smallest reasonable update.
+- [Compatibility and release contract](docs/maintenance/compatibility.md)
+- [Dependency policy](docs/maintenance/dependencies.md)
+- [Performance baseline](docs/maintenance/performance.md)
+- [Application migration trial](docs/maintenance/migration-trial.md)
 
-## Completion status
-
-Use these statuses in roadmap or implementation notes:
-
-- `Prepared`: files have been generated and statically reviewed.
-- `Validation pending`: offline commands have not yet been reported.
-- `Validated`: the developer has reported that all required checks pass.
-- `Blocked`: offline validation found an unresolved problem.
-
-Do not mark a roadmap checkbox complete until the relevant offline validation has been reported as successful.
-
-## Scope discipline
-
-Do not add deferred features opportunistically unless they are required for correctness. Prefer small, reviewable changes.
-
-## Architecture boundaries
-
-The repository contains one package, but source layers remain logically separated:
-
-- `src/core` must not import from `src/vue`, `src/devtools`, or `src/playground`.
-- `src/vue` may import public core modules.
-- `src/devtools` may import public core inspection contracts.
-- `src/playground` may consume all public project layers.
-- Cross-layer imports must use approved public or layer entry points, not arbitrary internal files.
-- The retention tests (`tests/retention`) force garbage collection and need `--expose-gc`, which `vitest.config.ts` supplies. Run tests through the repository configuration; the helpers fail loudly if `gc` is missing, because a skipped retention test proves nothing.
-- Node runtime state (`status`, `freshness`, `error`, `hasSuccessfulValue`, `data`, `generation`) is written only through the transitions in `src/core/state/transitions.ts`. The compiler enforces this: `NodeStateRecord` fields are `readonly`, so a direct assignment does not compile. Add or extend a transition instead, with a test in `tests/core/state-transitions.spec.ts`. `pnpm check:boundaries` also rejects a writable mapped type outside that file and keeps an allowlist of the modules allowed to import the transitions; adding a module to the allowlist is an architectural decision, so say why in the pull request.
-
-## Documentation
-
-Public API changes require updates to API documentation, migration notes, examples, and relevant implementation prompts.
+Do not publish or mark the migration trial complete without its recorded exit evidence.

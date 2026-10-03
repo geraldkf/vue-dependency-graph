@@ -204,6 +204,8 @@ A node with an active refresh policy needs no special-casing here: refresh polic
 
 Disposal is deliberately narrow. It does not abort in-flight loads, reject later calls, or clear state and subscriptions; loading, `refresh`, `mutate`, and existing subscriptions keep working, and diagnostic snapshots stay available. Only the background policies stop.
 
+Owners ending the runtime's lifetime use `shutdown()`. It aborts active work, cancels queued scheduling, clears listeners and subscription demand, and rejects new operations. Pending mutations and transactions reject even if their callbacks ignore cancellation; later results cannot commit. Cached state remains available for diagnosis until the owner drops the runtime reference. `stopBackgroundPolicies()` is the clearer alias for policy-only disposal. See [ADR-020](../decisions/ADR-020-runtime-lifetime-and-mutation-context.md).
+
 ## Transaction sessions
 
 ```ts

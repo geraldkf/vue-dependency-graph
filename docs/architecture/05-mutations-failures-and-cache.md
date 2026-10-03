@@ -160,3 +160,7 @@ The current mutation model deliberately does not provide:
 - a generic Vue mutation composable.
 
 Applications should generate and reuse domain-appropriate idempotency keys when retrying a logical command after an unknown outcome. Detailed adoption and error-handling guidance is maintained in the [user guide's mutations section](../guides/00-user-guide.md#12-mutations).
+
+## Mutation context protection
+
+A direct success update checks the transitive context ancestors captured when the mutation was called. If a target context changed, the entire success draft rejects with `GraphMutationReconciliationError` and `remoteSucceeded: true`; it never overwrites the new entity. Same-context refreshes and unrelated context changes remain supported. A switch away and back also counts as changed. Event-only and invalidation-only effects must still carry appropriate scope in their payloads and predicates. See [ADR-020](../decisions/ADR-020-runtime-lifetime-and-mutation-context.md).
