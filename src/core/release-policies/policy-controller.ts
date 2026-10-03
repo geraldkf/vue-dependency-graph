@@ -1,3 +1,4 @@
+import type { NodeChangeTracker } from "../state/change-tracker";
 import type { AnyNodeDefinition, DataNodeDefinition, Graph } from "../graph/types";
 import { isDataNode } from "../graph/node-guards";
 import type { NodeStateRecord } from "../state/state";
@@ -14,6 +15,7 @@ interface ReleaseSession {
 
 export interface RuntimeReleasePolicyDependencies {
   readonly graph: Graph;
+  readonly changes?: NodeChangeTracker;
   readonly environment: TimerEnvironment;
   readonly getNodeState: (key: string) => NodeStateRecord;
   readonly hasSubscribers: (node: AnyNodeDefinition) => boolean;
@@ -26,12 +28,8 @@ export interface RuntimeReleasePolicyDependencies {
 }
 
 export interface RuntimeReleasePolicyController {
-  /** Re-evaluates every eligible node's release timer. Called on every
-   * runtime change (the same `onChange` hook the refresh-policy
-   * controller uses), so a node that just lost its last subscriber, just
-   * regained one, or just finished a fresh load is reconsidered
-   * immediately rather than on some separate poll. */
-  readonly reconcile: () => void;
+  /** Reconciles changed keys, or every eligible node when no keys are supplied. */
+  readonly reconcile: (keys?: Iterable<string>) => void;
   /**
    * Permanently stops the controller: clears every pending release timer and
    * turns `reconcile` into a no-op, so no idle value is released afterwards.
@@ -59,6 +57,7 @@ const resolveReleaseDurationMs = (
 
 export const createRuntimeReleasePolicyController = ({
   graph,
+  changes,
   environment,
   getNodeState,
   hasSubscribers,
@@ -148,13 +147,24 @@ export const createRuntimeReleasePolicyController = ({
     .getNodes()
     .filter(isReleaseEligibleDataNode)
     .filter((node) => resolveReleaseDurationMs(node, defaultDurationMs) !== undefined);
-  const reconcile = (): void => {
-    for (const node of eligibleNodes) reconcileNode(node);
+  const eligibleByKey = new Map(eligibleNodes.map((node) => [node.key, node]));
+  for (const node of eligibleNodes) changes?.track(node.key, getNodeState(node.key));
+  const reconcile = (keys?: Iterable<string>): void => {
+    if (disposed) return;
+    if (keys === undefined) {
+      for (const node of eligibleNodes) reconcileNode(node);
+    } else {
+      for (const key of keys) {
+        const node = eligibleByKey.get(key);
+        if (node) reconcileNode(node);
+      }
+    }
   };
 
   const dispose = (): void => {
     if (disposed) return;
     disposed = true;
+    changes?.dispose();
     for (const session of sessions.values()) clearTimer(session);
   };
 

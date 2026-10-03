@@ -18,6 +18,7 @@ export interface RuntimeSubscriptionDependencies {
   readonly graph: Graph;
   readonly resolveRegisteredNode: (node: AnyNodeDefinition, purpose: string) => AnyNodeDefinition;
   readonly notify: () => void;
+  readonly onDemandChanged?: (keys: Iterable<string>) => void;
   readonly afterSubscribe: () => void;
   readonly afterUnsubscribe: () => void;
   readonly onAdded?: (
@@ -36,6 +37,7 @@ export const createRuntimeSubscriptionController = ({
   notify,
   afterSubscribe,
   afterUnsubscribe,
+  onDemandChanged,
   onAdded,
   onRemoved,
 }: RuntimeSubscriptionDependencies): RuntimeSubscriptionController => {
@@ -108,6 +110,8 @@ export const createRuntimeSubscriptionController = ({
       requireSubscriptionState(key).required += 1;
     }
 
+    onDemandChanged?.(directKeys);
+    onDemandChanged?.(requiredKeys);
     notify();
     onAdded?.([...directKeys], [...requiredKeys]);
     afterSubscribe();
@@ -137,6 +141,8 @@ export const createRuntimeSubscriptionController = ({
         }
         active = false;
 
+        onDemandChanged?.(directKeys);
+        onDemandChanged?.(requiredKeys);
         notify();
         onRemoved?.([...directKeys], [...requiredKeys]);
         afterUnsubscribe();

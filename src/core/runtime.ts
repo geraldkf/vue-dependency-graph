@@ -1,3 +1,4 @@
+import { createNodeChangeTracker } from "./state/change-tracker";
 import { createGraphCommitCoordinator } from "./composition/graph-commit";
 import { createGraphCoordination } from "./composition/graph-coordination";
 import { createRuntimePolicyServices } from "./composition/policy-services";
@@ -80,6 +81,7 @@ type RequestedOperation = Parameters<
  * @see {@link createGraphRuntimePlugin} for wiring a runtime into a Vue app.
  */
 export const createGraphRuntime = (graph: Graph, options?: GraphRuntimeOptions): GraphRuntime => {
+  const releaseChanges = createNodeChangeTracker();
   const lifetime = new AbortController();
   const assertRunning = (): void => {
     if (lifetime.signal.aborted) throw lifetime.signal.reason;
@@ -142,6 +144,7 @@ export const createGraphRuntime = (graph: Graph, options?: GraphRuntimeOptions):
     schedulerRequest,
     operationObservation,
     maxConcurrentLoads: options?.maxConcurrentLoads,
+    onDemandChanged: releaseChanges.markDemandChanged,
   });
 
   // Every caller-facing operation announces itself (`operation.<kind>.requested`)
@@ -217,6 +220,7 @@ export const createGraphRuntime = (graph: Graph, options?: GraphRuntimeOptions):
 
   const policies = createRuntimePolicyServices({
     graph,
+    releaseChanges,
     diagnostics,
     timerEnvironment: options?.timerEnvironment,
     releaseAfterMs: options?.releaseAfterMs,

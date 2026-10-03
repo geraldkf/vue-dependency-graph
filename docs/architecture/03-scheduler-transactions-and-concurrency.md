@@ -198,6 +198,8 @@ A sibling release-policy controller owns one timer per eligible data node, start
 
 When the timer fires, the controller resets the node to its never-executed shape and bumps its generation with the `releaseValue` state transition (`src/core/state/transitions.ts`), the same module every other state write goes through - a resubscribe afterward looks, to the execution machinery, identical to a node that has simply never run yet. The refresh-policy and release-policy controllers share one injected timer environment (`TimerEnvironment`) rather than two near-identical clocks.
 
+Release reconciliation performs one full pass at initialization, then checks only eligible nodes whose state or subscription demand changed. Transitions record keys without notifying or scheduling work. Subscription changes record both direct and required node keys before notification. The release listener drains these keys synchronously in the existing notification order; unrelated notifications do not scan the eligible set. Stopping background policies clears the tracking registrations along with the timers.
+
 A node with an active refresh policy needs no special-casing here: refresh policies already stop entirely once a node's last subscriber leaves (this section, above), so a release timer never starts while a refresh policy is still doing anything to conflict with.
 
 ## Runtime disposal

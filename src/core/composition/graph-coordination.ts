@@ -32,6 +32,7 @@ export interface GraphCoordinationDependencies {
   readonly deleteActiveAttempt: RuntimeStateStore["deleteActiveAttempt"];
   readonly getActiveAttempts: RuntimeStateStore["getActiveAttempts"];
   readonly notify: () => void;
+  readonly onDemandChanged?: (keys: Iterable<string>) => void;
   readonly requireRegisteredNode: (node: AnyNodeDefinition, purpose: string) => AnyNodeDefinition;
   /** Shared with the commit pipeline and the public facade; one per runtime. */
   readonly schedulerRequest: SchedulerRequestTracker;
@@ -94,6 +95,7 @@ export const createGraphCoordination = ({
   schedulerRequest,
   operationObservation,
   maxConcurrentLoads,
+  onDemandChanged,
 }: GraphCoordinationDependencies): GraphCoordination => {
   const subscriptionsBinding = createLateBinding<RuntimeSubscriptionController>("subscriptions");
   const invalidationBinding = createLateBinding<RuntimeInvalidationController>("invalidation");
@@ -152,6 +154,7 @@ export const createGraphCoordination = ({
   const subscriptions: RuntimeSubscriptionController = createRuntimeSubscriptionController({
     graph,
     resolveRegisteredNode: requireRegisteredNode,
+    ...(onDemandChanged === undefined ? {} : { onDemandChanged }),
     notify,
     onAdded: (nodeKeys, requiredNodeKeys) => {
       const operationId = diagnostics.createOperationId();

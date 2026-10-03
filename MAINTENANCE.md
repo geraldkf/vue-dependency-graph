@@ -52,6 +52,8 @@ Validation: 721 tests in 130 files pass on Node 22.13.0 and 24.19.0, with unchan
 
 ## Remaining application evidence
 
+Incremental release reconciliation now replaces the repeated eligible-node scan with changed-node tracking. State transitions and direct/required demand changes record keys before synchronous notification; initialization retains one full pass. The 72-case comparison preserves exact request, derivation, notification and retained-event counts, with the 1,000-node full-demand release-enabled median decreasing from 938.10 ms to 11.15 ms on the same local host. See the [comparison and raw results](docs/maintenance/performance.md#incremental-release-reconciliation). The application migration trial is deferred at the owner's request.
+
 The [migration trial](docs/maintenance/migration-trial.md) needs a real application's workflow, flag/rollback path and measured acceptance results. It is the remaining prerequisite for API stabilization/publication. No publication was performed.
 
-The [performance baseline](docs/maintenance/performance.md) shows substantial cascade cost around 1,000 data plus 1,000 derived nodes. The benchmark makes that cost observable; it does not establish browser performance or justify an unmeasured scheduler rewrite. Measure the application's graph and demand before selecting a further optimization.
+The [performance baseline and incremental comparison](docs/maintenance/performance.md) record removal of the repeated release scan around 1,000 data plus 1,000 derived nodes. These measurements do not establish browser performance or justify an unmeasured scheduler rewrite. Measure the application's graph and demand before selecting a further optimization.

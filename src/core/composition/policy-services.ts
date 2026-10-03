@@ -1,3 +1,4 @@
+import type { NodeChangeTracker } from "../state/change-tracker";
 import type { RuntimeDiagnosticEmitter } from "../diagnostics/diagnostic-emitter";
 import type { GraphDiagnosticRefreshPolicySnapshot } from "../diagnostics/snapshot";
 import type { Graph } from "../graph/types";
@@ -16,6 +17,7 @@ import { createDefaultTimerEnvironment, type TimerEnvironment } from "../timer-e
 
 export interface RuntimePolicyServicesDependencies {
   readonly graph: Graph;
+  readonly releaseChanges: NodeChangeTracker;
   readonly diagnostics: RuntimeDiagnosticEmitter;
   /** The runtime's `timerEnvironment` option; the default is created here. */
   readonly timerEnvironment: TimerEnvironment | undefined;
@@ -53,6 +55,7 @@ export const createRuntimePolicyServices = ({
   diagnostics,
   timerEnvironment,
   releaseAfterMs,
+  releaseChanges,
   getNodeState,
   hasSubscribers,
   refreshPolicyNode,
@@ -108,6 +111,7 @@ export const createRuntimePolicyServices = ({
 
   const releasePolicies = createRuntimeReleasePolicyController({
     graph,
+    changes: releaseChanges,
     environment,
     getNodeState,
     hasSubscribers,
@@ -122,7 +126,10 @@ export const createRuntimePolicyServices = ({
       });
     },
   });
-  const stopReleasePolicyReconcile = onChange(releasePolicies.reconcile);
+  releasePolicies.reconcile();
+  const stopReleasePolicyReconcile = onChange(() =>
+    releasePolicies.reconcile(releaseChanges.takeChanges()),
+  );
 
   let disposed = false;
   const dispose = (): void => {

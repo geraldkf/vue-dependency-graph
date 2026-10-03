@@ -1,3 +1,4 @@
+import { markStateChanged } from "./change-tracker";
 import type { NodeStateRecord } from "./state";
 import type { NodeFreshness } from "./types";
 
@@ -8,7 +9,8 @@ import type { NodeFreshness } from "./types";
  * the fields do not describe (for example a `success` status that still
  * carries an error).
  *
- * Transitions only change the state object. They never notify, schedule,
+ * Transitions update state and record its key for incremental policy reconciliation.
+ * They never notify, schedule,
  * abort, or emit diagnostics - callers own that sequencing, which differs per
  * site - and they never check preconditions such as generations; callers do
  * that before they transition.
@@ -58,6 +60,7 @@ export const invalidate = (state: NodeStateRecord): void => {
   target.freshness = "stale";
   target.status = state.hasSuccessfulValue ? "success" : "idle";
   target.error = null;
+  markStateChanged(state);
 };
 
 /**
@@ -69,6 +72,7 @@ export const beginAttempt = (state: NodeStateRecord): void => {
   target.status = state.hasSuccessfulValue ? "refreshing" : "loading";
   target.freshness = "stale";
   target.error = null;
+  markStateChanged(state);
 };
 
 /** An execution attempt produced `value`. */
@@ -79,6 +83,7 @@ export const succeedAttempt = (state: NodeStateRecord, value: unknown): void => 
   target.freshness = "fresh";
   target.error = null;
   target.hasSuccessfulValue = true;
+  markStateChanged(state);
 };
 
 /**
@@ -97,6 +102,7 @@ export const abortAttempt = (state: NodeStateRecord): void => {
   target.status = state.hasSuccessfulValue ? "success" : "idle";
   target.freshness = "stale";
   target.error = null;
+  markStateChanged(state);
 };
 
 /**
@@ -109,6 +115,7 @@ export const failAttempt = (state: NodeStateRecord, error: Error): void => {
   target.status = "error";
   target.freshness = "stale";
   target.error = error;
+  markStateChanged(state);
 };
 
 /**
@@ -133,6 +140,7 @@ export const writeValue = (
   target.error = null;
   target.generation += 1;
   target.hasSuccessfulValue = true;
+  markStateChanged(state);
 };
 
 /**
@@ -147,6 +155,7 @@ export const restoreSnapshot = (state: NodeStateRecord, snapshot: NodeStateField
   target.error = snapshot.error;
   target.hasSuccessfulValue = snapshot.hasSuccessfulValue;
   target.generation += 1;
+  markStateChanged(state);
 };
 
 /**
@@ -161,4 +170,5 @@ export const releaseValue = (state: NodeStateRecord, initialValue: unknown): voi
   target.freshness = "stale";
   target.error = null;
   target.generation += 1;
+  markStateChanged(state);
 };

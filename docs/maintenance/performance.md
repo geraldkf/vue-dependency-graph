@@ -52,7 +52,7 @@ For the full-demand release-enabled case, leading self-sample frames included `g
 
 Inspection agrees with the measurements: every global state notification invokes release reconciliation, which scans every eligible data node, looks up demand, and checks its timer session. In the 1,000-node full-demand case, 4,004 notifications imply roughly four million eligible-node checks per cascade. Sparse demand and branch-local invalidation reduce notifications but still scan the full eligible set.
 
-The next targeted optimization to evaluate is incremental release reconciliation: reconsider nodes whose demand, successful value or generation changed, with a full pass for initialization. Keep generation guards, re-subscribe cancellation, undemanded prefetch release, default/Infinity overrides, timer cleanup and synchronous observer semantics. Compare identical request/derivation counts and timing against this matrix before changing public observation APIs. A general scheduler rewrite is not supported by this evidence.
+This profiling identified incremental release reconciliation as the next optimization: reconsider nodes whose demand or state changed, with a full pass for initialization. The implementation and its comparison are recorded below.
 
 Reproduce individual workloads or profiles without new dependencies:
 
@@ -64,3 +64,19 @@ node --cpu-prof --cpu-prof-dir=browser-results/profiles --cpu-prof-name=full-dem
 ```
 
 These are synchronous Node workloads with primitive payloads, no API delay, no Vue rendering, and no refresh policies. The application trial still needs actual demand, payload sizes, refresh behavior and time to useful UI. Timing thresholds remain outside CI; the benchmark's correctness assertions are deterministic.
+
+## Incremental release reconciliation
+
+Release policies now register their eligible runtime states with a change tracker. State transitions record changed keys without running policy work; subscription changes record affected direct and required keys before notification. Each synchronous release listener drains a deduplicated set and reconciles only those nodes. Initialization performs one full pass. Policy disposal clears the tracker and unregisters its states.
+
+Existing generation checks, timer cancellation, undemanded prefetch release, default/Infinity overrides, and notification order are preserved. Refresh-policy reconciliation still follows its existing rules.
+
+The comparison against revision `f893a5d` used the same Windows host and Node 24.19.0, with timing runs outside concurrent validation jobs. For 1,000 data plus 1,000 derived nodes, one observer, diagnostics disabled, and release policies enabled:
+
+| Workload      | Previous median | Incremental median |
+| ------------- | --------------: | -----------------: |
+| Full demand   |       938.10 ms |           11.15 ms |
+| Sparse demand |        49.22 ms |            2.22 ms |
+| Single branch |        87.72 ms |            1.48 ms |
+
+All 72 configurations passed the existing correctness assertions and retained identical request, derivation, notification, and retained-event counts. Raw before/after results are in [benchmark-incremental-release.json](./benchmark-incremental-release.json). These local timings demonstrate removal of the repeated release scan; they do not predict application or browser performance.
