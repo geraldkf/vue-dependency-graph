@@ -34,6 +34,7 @@ import PollingProgressScenario from "./scenarios/PollingProgressScenario.vue";
 import OptimisticAppointmentBookingScenario from "./scenarios/OptimisticAppointmentBookingScenario.vue";
 import RuntimeObservabilityScenario from "./scenarios/RuntimeObservabilityScenario.vue";
 import DevtoolsScenario from "./scenarios/DevtoolsScenario.vue";
+import RuntimeOwnershipScenario from "./scenarios/RuntimeOwnershipScenario.vue";
 
 interface PlaygroundScenario {
   readonly id: string;
@@ -111,6 +112,11 @@ const scenarios = [
     id: "devtools",
     label: "Devtools",
     component: DevtoolsScenario,
+  },
+  {
+    id: "runtime-ownership",
+    label: "Runtime Ownership",
+    component: RuntimeOwnershipScenario,
   },
 ] as const satisfies readonly PlaygroundScenario[];
 

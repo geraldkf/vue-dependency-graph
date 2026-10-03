@@ -12,6 +12,14 @@ Graph exploration, metrics, and snapshot export are provided by the reusable dev
 
 ## Implemented scenarios
 
+### Runtime Ownership
+
+This scenario creates a dedicated runtime for each mount. **Start request** or **Start mutation** begins manually gated work that deliberately ignores its abort signal. **End owner lifetime** calls `shutdown()`: the UI reports a handled `GraphRuntimeShutdownError`, an aborted signal and zero demand. Delivering the late response leaves the committed value unchanged and does not run mutation success effects.
+
+Switch tabs during a pending mutation, then return. The old owner shuts down and observes its late remote completion; the new owner starts with value `1` and can complete its own mutation normally. The production browser check exercises these paths and verifies there are no uncaught page errors.
+
+The Polling Progress scenario also supports **Start new job** after completion or failure. It retains the mounted consumer, changes the operation identity and explicitly refreshes the node; the new generation starts a fresh polling cycle. It does not replace the runtime to hide terminal-session behavior.
+
 ### Concurrency Limit
 
 The Concurrency Limit scenario creates four independent data nodes in a dedicated runtime. Select a maximum of `1`, `2`, or unlimited, then use **Run all** to submit every load together.

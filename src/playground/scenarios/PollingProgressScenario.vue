@@ -12,6 +12,9 @@
       <button :disabled="!mounted || paused" @click="advanceOnePoll">Advance one poll</button>
       <button :disabled="!mounted" @click="complete">Complete</button>
       <button :disabled="!mounted" @click="fail">Fail</button>
+      <button :disabled="!mounted || snapshot.data.state === 'running'" @click="startNewJob">
+        Start new job
+      </button>
       <button :disabled="!mounted" @click="triggerTimeout">Trigger timeout</button>
       <button :disabled="!mounted" @click="failNextRequest">Fail next request</button>
       <button :disabled="paused" @click="pause">Pause</button>
@@ -146,6 +149,11 @@ const complete = async (): Promise<void> => {
 const fail = async (): Promise<void> => {
   harness.fail();
   await advance(1_000);
+};
+
+const startNewJob = async (): Promise<void> => {
+  await harness.startNewJob();
+  await settle();
 };
 
 const triggerTimeout = async (): Promise<void> => {

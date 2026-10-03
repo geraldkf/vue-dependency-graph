@@ -36,6 +36,7 @@ export interface PollingProgressHarness {
   readonly subscribe: () => NodeSubscription;
   readonly advanceBy: (durationMs: number) => void;
   readonly complete: () => void;
+  readonly startNewJob: () => Promise<void>;
   readonly fail: () => void;
   readonly failNextRequest: () => void;
   readonly pause: () => void;
@@ -46,6 +47,7 @@ export const createPollingProgressHarness = (): PollingProgressHarness => {
   let now = 0;
   let paused = false;
   let nextTimerId = 1;
+  let nextOperationId = 2;
   const timers = new Map<number, ScheduledTimer>();
   const pauseListeners = new Set<(paused: boolean) => void>();
   const state = {
@@ -161,6 +163,14 @@ export const createPollingProgressHarness = (): PollingProgressHarness => {
     complete: () => {
       state.responseState = "completed";
       state.percent = 100;
+    },
+    startNewJob: async () => {
+      state.operationId = `operation-${nextOperationId++}`;
+      state.responseState = "running";
+      state.percent = 0;
+      state.retryAttempt = 0;
+      state.failNextRequest = false;
+      await runtime.refresh([pollingProgressNode]);
     },
     fail: () => {
       state.responseState = "failed";

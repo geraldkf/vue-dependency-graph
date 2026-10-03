@@ -1,0 +1,220 @@
+{
+  "node": "v24.19.0",
+  "platform": "win32",
+  "scope": "Process startup, graph construction, initial load and six context changes; self-sample percentages are approximate and include warm-up. Profiled timing is not used in the benchmark table.",
+  "profiles": [
+    {
+      "name": "full-demand",
+      "workload": "full-demand",
+      "releasePolicies": true,
+      "dataNodes": 1000,
+      "observers": 1,
+      "diagnostics": false,
+      "sampleCount": 4168,
+      "topSelfSamples": [
+        {
+          "frame": "getSubscriptionState core/index.js:1302",
+          "count": 778,
+          "percent": 18.7
+        },
+        {
+          "frame": "resolveReleaseDurationMs core/index.js:1905",
+          "count": 479,
+          "percent": 11.5
+        },
+        {
+          "frame": "reconcileNode core/index.js:1949",
+          "count": 463,
+          "percent": 11.1
+        },
+        {
+          "frame": "notify core/index.js:3135",
+          "count": 436,
+          "percent": 10.5
+        },
+        {
+          "frame": "reconcile core/index.js:1975",
+          "count": 418,
+          "percent": 10
+        },
+        {
+          "frame": "getNodeState core/index.js:3269",
+          "count": 403,
+          "percent": 9.7
+        },
+        {
+          "frame": "requireSubscriptionState core/index.js:1295",
+          "count": 355,
+          "percent": 8.5
+        },
+        {
+          "frame": "getSession core/index.js:1921",
+          "count": 320,
+          "percent": 7.7
+        },
+        {
+          "frame": "getNode core/index.js:522",
+          "count": 298,
+          "percent": 7.1
+        },
+        {
+          "frame": "(garbage collector) :0",
+          "count": 40,
+          "percent": 1
+        },
+        {
+          "frame": "(program) :0",
+          "count": 26,
+          "percent": 0.6
+        },
+        {
+          "frame": "requireRegisteredNode core/index.js:3429",
+          "count": 19,
+          "percent": 0.5
+        }
+      ]
+    },
+    {
+      "name": "single-branch",
+      "workload": "single-branch",
+      "releasePolicies": true,
+      "dataNodes": 1000,
+      "observers": 1,
+      "diagnostics": false,
+      "sampleCount": 877,
+      "topSelfSamples": [
+        {
+          "frame": "notify core/index.js:3135",
+          "count": 143,
+          "percent": 16.3
+        },
+        {
+          "frame": "getSubscriptionState core/index.js:1302",
+          "count": 127,
+          "percent": 14.5
+        },
+        {
+          "frame": "reconcile core/index.js:1975",
+          "count": 100,
+          "percent": 11.4
+        },
+        {
+          "frame": "getSession core/index.js:1921",
+          "count": 91,
+          "percent": 10.4
+        },
+        {
+          "frame": "getNodeState core/index.js:3269",
+          "count": 88,
+          "percent": 10
+        },
+        {
+          "frame": "reconcileNode core/index.js:1949",
+          "count": 69,
+          "percent": 7.9
+        },
+        {
+          "frame": "requireSubscriptionState core/index.js:1295",
+          "count": 68,
+          "percent": 7.8
+        },
+        {
+          "frame": "getNode core/index.js:522",
+          "count": 48,
+          "percent": 5.5
+        },
+        {
+          "frame": "resolveReleaseDurationMs core/index.js:1905",
+          "count": 48,
+          "percent": 5.5
+        },
+        {
+          "frame": "(garbage collector) :0",
+          "count": 13,
+          "percent": 1.5
+        },
+        {
+          "frame": "(program) :0",
+          "count": 11,
+          "percent": 1.3
+        },
+        {
+          "frame": "requireRegisteredNode core/index.js:3429",
+          "count": 7,
+          "percent": 0.8
+        }
+      ]
+    },
+    {
+      "name": "no-release",
+      "workload": "full-demand",
+      "releasePolicies": false,
+      "dataNodes": 1000,
+      "observers": 1,
+      "diagnostics": false,
+      "sampleCount": 115,
+      "topSelfSamples": [
+        {
+          "frame": "(garbage collector) :0",
+          "count": 11,
+          "percent": 9.6
+        },
+        {
+          "frame": "(program) :0",
+          "count": 9,
+          "percent": 7.8
+        },
+        {
+          "frame": " core/index.js:999",
+          "count": 9,
+          "percent": 7.8
+        },
+        {
+          "frame": "executeNode core/index.js:856",
+          "count": 9,
+          "percent": 7.8
+        },
+        {
+          "frame": " core/index.js:506",
+          "count": 6,
+          "percent": 5.2
+        },
+        {
+          "frame": "ensureNode core/index.js:991",
+          "count": 6,
+          "percent": 5.2
+        },
+        {
+          "frame": "runInternal core/index.js:879",
+          "count": 5,
+          "percent": 4.3
+        },
+        {
+          "frame": "emitExecution core/index.js:841",
+          "count": 5,
+          "percent": 4.3
+        },
+        {
+          "frame": "compileSourceTextModule esm/utils:316",
+          "count": 2,
+          "percent": 1.7
+        },
+        {
+          "frame": "createGraph core/index.js:465",
+          "count": 2,
+          "percent": 1.7
+        },
+        {
+          "frame": "buildEventInvalidationIndex core/index.js:400",
+          "count": 2,
+          "percent": 1.7
+        },
+        {
+          "frame": "run core/index.js:959",
+          "count": 2,
+          "percent": 1.7
+        }
+      ]
+    }
+  ]
+}

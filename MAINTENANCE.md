@@ -42,6 +42,14 @@ Local checks on Windows, pnpm 12.4.1:
 
 CI configuration has been updated; these are local results, not a claim that a remote CI job has already run.
 
+## Approved follow-up work
+
+1. Completed [reference-data caching guidance](docs/recipes/10-reference-data-and-cache-budgets.md): retained lists, large values, runtime defaults, bounded keyed maps, release-duration selection and runtime ownership. Corrected the older release recipe and completed the roadmap's documentation follow-up.
+2. Expanded production Chromium checks using the new Runtime Ownership scenario and the Polling Progress new-job control. Checks cover navigation during an active mutation, pending request/mutation shutdown, handled errors, aborted signals, suppressed late value commits/success callbacks, fresh owner operation, and polling restart after completion/failure. All 15 scenarios are visited.
+3. Extended the benchmark to 72 configurations with sparse demand, isolated branch changes and release-policy controls. Added exact per-node load/derivation and whole-graph cleanup assertions, saved workload measurements and CPU profile summaries. The evidence identifies full release-policy scans as the next optimization target; runtime behavior was not changed in this profiling stage.
+
+Validation: 721 tests in 130 files pass on Node 22.13.0 and 24.19.0, with unchanged coverage thresholds passing on Node 24. Lint has zero warnings; types, formatting and 130-file architecture checks pass. Production build, built-consumer and expanded Chromium checks pass. All 72 benchmark configurations pass their assertions on Node 24; the six small workload/release-control configurations also pass on Node 22.
+
 ## Remaining application evidence
 
 The [migration trial](docs/maintenance/migration-trial.md) needs a real application's workflow, flag/rollback path and measured acceptance results. It is the remaining prerequisite for API stabilization/publication. No publication was performed.

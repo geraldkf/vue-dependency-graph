@@ -80,16 +80,16 @@ const subscription = runtime.subscribeNodes([ServiceDetail]);
 
 ## Interaction with refresh and polling
 
-A node with an active refresh/polling policy still needs a subscriber (or an explicit runtime keep-alive mechanism if you add one) to justify work. Release after idle typically stops paying for polls once demand is gone — confirm against the current refresh-policy controller behaviour when tuning.
+A node with an active refresh/polling policy needs a subscriber to justify background work. Losing the last subscriber stops the policy timers independently of the release duration. `release: Infinity` retains a value; it does not create demand or keep polling alive.
 
 ## Diagnostics
 
-Use snapshots and metrics to verify nodes disappear after idle:
+Use snapshots and metrics to verify values are released after idle; node definitions remain in the graph:
 
 - Node present while the panel is open.
 - After unmount + idle window, value released (or retained if policy says so).
 
-Playground scenarios under unmount / retention exist for regression coverage.
+Playground scenarios under unmount / retention exist for regression coverage. See [reference data and cache budgets](./10-reference-data-and-cache-budgets.md) for retained reference lists, large payloads, keyed maps, and choosing idle durations. Runtime owners use `shutdown()` when their lifetime ends.
 
 ## Checklist
 

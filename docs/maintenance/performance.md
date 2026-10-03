@@ -1,8 +1,8 @@
 # Performance baseline
 
-The reproducible harness is `pnpm benchmark` after `pnpm build`. It creates one context root, 100/500/1,000 data nodes, one derived leaf per data node, demand for all leaves, concurrency eight, explicit release policies, and either one or 100 global state observers. It measures five cascades after a warm-up with diagnostics disabled/enabled.
+The reproducible harness is `pnpm benchmark` after `pnpm build`. It now compares full demand, sparse demand and changes to one independent branch at 100/500/1,000 data nodes, with one derived leaf per data node and concurrency eight. Each workload runs with diagnostics and release policies on/off and one or up to 100 observing consumers: 72 configurations. It measures five cascades after a warm-up. The original full-demand baseline is preserved below.
 
-Each run asserts exactly seven loads per data node across startup and six context changes, correct final derivation, and zero demand after shutdown. Diagnostic retention stays capped at 1,000. Timings exclude network latency and should be compared on the same host with otherwise idle processes.
+Each run asserts exact per-node loads and derivations across startup and six context changes, correct final values/freshness, no loading of undemanded nodes, no recomputation in unchanged branches, and zero demand across the entire graph after shutdown. Diagnostic retention stays capped at 1,000. Timings exclude network latency and should be compared on the same host with otherwise idle processes.
 
 ## Initial local measurement
 
@@ -21,3 +21,46 @@ A repeat against the final maintenance build passed all 12 request-count and cle
 The curve shows that large synchronous cascades need scrutiny. Global state notifications trigger policy scans and observer snapshot reads, so growing graphs can amplify work substantially. The release controller now excludes nodes with no effective release policy from reconciliation; explicitly configured policies still scan their eligible nodes.
 
 For the migration trial, measure the actual graph size, demanded subset, API latency, time to useful UI, and diagnostic overhead. Use coherent workflow-sized runtimes. If the application reproduces unacceptable costs, evaluate change summaries and per-node observation before adding a general extension host or rewriting the scheduler. Preserve synchronous transaction notification semantics while doing so.
+
+## Realistic demand and branch comparisons
+
+The follow-up run on Windows, Node 24.19.0, covers:
+
+- **Full demand:** all leaves subscribed; one context change affects every branch.
+- **Sparse demand:** only 5% of leaves subscribed, with a minimum of 10. Undemanded nodes are invalidated but must never load or derive.
+- **Single branch:** 10 independent context roots, all leaves subscribed; change one root, affecting 10% of data/derived pairs. The other branches must keep their fresh values without extra work.
+
+All workloads compare an explicit 10-second release policy on every data node with no release policies. The observer count is capped at the demanded subset; the sparse 1,000-node case uses 1 or 50 observers, rather than pretending it has 100 consumers.
+
+The following medians use one observer, diagnostics disabled, 1,000 data plus 1,000 derived nodes. The raw 72 configurations are saved in [benchmark-workloads.json](./benchmark-workloads.json).
+
+| Workload      | Demanded / changed data nodes | Release policies on | Release policies off | Notifications per cascade |
+| ------------- | ----------------------------: | ------------------: | -------------------: | ------------------------: |
+| Full demand   |                 1,000 / 1,000 |           868.60 ms |              8.55 ms |                     4,004 |
+| Sparse demand |                       50 / 50 |            49.42 ms |              1.63 ms |                       204 |
+| Single branch |                   1,000 / 100 |            88.99 ms |              1.10 ms |                       404 |
+
+Exact total requests, including startup and six changes, were 7,000/350/1,600 respectively; derived execution counts matched. Every measured cascade emitted the same notification count within its workload. These counts establish that unrelated branches and undemanded nodes avoided extra loads. They do not mean unrelated policies avoided scanning.
+
+The on/off comparison is an experimental control, not advice to remove release policies when they are needed for memory management. It isolates an optional-policy cost that the original full-demand benchmark could not separate from ordinary execution.
+
+## CPU profiling and the next optimization target
+
+CPU profiles cover graph construction, initial load and six context changes. Their self-sample percentages include warm-up and are approximate; profiled timings are not used in the table above. Summaries are in [profile-summary.json](./profile-summary.json). The raw profiles stay in the ignored `browser-results/profiles` directory and can be opened in a CPU profiler.
+
+For the full-demand release-enabled case, leading self-sample frames included `getSubscriptionState` (18.7%), `resolveReleaseDurationMs` (11.5%), `reconcileNode` (11.1%), `notify` (10.5%) and release `reconcile` (10.0%). The branch-local profile showed the same group of hot paths. The no-release control was much shorter, with only 115 samples, so precise rankings for that control would be misleading.
+
+Inspection agrees with the measurements: every global state notification invokes release reconciliation, which scans every eligible data node, looks up demand, and checks its timer session. In the 1,000-node full-demand case, 4,004 notifications imply roughly four million eligible-node checks per cascade. Sparse demand and branch-local invalidation reduce notifications but still scan the full eligible set.
+
+The next targeted optimization to evaluate is incremental release reconciliation: reconsider nodes whose demand, successful value or generation changed, with a full pass for initialization. Keep generation guards, re-subscribe cancellation, undemanded prefetch release, default/Infinity overrides, timer cleanup and synchronous observer semantics. Compare identical request/derivation counts and timing against this matrix before changing public observation APIs. A general scheduler rewrite is not supported by this evidence.
+
+Reproduce individual workloads or profiles without new dependencies:
+
+```bash
+node scripts/benchmark.mjs --workload=sparse-demand --size=1000 --observers=1 --diagnostics=off --release=on
+node scripts/benchmark.mjs --workload=single-branch --size=1000 --observers=1 --diagnostics=off --release=off
+# Create browser-results/profiles first; that directory is ignored by Git.
+node --cpu-prof --cpu-prof-dir=browser-results/profiles --cpu-prof-name=full-demand.cpuprofile scripts/benchmark.mjs --workload=full-demand --size=1000 --observers=1 --diagnostics=off --release=on
+```
+
+These are synchronous Node workloads with primitive payloads, no API delay, no Vue rendering, and no refresh policies. The application trial still needs actual demand, payload sizes, refresh behavior and time to useful UI. Timing thresholds remain outside CI; the benchmark's correctness assertions are deterministic.

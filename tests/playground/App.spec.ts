@@ -26,7 +26,7 @@ describe("playground shell", () => {
     vi.useRealTimers();
   });
 
-  it("mounts every scenario tab through the Pinia-owned runtime", async () => {
+  it("mounts every scenario tab", async () => {
     const pinia = createPinia();
 
     render(App, {
@@ -38,14 +38,19 @@ describe("playground shell", () => {
 
     const tabs = [
       "Atomic Transaction",
+      "Transaction Isolation",
       "Typed Events",
       "Optimistic Appointment Booking",
       "Runtime Observability",
       "Concurrent Consumers",
+      "Concurrency Limit",
       "Error and Retry",
       "Unmount Cleanup",
       "Aggregate Query",
+      "Query Groups",
       "Polling Progress",
+      "Devtools",
+      "Runtime Ownership",
       "Context Switching",
     ] as const;
 

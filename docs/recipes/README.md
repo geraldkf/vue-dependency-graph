@@ -15,6 +15,7 @@ They are **not** a complete cookbook and **not** a guarantee of API stability. P
 | 07  | [Pinia owns the runtime](./07-pinia-runtime-ownership.md)                            | Plugin vs Pinia confusion; mirrored graph state in Pinia         |
 | 08  | [Multi-node panels with `useNodes` / `isSuccess`](./08-usenodes-panel-success.md)    | Page gated on `whenSettled()`; unclear multi-panel loading UX    |
 | 09  | [Long-running operations with `pollUntil`](./09-long-running-operation-polling.md)   | Forever-spinning polls; timeout confused with definitive failure |
+| 10  | [Reference data and cache budgets](./10-reference-data-and-cache-budgets.md)         | Unbounded keyed caches and unsuitable retention policies         |
 
 ## Framing for humans and agents
 

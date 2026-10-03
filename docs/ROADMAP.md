@@ -118,12 +118,7 @@ The migration trial is complete when:
 
 ## Documentation follow-up
 
-These items improve adoption guidance but do not keep cache lifecycle open:
-
-- Add a reference-data caching example using `release: Infinity` for stable shared data.
-- Add a large-value example using a per-node `release` duration and a runtime default.
-- Explain when dynamic keyed reference data should use an application-managed map inside one graph node.
-- Explain how to choose a release duration based on value size, reload cost, and navigation patterns.
+The caching guidance is complete in [Recipe 10 — Reference data and cache budgets](./recipes/10-reference-data-and-cache-budgets.md): retained reference lists, large values with per-node/runtime release durations, application-managed keyed maps, and selecting durations from value size, reload cost and navigation patterns. Validate the chosen policies in the application migration trial.
 
 ## Deferred until demonstrated necessary
 

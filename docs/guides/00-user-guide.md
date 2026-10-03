@@ -347,6 +347,8 @@ When the timer fires, the node resets to exactly the shape it had before it ever
 
 A release shows up in diagnostics as a `node.value-released` event, and in the devtools Timeline under its own "release" filter - useful for confirming large data actually gets reclaimed on a long-running page (browsing a big catalog, say) rather than just trusting the configuration. See [ADR-016](../decisions/ADR-016-value-release-policies.md) for the full design reasoning, including why this is timer-based rather than, say, an LRU-style bounded count.
 
+For retained reference lists, large values, application-managed keyed maps and choosing idle durations, see [Reference data and cache budgets](../recipes/10-reference-data-and-cache-budgets.md). It also explains the distinction between retention, freshness and runtime ownership.
+
 ## 11. Query groups
 
 When a screen needs several related nodes together - and you don't want to repeat that list of nodes at every call site - group them once:

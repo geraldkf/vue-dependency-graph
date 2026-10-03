@@ -4,7 +4,7 @@
 
 Core and tooling tests run in Node through the `core` project in `vitest.config.ts`. Vue, playground, devtools UI, and retention tests run in jsdom through `dom`. Retention includes browser-lifecycle checks, so it deliberately keeps the DOM environment. Both inherit the fork pool with `--expose-gc`.
 
-`pnpm check:browser` runs the production playground in real Chromium after `pnpm build`: rapid context changes, subscription cleanup, polling completion, all scenario mounts, and uncaught browser errors. Install its browser with `pnpm exec playwright install chromium`; CI uses `--with-deps`.
+`pnpm check:browser` runs the production playground in real Chromium after `pnpm build`: rapid context changes, subscription cleanup, polling restart after completion/failure, pending request/mutation shutdown, ignored-cancellation late responses, navigation during a mutation, all 15 scenario mounts, and uncaught browser errors. The Runtime Ownership scenario uses a separate runtime per mount and manual response delivery; assertions check aborted signals, zero demand, unchanged values, suppressed success callbacks, handled shutdown errors and a functioning new owner. Install its browser with `pnpm exec playwright install chromium`; CI uses `--with-deps`.
 
 Seeded interaction sequences combine subscriptions, context writes, transactions, events, refreshes, and known-rejection optimistic mutations. Failures identify a reproducible seed. Focused regressions additionally cover late mutation context changes, terminal polling restart, diagnostic-only devtools activity, and non-cooperative/reentrant shutdown.
 
