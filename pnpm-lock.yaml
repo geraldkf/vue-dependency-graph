@@ -165,13 +165,6 @@ settings:
 importers:
 
   .:
-    dependencies:
-      pinia:
-        specifier: 3.0.4
-        version: 3.0.4(typescript@5.7.3)(vue@3.5.13(typescript@5.7.3))
-      vue:
-        specifier: 3.5.13
-        version: 3.5.13(typescript@5.7.3)
     devDependencies:
       '@eslint/js':
         specifier: ^10.0.1
@@ -191,6 +184,9 @@ importers:
       '@vue/compiler-sfc':
         specifier: 3.5.13
         version: 3.5.13
+      esbuild:
+        specifier: ^0.25.12
+        version: 0.25.12
       eslint:
         specifier: ^10.11.0
         version: 10.11.0(supports-color@7.2.0)
@@ -206,6 +202,9 @@ importers:
       jsdom:
         specifier: 26.0.0
         version: 26.0.0(supports-color@7.2.0)
+      pinia:
+        specifier: 3.0.4
+        version: 3.0.4(typescript@5.7.3)(vue@3.5.13(typescript@5.7.3))
       prettier:
         specifier: ^3.9.8
         version: 3.9.8
@@ -221,6 +220,9 @@ importers:
       vitest:
         specifier: 3.0.7
         version: 3.0.7(@types/node@22.13.10)(jsdom@26.0.0(supports-color@7.2.0))(supports-color@7.2.0)
+      vue:
+        specifier: 3.5.13
+        version: 3.5.13(typescript@5.7.3)
       vue-tsc:
         specifier: 2.2.8
         version: 2.2.8(typescript@5.7.3)

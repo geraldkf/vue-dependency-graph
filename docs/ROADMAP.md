@@ -55,7 +55,7 @@ See [ADR-005](./decisions/ADR-005-atomic-graph-transactions.md), [ADR-006](./dec
 - Bounded retry, backoff, jitter, pause, and resume
 - Subscription-owned policy activity
 - Per-node and runtime-default automatic value release
-- Explicit `retain()` opt-out
+- Explicit `release: Infinity` opt-out
 - Runtime disposal of background policies and lifecycle listeners
 - Retention and garbage-collection regression coverage
 
@@ -118,8 +118,8 @@ The migration trial is complete when:
 
 These items improve adoption guidance but do not keep cache lifecycle open:
 
-- Add a reference-data caching example using `retain()` for stable shared data.
-- Add a large-value example using `releaseAfter(...)` and a runtime default.
+- Add a reference-data caching example using `release: Infinity` for stable shared data.
+- Add a large-value example using a per-node `release` duration and a runtime default.
 - Explain when dynamic keyed reference data should use an application-managed map inside one graph node.
 - Explain how to choose a release duration based on value size, reload cost, and navigation patterns.
 

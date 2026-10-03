@@ -11,7 +11,6 @@ import {
   defineQuery,
   normalizeDiagnosticEvents,
   refreshInterval,
-  releaseAfter,
   type GraphDiagnosticEvent,
   type TimerEnvironment,
 } from "../../src/core";
@@ -113,7 +112,7 @@ describe("runtime golden diagnostic trace", () => {
     const released = defineDataNode({
       key: "released",
       initialValue: 0,
-      release: releaseAfter({ durationMs: 500 }),
+      release: 500,
       load: async () => 9,
     });
     const page = defineQuery({ key: "page", nodes: { data, derived } });

@@ -6,8 +6,6 @@ import {
   defineDataNode,
   defineDerivedNode,
   GraphValidationError,
-  releaseAfter,
-  retain,
   type AnyNodeDefinition,
   type TimerEnvironment,
 } from "../../src/core";
@@ -58,7 +56,7 @@ describe("release policies", () => {
     const Count = defineDataNode({
       key: "count",
       initialValue: 0,
-      release: releaseAfter({ durationMs: 1_000 }),
+      release: 1_000,
       load: () => Promise.resolve(42),
     });
     const runtime = createGraphRuntime(createGraph({ nodes: [Count] }), {
@@ -86,7 +84,7 @@ describe("release policies", () => {
     const Count = defineDataNode({
       key: "count",
       initialValue: 0,
-      release: releaseAfter({ durationMs: 1_000 }),
+      release: 1_000,
       load: () => Promise.resolve(42),
     });
     const runtime = createGraphRuntime(createGraph({ nodes: [Count] }), {
@@ -104,12 +102,12 @@ describe("release policies", () => {
     second.unsubscribe();
   });
 
-  it("retain() opts a node out even when the runtime has a default", async () => {
+  it("release: Infinity opts a node out even when the runtime has a default", async () => {
     const { environment, advanceBy } = createTestEnvironment();
     const Pinned = defineDataNode({
       key: "pinned",
       initialValue: 0,
-      release: retain(),
+      release: Infinity,
       load: () => Promise.resolve(1),
     });
     const runtime = createGraphRuntime(createGraph({ nodes: [Pinned] }), {
@@ -146,12 +144,12 @@ describe("release policies", () => {
     expect(runtime.getState(Count)).toMatchObject({ hasSuccessfulValue: false });
   });
 
-  it("a node's own releaseAfter overrides a longer runtime default", async () => {
+  it("a node's own release duration overrides a longer runtime default", async () => {
     const { environment, advanceBy } = createTestEnvironment();
     const Count = defineDataNode({
       key: "count",
       initialValue: 0,
-      release: releaseAfter({ durationMs: 100 }),
+      release: 100,
       load: () => Promise.resolve(7),
     });
     const runtime = createGraphRuntime(createGraph({ nodes: [Count] }), {
@@ -172,7 +170,7 @@ describe("release policies", () => {
     const Count = defineDataNode({
       key: "count",
       initialValue: 0,
-      release: releaseAfter({ durationMs: 100 }),
+      release: 100,
       load: () => Promise.resolve(7),
     });
     const Doubled = defineDerivedNode({
@@ -199,7 +197,7 @@ describe("release policies", () => {
     const Count = defineDataNode({
       key: "count",
       initialValue: 0,
-      release: releaseAfter({ durationMs: 100 }),
+      release: 100,
       load: () => {
         loadCount += 1;
         return Promise.resolve(loadCount * 10);
@@ -234,7 +232,7 @@ describe("release policies", () => {
     const Count = defineDataNode({
       key: "count",
       initialValue: 0,
-      release: releaseAfter({ durationMs: 250 }),
+      release: 250,
       load: () => Promise.resolve(1),
     });
     const runtime = createGraphRuntime(createGraph({ nodes: [Count] }), {
@@ -256,7 +254,7 @@ describe("release policies", () => {
     const Failing = defineDataNode({
       key: "failing",
       initialValue: 0,
-      release: releaseAfter({ durationMs: 100 }),
+      release: 100,
       load: () => Promise.reject(new Error("boom")),
     });
     const runtime = createGraphRuntime(createGraph({ nodes: [Failing] }), {
@@ -274,13 +272,44 @@ describe("release policies", () => {
     expect(runtime.getState(Failing).error).not.toBeNull();
   });
 
+  it.each([0, -1, NaN, -Infinity])("rejects a non-positive release duration (%s)", (release) => {
+    expect(() =>
+      defineDataNode({
+        key: "invalid-release",
+        initialValue: 0,
+        release,
+        load: () => Promise.resolve(1),
+      }),
+    ).toThrow(RangeError);
+  });
+
+  it("accepts Infinity as release (equivalent to never releasing)", async () => {
+    const { environment, advanceBy } = createTestEnvironment();
+    const Pinned = defineDataNode({
+      key: "pinned-infinity",
+      initialValue: 0,
+      release: Infinity,
+      load: () => Promise.resolve(1),
+    });
+    const runtime = createGraphRuntime(createGraph({ nodes: [Pinned] }), {
+      timerEnvironment: environment,
+    });
+    const subscription = runtime.subscribeNodes([Pinned]);
+    await runtime.whenSettled();
+    subscription.unsubscribe();
+
+    advanceBy(10_000);
+
+    expect(runtime.getState(Pinned)).toMatchObject({ data: 1, hasSuccessfulValue: true });
+  });
+
   it("rejects a release policy on a context node", () => {
     const context = Object.freeze({
       key: "context",
       kind: "context",
       dependencies: Object.freeze([]),
       initialValue: 1,
-      release: releaseAfter({ durationMs: 1_000 }),
+      release: 1_000,
     }) as unknown as AnyNodeDefinition;
 
     expect(() => createGraph({ nodes: [context] })).toThrow(GraphValidationError);

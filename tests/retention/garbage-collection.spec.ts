@@ -11,7 +11,6 @@ import {
   defineEvent,
   defineMutation,
   refreshInterval,
-  releaseAfter,
   type GraphRuntime,
   type TimerEnvironment,
 } from "../../src/core";
@@ -89,7 +88,7 @@ describe("values are released when the runtime is done with them", () => {
     const node = defineDataNode({
       key: "released",
       initialValue: null as object | null,
-      release: releaseAfter({ durationMs: 100 }),
+      release: 100,
       load: trackedLoader(tracked),
     });
     const runtime = createGraphRuntime(createGraph({ nodes: [node] }), {

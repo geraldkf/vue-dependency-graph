@@ -8,7 +8,6 @@ import {
   defineDataNode,
   defineDerivedNode,
   refreshInterval,
-  releaseAfter,
   type GraphRuntime,
   type TimerEnvironment,
 } from "../../src/core";
@@ -159,7 +158,7 @@ describe("policy timers", () => {
     const released = defineDataNode({
       key: "released",
       initialValue: 0,
-      release: releaseAfter({ durationMs: 500 }),
+      release: 500,
       load: async () => 1,
     });
     const runtime = createGraphRuntime(createGraph({ nodes: [interval, released] }), {
@@ -189,7 +188,7 @@ describe("policy timers", () => {
     const node = defineDataNode({
       key: "node",
       initialValue: 0,
-      release: releaseAfter({ durationMs: 500 }),
+      release: 500,
       load: async () => 1,
     });
     const runtime = createGraphRuntime(createGraph({ nodes: [node] }), {
@@ -224,7 +223,7 @@ describe("policy timers", () => {
     const released = defineDataNode({
       key: "released",
       initialValue: 0,
-      release: releaseAfter({ durationMs: 500 }),
+      release: 500,
       load: async () => 1,
     });
     const runtime = createGraphRuntime(createGraph({ nodes: [interval, released] }), {

@@ -688,7 +688,7 @@ Aligned with architecture 07 and the test strategy:
 | Page gated on `whenSettled()`                   | Per-panel `useNodes` → `isSuccess`                  |
 | Parallel `isReady` flag duplicating aggregates  | Use `isSuccess` / `hasSuccessfulValue`              |
 | Closed-over session in `load`                   | Scope context dependencies                          |
-| Root subscribe to keep cache forever            | Release policy + intentional `retain()`             |
+| Root subscribe to keep cache forever            | Release duration + intentional `release: Infinity`  |
 | Auth only in UI hide                            | Server enforce + scope dependencies                 |
 
 ---

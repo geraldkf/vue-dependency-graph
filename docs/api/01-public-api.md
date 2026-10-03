@@ -467,16 +467,14 @@ It pauses policy timers while the document is hidden or the browser is offline. 
 
 ## Release policies
 
-`release` metadata for data nodes is interpreted by a runtime-local release-policy controller built on the same `timerEnvironment` used by refresh policies:
+`release` on a data node is a plain number of milliseconds, interpreted by a runtime-local release-policy controller built on the same `timerEnvironment` used by refresh policies - the same shape as the runtime's own `releaseAfterMs` default, so the two are directly comparable rather than two different types to remember:
 
 ```ts
-import { releaseAfter, retain } from "vue-dependency-graph/core";
-
 const ProductDetails = defineDataNode({
   key: "productDetails",
   initialValue: undefined as Product | undefined,
   load: ({ signal }) => api.getProduct(signal),
-  release: releaseAfter({ durationMs: 60_000 }),
+  release: 60_000,
 });
 ```
 
@@ -484,7 +482,7 @@ const ProductDetails = defineDataNode({
 const runtime = createGraphRuntime(graph, { releaseAfterMs: 5 * 60_000 });
 ```
 
-Resolution order per node: its own `release` if declared, else the runtime's `releaseAfterMs`, else no automatic release. `retain()` opts a node out even when the runtime has a default. Context and derived nodes cannot declare a release policy - `createGraph` rejects that (`GraphValidationError` with code `INVALID_RELEASE_POLICY`), the same way it already rejects a stray `refresh` on a non-data node.
+Resolution order per node: its own `release` if declared, else the runtime's `releaseAfterMs`, else no automatic release. `release: Infinity` opts a node out even when the runtime has a default. Context and derived nodes cannot declare a release policy - `createGraph` rejects that (`GraphValidationError` with code `INVALID_RELEASE_POLICY`), the same way it already rejects a stray `refresh` on a non-data node. A non-positive or non-finite value other than `Infinity` (`0`, a negative number, `NaN`) throws `RangeError` at `defineDataNode` call time.
 
 The controller starts a node's timer the moment it has no subscribers at all - direct or required (`hasSubscribers`, not the scheduler's own `hasDirectSubscribers`) - and only once it currently holds a successful value. Resubscribing before the timer fires cancels it with no other effect. When the timer fires, the node resets to its never-executed shape (`data` back to `initialValue`, no successful value, `status: "idle"`, `freshness: "stale"`) and its `generation` is bumped, so a later resubscribe goes through the same fresh-execution path as a node that has simply never run.
 
@@ -809,6 +807,7 @@ The `vue-dependency-graph/devtools` entry point provides an embeddable devtools 
 ```vue
 <script setup lang="ts">
 import { GraphDevtoolsPanel } from "vue-dependency-graph/devtools";
+import "vue-dependency-graph/devtools/style.css"; // the panel's styles ship separately
 import { runtime, diagnostics } from "./graph/runtime"; // the same collector passed as diagnostics.sink
 </script>
 
@@ -895,8 +894,6 @@ Entry point: `vue-dependency-graph/core`.
 - `normalizeDiagnosticSnapshot`
 - `pollUntil`
 - `refreshInterval`
-- `releaseAfter`
-- `retain`
 - `staleAfter`
 - `whenEvent`
 
@@ -997,10 +994,6 @@ Entry point: `vue-dependency-graph/core`.
 - `RefreshIntervalPolicy`
 - `RefreshPolicy`
 - `RefreshableNodeDefinition`
-- `ReleaseAfterOptions`
-- `ReleaseAfterPolicy`
-- `ReleasePolicy`
-- `RetainPolicy`
 - `RetryOptions`
 - `RetryPolicy`
 - `RetryStrategy`

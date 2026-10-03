@@ -16,9 +16,9 @@ export interface RuntimeReleasePolicyDependencies {
   readonly environment: TimerEnvironment;
   readonly getNodeState: (key: string) => NodeStateRecord;
   readonly hasSubscribers: (node: AnyNodeDefinition) => boolean;
-  /** The runtime's `releaseAfterMs` default. A node's own `release` policy,
+  /** The runtime's `releaseAfterMs` default. A node's own `release` option,
    * when declared, always takes precedence over this - including
-   * `retain()`, which opts a node out even when this default is set. */
+   * `Infinity`, which opts a node out even when this default is set. */
   readonly defaultDurationMs: number | undefined;
   readonly notify: () => void;
   readonly onDiagnostic?: (nodeKey: string, idleMs: number) => void;
@@ -48,7 +48,7 @@ const resolveReleaseDurationMs = (
 ): number | undefined => {
   const policy = node.release;
   if (policy?.kind === "release-after") return policy.durationMs;
-  // `retain()` nodes are already filtered out before this is called; any
+  // `release: Infinity` nodes are already filtered out before this is called; any
   // node reaching here either has no policy of its own (fall through to
   // the runtime default) or - defensively - an unrecognised policy kind,
   // which is treated the same as "no policy" rather than crashing the

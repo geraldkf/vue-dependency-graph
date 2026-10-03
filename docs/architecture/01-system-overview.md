@@ -131,7 +131,7 @@ A runtime-local refresh-policy controller interprets data-node `staleAfter(...)`
 
 ## Release-policy runtime
 
-A sibling runtime-local release-policy controller, built on the same timer infrastructure, resets an idle data node's value to its never-loaded shape once its subscriber count has been zero for its configured `releaseAfter(...)` duration, either per node or through the runtime-wide `releaseAfterMs` default. See [ADR-016](../decisions/ADR-016-value-release-policies.md) and `docs/architecture/03-scheduler-transactions-and-concurrency.md` for the mechanics.
+A sibling runtime-local release-policy controller, built on the same timer infrastructure, resets an idle data node's value to its never-loaded shape once its subscriber count has been zero for its configured `release` duration (a plain number of milliseconds), either per node or through the runtime-wide `releaseAfterMs` default. See [ADR-016](../decisions/ADR-016-value-release-policies.md) and `docs/architecture/03-scheduler-transactions-and-concurrency.md` for the mechanics.
 
 ## Why one package
 

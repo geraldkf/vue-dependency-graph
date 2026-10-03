@@ -20,8 +20,6 @@ Demand is subscription-driven. When the last subscriber goes away, a **release p
 ## Minimal correct shape
 
 ```ts
-import { releaseAfter, retain } from "vue-dependency-graph/core";
-
 const ServiceDetail = defineDataNode({
   key: "serviceDetail",
   dependencies: [SelectedServiceId],
@@ -31,17 +29,17 @@ const ServiceDetail = defineDataNode({
     if (id == null) return null;
     return api.services.get(id, { signal });
   },
-  // Drop after the detail pane has been closed for a while
-  release: releaseAfter({ durationMs: 60_000 }),
+  // Drop after the detail pane has been closed for a while (milliseconds)
+  release: 60_000,
 });
 
-// Truly session-global data can opt into retain
+// Truly session-global data can opt out with Infinity
 const CurrentUser = defineDataNode({
   key: "currentUser",
   dependencies: [],
   initialValue: null as User | null,
   load: ({ signal }) => api.me({ signal }),
-  release: retain(),
+  release: Infinity,
 });
 ```
 
@@ -54,7 +52,7 @@ const { data, status } = useNode(ServiceDetail);
 
 ## Runtime default
 
-You can also set a default idle duration when creating the runtime, applied to any node that doesn't declare its own `release` policy (a node's own policy — including `retain()` — always wins over this default):
+You can also set a default idle duration when creating the runtime, applied to any node that doesn't declare its own `release` (a node's own value — including `Infinity` — always wins over this default):
 
 ```ts
 const runtime = createGraphRuntime(graph, {
@@ -62,7 +60,7 @@ const runtime = createGraphRuntime(graph, {
 });
 ```
 
-Note this is a plain number of milliseconds, not a `releaseAfter(...)` policy object — `GraphRuntimeOptions.releaseAfterMs` and a node's own `release: releaseAfter({ durationMs })` are two different (if related) options.
+`GraphRuntimeOptions.releaseAfterMs` and a node's own `release` are the same kind of value — a plain number of milliseconds — so the two are directly comparable.
 
 Prefer explicit per-node policies for heavy payloads; use the runtime default for bulk leaf data only when measured.
 
@@ -95,8 +93,8 @@ Playground scenarios under unmount / retention exist for regression coverage.
 
 ## Checklist
 
-- [ ] Heavy detail nodes declare `releaseAfter` (or equivalent) instead of unbounded retain.
-- [ ] Session-global nodes that must survive route changes use `retain()` deliberately.
+- [ ] Heavy detail nodes declare a `release` duration instead of holding their value forever.
+- [ ] Session-global nodes that must survive route changes use `release: Infinity` deliberately.
 - [ ] No accidental long-lived `subscribe` without dispose.
 - [ ] `useNode` / `useNodes` / `useQuery` are called inside the component that needs the data, not a permanent shell, unless intentional.
 - [ ] Retention behaviour is covered by a test or playground scenario for the feature.

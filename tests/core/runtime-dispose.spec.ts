@@ -4,7 +4,6 @@ import {
   createGraphRuntime,
   defineDataNode,
   refreshInterval,
-  releaseAfter,
   type TimerEnvironment,
 } from "../../src/core";
 import { deferred, waitForCondition } from "./test-helpers";
@@ -109,7 +108,7 @@ describe("runtime.dispose", () => {
     const node = defineDataNode({
       key: "release",
       initialValue: 0,
-      release: releaseAfter({ durationMs: 1_000 }),
+      release: 1_000,
       load: async () => 42,
     });
     const runtime = createGraphRuntime(createGraph({ nodes: [node] }), {
@@ -142,7 +141,7 @@ describe("runtime.dispose", () => {
     const releasable = defineDataNode({
       key: "releasable",
       initialValue: 0,
-      release: releaseAfter({ durationMs: 1_000 }),
+      release: 1_000,
       load: async () => 7,
     });
     const runtime = createGraphRuntime(createGraph({ nodes: [polled, releasable] }), {

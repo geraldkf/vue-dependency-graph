@@ -4,7 +4,7 @@
     "noEmit": false,
     "declaration": true,
     "declarationMap": true,
-    "emitDeclarationOnly": false,
+    "emitDeclarationOnly": true,
     "outDir": "dist"
   },
   "include": ["src/core/**/*.ts", "src/vue/**/*.ts", "src/devtools/**/*.ts"],

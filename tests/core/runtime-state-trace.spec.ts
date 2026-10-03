@@ -9,7 +9,6 @@ import {
   defineMutation,
   pollUntil,
   refreshInterval,
-  releaseAfter,
   type TimerEnvironment,
 } from "../../src/core";
 import { createStateTracer } from "./state-trace-helpers";
@@ -262,7 +261,7 @@ describe("runtime state golden traces", () => {
     const node = defineDataNode({
       key: "released",
       initialValue: -1,
-      release: releaseAfter({ durationMs: 500 }),
+      release: 500,
       load: async () => 9,
     });
     const runtime = createGraphRuntime(createGraph({ nodes: [node] }), {

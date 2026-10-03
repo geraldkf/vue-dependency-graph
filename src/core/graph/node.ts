@@ -1,6 +1,6 @@
 import { GraphValidationError } from "./errors";
 import { assertValidRefreshPolicy } from "../refresh-policies/policy";
-import { assertValidReleasePolicy } from "../release-policies/policy";
+import { normalizeReleaseOption } from "../release-policies/policy";
 import type { AnyEventDefinition } from "../events/types";
 import type {
   ConditionalEventInvalidation,
@@ -169,10 +169,10 @@ export const defineContextNode = <TValue, const TKey extends string = string>(
  *
  * Use `refresh` ({@link staleAfter}, {@link refreshInterval},
  * {@link pollUntil}) to control when the value is refetched, `release`
- * ({@link retain}, {@link releaseAfter}) to control when it's freed once
- * unused, and `invalidatedBy` to refetch in response to a
- * {@link defineEvent}-declared event (e.g. a websocket push) rather than a
- * timer.
+ * (a duration in milliseconds, or `Infinity` to never release) to control
+ * when it's freed once unused, and `invalidatedBy` to refetch in response
+ * to a {@link defineEvent}-declared event (e.g. a websocket push) rather
+ * than a timer.
  *
  * @throws {@link GraphValidationError} (`INVALID_NODE_KEY`) if `key` is
  * empty or only whitespace. Dependency and event-invalidation declarations
@@ -224,9 +224,10 @@ export const defineDataNode = <
   if (options.refresh !== undefined) {
     assertValidRefreshPolicy(options.refresh, options.key);
   }
-  if (options.release !== undefined) {
-    assertValidReleasePolicy(options.release, options.key);
-  }
+  const release =
+    options.release !== undefined
+      ? normalizeReleaseOption(options.release, options.key)
+      : undefined;
   const definition = {
     key: options.key,
     kind: "data" as const,
@@ -236,7 +237,7 @@ export const defineDataNode = <
     invalidatedBy,
     diagnostics: freezeDiagnostics(options.diagnostics),
     refresh: options.refresh,
-    release: options.release,
+    release,
     initialValue: options.initialValue,
     load: options.load,
   };

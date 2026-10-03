@@ -4,6 +4,8 @@
 
 Accepted, implemented, and validated.
 
+**Amended:** the authoring syntax shown in the Decision section below (`releaseAfter({ durationMs })` and `retain()`) was later simplified, before any external consumers existed. A node's `release` option is now a plain number of milliseconds - the same shape as the runtime's own `releaseAfterMs` default - with `Infinity` replacing `retain()` as the explicit opt-out. The mechanics, resolution order, and everything else this ADR decides are unchanged; only the surface syntax for expressing the same two cases moved. The original examples below are preserved as the record of the original decision. See the [user guide](../guides/00-user-guide.md#10-releasing-idle-data) for current usage.
+
 ## Context
 
 `state.ts` seeds one runtime-state slot per node from the graph's static topology at `createGraphRuntime` time and never deletes an entry. Nothing currently clears a node's held value under any condition:

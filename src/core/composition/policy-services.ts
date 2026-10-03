@@ -36,7 +36,7 @@ export interface RuntimePolicyServices {
 
 /**
  * Builds the runtime's background policies - refresh (`refreshInterval`,
- * `pollUntil`, retry) and release (`releaseAfter`, `retain`) - and hooks both
+ * `pollUntil`, retry) and release (a duration, or `Infinity`) - and hooks both
  * to the runtime's change notifications.
  *
  * Ordering is significant and preserved from the original inline wiring: the

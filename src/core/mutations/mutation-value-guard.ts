@@ -1,4 +1,6 @@
-const mutationUpdaterGuardsEnabled = import.meta.env.DEV;
+import { isDevelopmentBuild } from "../util/development-mode";
+
+const mutationUpdaterGuardsEnabled = isDevelopmentBuild();
 
 class MutationValueMutationError extends Error {
   public constructor() {

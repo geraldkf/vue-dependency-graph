@@ -315,14 +315,12 @@ A node has at most one policy. Context and derived nodes cannot declare one - `c
 A node's value stays in memory for as long as the runtime exists - by default, forever, even after every subscriber has gone away. For most graphs that's fine: a fixed, small set of nodes isn't worth worrying about. For a node that can hold something genuinely large (a big list, a large blob), you can have the runtime release it automatically once nothing needs it any more:
 
 ```ts
-import { releaseAfter, retain } from "vue-dependency-graph/core";
-
 export const ProductDetails = defineDataNode({
   key: "productDetails",
   dependencies: [CurrentProductId],
   initialValue: null as Product | null,
   load: ({ get, signal }) => api.getProduct(get(CurrentProductId), signal),
-  release: releaseAfter({ durationMs: 60_000 }),
+  release: 60_000, // milliseconds
 });
 ```
 
@@ -335,11 +333,13 @@ export const Cart = defineDataNode({
   key: "cart",
   initialValue: { items: [] },
   load: () => api.getCart(),
-  release: retain(), // never released automatically, even though the runtime has a default - the cart is needed everywhere in the app
+  release: Infinity, // never released automatically, even though the runtime has a default - the cart is needed everywhere in the app
 });
 ```
 
-Resolution order: a node's own `release` always wins over the runtime's `releaseAfterMs` default, including `retain()` explicitly opting a node out. A node with neither falls back to the runtime default; a runtime with no default and nodes with no policy of their own behaves exactly as if this feature didn't exist.
+`release` takes the same kind of value either way you set it - a plain number of milliseconds - so a node's own setting and the runtime's default are directly comparable, not two different shapes to remember.
+
+Resolution order: a node's own `release` always wins over the runtime's `releaseAfterMs` default, including `Infinity` explicitly opting a node out. A node with neither falls back to the runtime default; a runtime with no default and nodes with no policy of their own behaves exactly as if this feature didn't exist.
 
 The timer starts the moment a node has _no_ subscribers at all - not just no direct `useNode` caller, but no other node depending on it either. A node kept alive only because something else still needs it as a dependency is not released; releasing it would just force that other node to reload it immediately. Resubscribing before the timer fires cancels it - the existing value is reused exactly as if nothing had happened, no reload needed.
 
@@ -630,12 +630,15 @@ For an interactive view instead of raw events and snapshots, mount the devtools 
 ```vue
 <script setup lang="ts">
 import { GraphDevtoolsPanel } from "vue-dependency-graph/devtools";
+import "vue-dependency-graph/devtools/style.css";
 </script>
 
 <template>
   <GraphDevtoolsPanel :runtime="runtime" :diagnostics="diagnostics" />
 </template>
 ```
+
+The panel's styles ship as a separate stylesheet - import `vue-dependency-graph/devtools/style.css` once, wherever you mount the panel, or it renders unstyled.
 
 It shows the dependency graph, a per-node inspector, the same timeline as `diagnostics.getEvents()` filtered and labeled, and metrics - plus export/import for taking a snapshot out of one session and loading it back later with no live runtime attached. See [`docs/api/01-public-api.md`](../api/01-public-api.md#devtools) for the full reference.
 

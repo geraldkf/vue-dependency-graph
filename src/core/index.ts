@@ -20,7 +20,6 @@ export type {
   MutationUpdateEffects,
 } from "./mutations/types";
 export { pollUntil, refreshInterval, staleAfter } from "./refresh-policies/policy";
-export { releaseAfter, retain } from "./release-policies/policy";
 export {
   GraphPollingConditionError,
   GraphPollingTimeoutError,
@@ -42,12 +41,7 @@ export type {
   StaleAfterOptions,
   StaleAfterPolicy,
 } from "./refresh-policies/types";
-export type {
-  ReleaseAfterOptions,
-  ReleaseAfterPolicy,
-  ReleasePolicy,
-  RetainPolicy,
-} from "./release-policies/types";
+
 export type { TimerEnvironment } from "./timer-environment";
 export { createDefaultTimerEnvironment } from "./timer-environment";
 export { GraphTransactionConflictError } from "./transactions/errors";

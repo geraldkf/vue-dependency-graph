@@ -73,7 +73,7 @@ Context and derived nodes cannot declare refresh policies. Graph creation defens
 
 ## Release policy metadata
 
-Data-node definitions may carry one immutable release policy created by `releaseAfter(...)`, or opt out of the runtime default with `retain()`. Like refresh policies, this is graph metadata only; a runtime's release-policy controller owns the timer that decides when an idle node's value is reset. Context and derived nodes cannot declare a release policy: a context value is caller-provided input rather than cache, and derived values are recomputed from their dependencies. See [ADR-016](../decisions/ADR-016-value-release-policies.md) and [Scheduler, transactions, and concurrency](./03-scheduler-transactions-and-concurrency.md).
+Data-node definitions may carry one immutable release policy, authored as a plain `release` number of milliseconds (normalized internally at `defineDataNode` time), or opt out of the runtime default with `release: Infinity`. Like refresh policies, this is graph metadata only; a runtime's release-policy controller owns the timer that decides when an idle node's value is reset. Context and derived nodes cannot declare a release policy: a context value is caller-provided input rather than cache, and derived values are recomputed from their dependencies. See [ADR-016](../decisions/ADR-016-value-release-policies.md) and [Scheduler, transactions, and concurrency](./03-scheduler-transactions-and-concurrency.md).
 
 ## Forward references
 

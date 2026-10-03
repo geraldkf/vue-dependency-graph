@@ -14,6 +14,8 @@ describe("public entry points", () => {
       "./core": expect.any(Object),
       "./vue": expect.any(Object),
       "./devtools": expect.any(Object),
+      // The devtools panel's styles ship as a separate stylesheet.
+      "./devtools/style.css": "./dist/devtools/style.css",
     });
     expect(Object.hasOwn(packageJson.exports, ".")).toBe(false);
   });

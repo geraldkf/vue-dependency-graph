@@ -173,6 +173,11 @@ export interface DataNodeDefinition<
   readonly initialValue: TValue;
   readonly invalidatedBy: TInvalidatedBy;
   readonly refresh: RefreshPolicy<TValue> | undefined;
+  /**
+   * The normalized, internal form of the `release` option given to
+   * {@link defineDataNode} (a number, or `Infinity`) - not the shape you
+   * author. Consumed by the runtime's release controller.
+   */
   readonly release: ReleasePolicy | undefined;
   readonly load: (context: LoadContext<TDependencies>) => Promise<TValue>;
 }
@@ -242,11 +247,14 @@ export interface DataNodeOptions<
    */
   readonly refresh?: RefreshPolicy<TValue>;
   /**
-   * Governs when this node's value is freed once it has no subscribers:
-   * {@link retain} (never), {@link releaseAfter} (after an idle delay).
-   * Omitted, the runtime's own `releaseAfterMs` default applies, if set.
+   * How long (in milliseconds) this node's value may sit with no
+   * subscribers before it's freed - reset to its never-loaded shape.
+   * Pass `Infinity` to opt out of release entirely, overriding even a
+   * runtime-wide `releaseAfterMs` default. Omitted, the runtime's own
+   * `releaseAfterMs` default applies, if set - otherwise the value is
+   * never released.
    */
-  readonly release?: ReleasePolicy;
+  readonly release?: number;
   /** The node's value before the first `load` call resolves. */
   readonly initialValue: TValue;
   /** Controls whether this node's value is captured in diagnostic events. */

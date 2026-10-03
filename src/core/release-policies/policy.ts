@@ -1,4 +1,4 @@
-import type { ReleaseAfterOptions, ReleaseAfterPolicy, ReleasePolicy, RetainPolicy } from "./types";
+import type { ReleaseAfterPolicy, ReleasePolicy } from "./types";
 
 const requireObject = (value: unknown, fieldName: string): Record<string, unknown> => {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
@@ -15,66 +15,21 @@ const requirePositiveFinite = (value: unknown, fieldName: string): number => {
 };
 
 /**
- * A `release` policy that frees a data node's value - resetting it to its
- * never-loaded shape - after it has had no subscribers, direct or
- * required, for the given duration. Use it for data that's expensive or
- * large but only needed while a specific view is open: a product's
- * details and reviews, freed a little while after the user navigates
- * away, so browsing a large catalog doesn't hold every product visited in
- * memory forever.
+ * Normalizes a data node's public `release` option - a plain number of
+ * milliseconds, or `Infinity` to opt out of release entirely, overriding
+ * even a runtime-wide `releaseAfterMs` default - into the internal policy
+ * shape the release controller reads. Not exported: `release` is authored
+ * as a number; nothing outside this module constructs a `ReleasePolicy`
+ * directly.
  *
- * @throws {@link RangeError} if `durationMs` isn't a finite number greater than 0.
- *
- * @example
- * ```ts
- * import { defineContextNode, defineDataNode, releaseAfter } from "vue-dependency-graph/core";
- *
- * const currentProductId = defineContextNode({ key: "currentProductId", initialValue: "prod-1" });
- *
- * const product = defineDataNode({
- *   key: "product",
- *   dependencies: [currentProductId],
- *   initialValue: null,
- *   release: releaseAfter({ durationMs: 30_000 }),
- *   load: async ({ get }) => fetch(`/api/products/${get(currentProductId)}`).then((r) => r.json()),
- * });
- * ```
- *
- * @see {@link retain} to opt a node out of release entirely.
- * @see {@link GraphRuntimeOptions.releaseAfterMs} for setting a default
- * across every node that doesn't declare its own `release` policy.
+ * @throws {@link RangeError} if `release` isn't `Infinity` and isn't a
+ * finite number greater than 0.
  */
-export const releaseAfter = (options: ReleaseAfterOptions): ReleaseAfterPolicy => {
-  const value = requireObject(options, "releaseAfter options");
-  return Object.freeze({
-    kind: "release-after",
-    durationMs: requirePositiveFinite(value.durationMs, "durationMs"),
-  });
+export const normalizeReleaseOption = (release: number, nodeKey: string): ReleasePolicy => {
+  if (release === Infinity) return Object.freeze({ kind: "retain" });
+  const durationMs = requirePositiveFinite(release, `Release duration for node "${nodeKey}"`);
+  return Object.freeze({ kind: "release-after", durationMs });
 };
-
-/**
- * A `release` policy that keeps a data node's value forever, regardless of
- * subscribers - overriding even a runtime-wide
- * {@link GraphRuntimeOptions.releaseAfterMs} default. Use it for state
- * that's cheap to hold and needed everywhere, where losing it between
- * views would be wrong rather than just wasteful: the cart, which should
- * still exist if the user navigates away and comes back later.
- *
- * @example
- * ```ts
- * import { defineDataNode, retain } from "vue-dependency-graph/core";
- *
- * const cart = defineDataNode({
- *   key: "cart",
- *   initialValue: { items: [] },
- *   release: retain(),
- *   load: async () => fetch("/api/cart").then((r) => r.json()),
- * });
- * ```
- *
- * @see {@link releaseAfter} for the opposite - freeing a node's value after an idle delay.
- */
-export const retain = (): RetainPolicy => Object.freeze({ kind: "retain" });
 
 export function assertValidReleasePolicy(
   policy: unknown,
@@ -84,7 +39,10 @@ export function assertValidReleasePolicy(
 
   switch (value.kind) {
     case "release-after":
-      releaseAfter(value as unknown as ReleaseAfterOptions);
+      requirePositiveFinite(
+        (value as unknown as ReleaseAfterPolicy).durationMs,
+        `Release duration for node "${nodeKey}"`,
+      );
       return;
     case "retain":
       return;

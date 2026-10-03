@@ -28,11 +28,11 @@ export interface GraphRuntimeOptions {
   /**
    * Default idle duration, in milliseconds, before a data node's value is
    * automatically released (reset to its never-loaded shape) once it has
-   * no subscribers - direct or required. A node's own `release` policy,
+   * no subscribers - direct or required. A node's own `release` option,
    * when declared, always takes precedence over this default, including
-   * `retain()`, which opts a node out even when this default is set.
+   * `Infinity`, which opts a node out even when this default is set.
    * Omitted entirely, no automatic release happens for any node unless it
-   * declares its own `release: releaseAfter(...)`. See
+   * declares its own `release` duration. See
    * `docs/decisions/ADR-016-value-release-policies.md`.
    */
   readonly releaseAfterMs?: number;
