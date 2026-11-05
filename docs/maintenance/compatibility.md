@@ -1,6 +1,8 @@
 # Compatibility and release contract
 
-The package remains private at version 0.0.0. API stabilization and publication require the existing-application trial in the roadmap.
+The package is pre-1.0. Releases are distributed as tarballs attached to GitHub Releases, built by the release workflow from a version tag. `package.json` keeps `"private": true` so the package cannot be published to npm by accident. While the version is `0.x`, the public API may change between minor versions; breaking changes are recorded in the [changelog](../../CHANGELOG.md).
+
+API stabilization (1.0) and npm publication remain gated on the existing-application trial in the roadmap. A `0.x` GitHub release does not require the trial.
 
 ## Supported consumption
 
@@ -18,10 +20,18 @@ Direct mutation success updates cannot reconcile into a target whose transitive 
 
 An optimistic draft whose context changes before remote execution rejects with `GraphMutationConflictError` without sending the request. Direct success reconciliation also checks immediately before commit so caller callbacks cannot change identity underneath a prepared draft.
 
-## Before a release
+## Releasing a 0.x version (GitHub Release)
+
+1. Run frozen-lockfile installation, lint, formatting, boundaries, typechecking, full coverage, build, consumer checks, and browser checks on the release checkout. The release workflow repeats all of them and refuses to release if any fails.
+2. Record Node and package-manager versions. Review declaration and export changes against the previous release.
+3. Review dependency updates and benchmark comparisons. Request counts and cleanup are correctness gates; timing comparisons need the same machine and workload.
+4. Set the new version in `package.json` and add a matching `## [x.y.z] - YYYY-MM-DD` section to `CHANGELOG.md`. Breaking changes go under their own "Changed (breaking)" heading.
+5. Commit, then tag the commit `vx.y.z` and push the tag. The release workflow checks that the tag, `package.json` and the changelog agree, builds the tarball, and creates the GitHub Release. Versions below 1.0.0 are marked as pre-releases.
+
+Do not tag as a side effect of ordinary maintenance.
+
+## Before 1.0 or npm publication
 
 1. Complete and record the bounded application trial, including rollback evidence.
-2. Run frozen-lockfile installation, lint, formatting, boundaries, typechecking, full coverage, build, consumer checks, and browser checks on the release checkout.
-3. Record Node and package-manager versions. Review declaration and export changes and update migration notes.
-4. Review dependency updates and benchmark comparisons. Request counts and cleanup are correctness gates; timing comparisons need the same machine and workload.
-5. Select a release version and changelog, then intentionally change private/publication metadata. Do not publish as a side effect of ordinary maintenance.
+2. Everything in the 0.x list above.
+3. Add `repository`, `homepage` and `bugs` to `package.json`, remove `"private": true`, and decide the npm access and provenance settings. Publishing is a separate, deliberate step from the GitHub release.

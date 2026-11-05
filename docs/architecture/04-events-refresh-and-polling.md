@@ -163,7 +163,7 @@ Each refresh session owns a timer object with mutually exclusive idle, armed, an
 
 Future policy timers are outside scheduler settlement, so `runtime.whenSettled()` remains finite for recurring policies. A timer firing may request refresh work, but caller-owned manual refresh must still be awaited directly.
 
-`runtime.dispose()` detaches policy change hooks, clears refresh and release timers, and removes the timer environment pause listener. A policy request that settles after disposal schedules no follow-up work.
+`runtime.stopBackgroundPolicies()` (the legacy name is `dispose()`, and `shutdown()` does the same as part of ending the runtime) detaches policy change hooks, clears refresh and release timers, and removes the timer environment pause listener. A policy request that settles after disposal schedules no follow-up work.
 
 ## Diagnostics
 

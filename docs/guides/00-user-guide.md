@@ -2,7 +2,7 @@
 
 This guide walks through the library end to end, building up one running example - a small storefront, "Banksia" - a piece at a time. For isolated reference on any one function's exact signature, see [`docs/api/01-public-api.md`](../api/01-public-api.md). For _why_ the library is shaped the way it is, see [`docs/architecture/`](../architecture/) and [`docs/decisions/`](../decisions/).
 
-> This package is `private` and not published to a registry - it's consumed directly within this repository or a workspace that depends on it locally, not via `npm install vue-dependency-graph`. The import paths throughout this guide (`vue-dependency-graph/core`, `vue-dependency-graph/vue`) match `package.json`'s `exports` map and resolve correctly from a workspace consumer; if you're writing code inside this repository itself, equivalent relative imports into `src/core`/`src/vue` work the same way.
+> This package is pre-1.0 and is not published to npm. Install a release by downloading its `vue-dependency-graph-x.y.z.tgz` from this repository's GitHub Releases page and running `pnpm add ./vue-dependency-graph-x.y.z.tgz`. The import paths throughout this guide (`vue-dependency-graph/core`, `vue-dependency-graph/vue`) match `package.json`'s `exports` map and resolve from an installed release or a workspace consumer; if you're writing code inside this repository itself, equivalent relative imports into `src/core`/`src/vue` work the same way.
 
 ## Table of contents
 
@@ -469,6 +469,41 @@ await runtime.mutate(
 
 `classifyFailure` matters: only classify `"rejected"` when you have real evidence the server didn't commit the command (a validation response, an explicit business rejection - here, a confirmed "out of stock"). Anything ambiguous - a timeout, a dropped connection, a malformed response - must be `"unknown"`, which keeps the optimistic value visible as unconfirmed rather than risking a false rollback of a command that may have actually succeeded.
 
+### Put the usual behaviour on the definition
+
+When a mutation behaves the same way at every call site, supply `optimistic`, `onSuccess` and `classifyFailure` to `defineMutation` once, instead of repeating them on every `runtime.mutate` call:
+
+```ts
+const AddToCart = defineMutation({
+  key: "cart.add",
+  execute: ({ input, signal }: { input: AddToCartInput; signal: AbortSignal }) =>
+    api.addToCart(input, signal),
+  optimistic: (effects, input) => {
+    effects.update(Cart, (current) => ({
+      ...current,
+      items: [...current.items, { productId: input.productId, quantity: input.quantity }],
+    }));
+  },
+  onSuccess: (effects, updatedCart) => {
+    effects.update(Cart, () => updatedCart);
+    effects.invalidate([Inventory]);
+  },
+  classifyFailure: (error) =>
+    error instanceof Error && error.message === "OUT_OF_STOCK" ? "rejected" : "unknown",
+});
+
+await runtime.mutate(AddToCart, { productId, quantity }); // uses all three defaults
+```
+
+A call can still replace any one of them. A field passed to `runtime.mutate` **replaces** the definition's value for that field, for that call only - the two never both run. Fields you don't pass keep their defaults, and a field passed as `undefined` counts as not passed:
+
+```ts
+// Same mutation, but this call site wants no optimistic update.
+await runtime.mutate(AddToCart, { productId, quantity }, { optimistic: () => {} });
+```
+
+Defaults put graph nodes (`Cart`, `Inventory`) into the definition, so a mutation that carries them belongs with that graph. If a command is a shared remote contract that shouldn't import page-specific nodes, keep it `execute`-only and supply the effects per call, as in the sections above.
+
 ### Idempotency keys
 
 The framework does not generate or persist idempotency keys. Commands that may be retried after an unknown outcome should use a domain-appropriate key generated before the first request and reused for retries of that logical command - `placeOrder` is the clearest case: if the connection drops after the request was sent, you must not let a naive retry double-charge the customer.
@@ -523,6 +558,10 @@ A successful known-rejection rollback restores prior logical values and statuses
 **`GraphMutationStateError`** - the local effect draft itself was invalid: a never-successful update target, a malformed runtime target, an `update` call that mutated `current` in place. This is an application integration error rather than a remote outcome - fix the `optimistic`/`onSuccess` callback rather than catching this.
 
 **`GraphMutationReconciliationError`** - the remote command succeeded, but local success reconciliation failed (e.g. `effects.update` rejecting a malformed server response). `remoteSucceeded` is always `true` here: the server has already committed the change, only the local graph update failed to apply. Don't retry or roll back automatically - read `mutationKey`, `nodeKeys`, and `cause`, keep any optimistic values presented as stale confirmation-pending state, and let an authoritative reload settle. For non-optimistic mutations, a local success-effect failure surfaces as its original error instead, since there's no optimistic projection to recover.
+
+### Mutation context protection
+
+A direct success update checks the transitive context ancestors captured when the mutation was called. If a target context changed, the entire success draft rejects with `GraphMutationReconciliationError` and `remoteSucceeded: true`; it never overwrites the new entity. Same-context refreshes and unrelated context changes remain supported. A switch away and back also counts as changed. Event-only and invalidation-only effects must still carry appropriate scope in their payloads and predicates. See [ADR-020](../decisions/ADR-020-runtime-lifetime-and-mutation-context.md).
 
 ## 13. Transactions
 
@@ -764,7 +803,3 @@ For Vue components, use real `createGraph`/`createGraphRuntime` instances (not m
 - [`docs/architecture/`](../architecture/) - how the pieces fit together and why, in depth.
 - [`docs/decisions/`](../decisions/) - the reasoning and alternatives behind each major design choice.
 - [`docs/testing/01-test-strategy.md`](../testing/01-test-strategy.md) - how this library's own test suite is organized, useful as a model for your own graph's tests.
-
-## Mutation context protection
-
-A direct success update checks the transitive context ancestors captured when the mutation was called. If a target context changed, the entire success draft rejects with `GraphMutationReconciliationError` and `remoteSucceeded: true`; it never overwrites the new entity. Same-context refreshes and unrelated context changes remain supported. A switch away and back also counts as changed. Event-only and invalidation-only effects must still carry appropriate scope in their payloads and predicates. See [ADR-020](../decisions/ADR-020-runtime-lifetime-and-mutation-context.md).

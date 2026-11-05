@@ -1,6 +1,6 @@
 # Recipe 09 — Long-running operations with `pollUntil`
 
-**Status:** research-phase pattern  
+**Status:** pre-1.0 pattern  
 **Related:** [ADR-012 Refresh policies and polling](../decisions/ADR-012-refresh-policies-and-polling.md), [Events, refresh, and polling](../architecture/04-events-refresh-and-polling.md)
 
 ## Failure mode

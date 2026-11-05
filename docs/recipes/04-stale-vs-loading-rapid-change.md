@@ -1,6 +1,6 @@
 # Recipe 04 — Stale vs loading under rapid context change
 
-**Status:** research-phase pattern  
+**Status:** pre-1.0 pattern  
 **Related:** [ADR-007 Status / freshness separation](../decisions/ADR-007-status-freshness-separation.md), [ADR-011 Execution concurrency limit](../decisions/ADR-011-execution-concurrency-limit.md), [ADR-004 Subscription-driven loading](../decisions/ADR-004-subscription-driven-loading.md)
 
 ## Failure mode

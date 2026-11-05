@@ -1,6 +1,6 @@
 # Recipe 10 — Reference data and cache budgets
 
-**Status:** research-phase pattern
+**Status:** pre-1.0 pattern
 **Related:** [Release when unused](./06-release-when-unused.md), [Runtime ownership](./07-pinia-runtime-ownership.md)
 
 ## Stable reference data

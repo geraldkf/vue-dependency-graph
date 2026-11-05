@@ -104,7 +104,8 @@ const runtime = markRaw(createGraphRuntime(graph, options));
 // WRONG — second source of truth
 const orders = ref([]);
 const ordersLoading = ref(false);
-runtime.subscribe(Orders, (state) => {
+runtime.onChange(() => {
+  const state = runtime.getState(Orders);
   orders.value = state.data;
   ordersLoading.value = state.status === "loading";
 });

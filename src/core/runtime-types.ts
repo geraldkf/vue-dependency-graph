@@ -179,7 +179,9 @@ export interface GraphRuntime {
   ) => void;
   /**
    * Runs a {@link defineMutation}-defined mutation: applies its optimistic
-   * update (if any), performs the write, and reconciles the result -
+   * update (if any - from this call's `options`, or the mutation's own
+   * defaults; a field given here replaces the default), performs the write,
+   * and reconciles the result -
    * rolling the optimistic update back on failure. Rejects with a
    * {@link GraphMutationError} subclass (see {@link defineMutation}) rather
    * than the mutation's own thrown error, so callers can distinguish "the
@@ -323,12 +325,16 @@ export interface GraphRuntime {
    * calls, or clear state and subscriptions - reads, `execute`, `refresh`,
    * `mutate` and existing subscriptions keep working. Idempotent.
    *
+   * This is not how an owner ends a runtime's lifetime - use
+   * {@link GraphRuntime.shutdown} for that, which also stops these
+   * policies. Prefer the clearer alias `stopBackgroundPolicies()` in new code.
+   *
    * @example
    * ```ts
    * import { createGraph, createGraphRuntime } from "vue-dependency-graph/core";
    *
    * const runtime = createGraphRuntime(createGraph({ nodes: [] }));
-   * // ... application lifetime ...
+   * // ... later, to stop only the background timers while the runtime stays usable ...
    * runtime.dispose();
    * ```
    */

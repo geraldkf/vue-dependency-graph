@@ -7,6 +7,7 @@ import type { ActiveAttempt, NodeStateRecord } from "../state/state";
 import type { EventPublication } from "../transactions/types";
 import { GraphMutationConflictError } from "./errors";
 import type { MutationDefinition, MutationOptions } from "./types";
+import { resolveMutationOptions } from "./mutation-options";
 import { createMutationUpdatePlanner } from "./mutation-update-planner";
 import { createOptimisticSessionManager, type OptimisticSession } from "./optimistic-session";
 import { createMutationCommitter } from "./mutation-commit";
@@ -173,9 +174,10 @@ export const createRuntimeMutationController = ({
   const mutate = <TInput, TResult>(
     mutation: MutationDefinition<TInput, TResult>,
     input: TInput,
-    options?: MutationOptions<TInput, TResult>,
+    callOptions?: MutationOptions<TInput, TResult>,
     onLifecycle?: MutationLifecycleListener,
   ): Promise<TResult> => {
+    const options = resolveMutationOptions(mutation.defaults, callOptions);
     const checkContext = captureMutationContext(graph, getNodeState, mutation.key);
     const assertContext = (nodes: readonly AnyNodeDefinition[]): void => {
       assertRunning();

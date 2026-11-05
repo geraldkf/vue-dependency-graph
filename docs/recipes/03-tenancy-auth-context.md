@@ -1,6 +1,6 @@
 # Recipe 03 — Tenancy and auth context checklist
 
-**Status:** research-phase pattern  
+**Status:** pre-1.0 pattern  
 **Related:** [ADR-003 Typed handles](../decisions/ADR-003-typed-handles.md), [Graph and node model](../architecture/02-graph-and-node-model.md)
 
 ## Failure mode

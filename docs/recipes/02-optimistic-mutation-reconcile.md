@@ -1,6 +1,6 @@
 # Recipe 02 — Optimistic mutation, reconcile, and events
 
-**Status:** research-phase pattern  
+**Status:** pre-1.0 pattern  
 **Related:** [ADR-013 Mutation framework](../decisions/ADR-013-mutation-framework.md), [ADR-006 Domain events](../decisions/ADR-006-domain-events.md), [Mutations, failures, and cache](../architecture/05-mutations-failures-and-cache.md)
 
 ## Failure mode
@@ -15,7 +15,7 @@ Typical symptoms:
 
 ## Rule
 
-Use `defineMutation` for the write path itself (`key` + `execute` only — that's all it takes). Put temporary UI state and success reconciliation in `runtime.mutate`'s own options (`optimistic`, `onSuccess`, `classifyFailure`), and keep **server conflict policy** outside the library.
+Use `defineMutation` for the write path itself (`key` + `execute`). Put temporary UI state and success reconciliation in `optimistic`, `onSuccess` and `classifyFailure` — on `runtime.mutate`'s options when call sites differ (shown below), or on `defineMutation` as defaults when the mutation always behaves the same way. A field passed to `runtime.mutate` replaces the definition's default for that call. Keep **server conflict policy** outside the library.
 
 The library coordinates client graph state. It does not implement distributed locking or last-write-wins for you.
 
@@ -45,9 +45,11 @@ const Availability = defineDataNode({
   ],
 });
 
-// defineMutation only describes the write itself — nothing optimistic
-// lives here. That split is what lets the same mutation be reused from
-// different call sites with different optimistic behaviour.
+// This definition is execute-only: nothing optimistic lives here, which is
+// what lets the same mutation be reused from different call sites with
+// different optimistic behaviour. (If every call site behaved the same, the
+// optimistic/onSuccess/classifyFailure below could be defaults on this
+// definition instead.)
 const PlaceHold = defineMutation({
   key: "placeHold",
   execute: async ({ input, signal }: { input: { slotId: string }; signal: AbortSignal }) =>
@@ -55,7 +57,7 @@ const PlaceHold = defineMutation({
 });
 ```
 
-Usage — the optimistic update, success reconciliation, and failure classification are all supplied here, per call:
+Usage — the optimistic update, success reconciliation, and failure classification are all supplied per call:
 
 ```ts
 import {
@@ -115,17 +117,14 @@ Do not apply the same delta both in `onSuccess` and again from a naive event han
 ## Common wrong shapes
 
 ```ts
-// Wrong: optimistic/onSuccess passed to defineMutation itself
-const PlaceHold = defineMutation({
-  key: "placeHold",
-  optimistic: (effects, input) => {
-    /* ... */
-  }, // these belong on runtime.mutate's options, not here
-  execute: async ({ input }) => api.holds.create(input.slotId),
-});
+// Smell, not an error: defaults on a definition whose call sites mostly need
+// something different. A call that passes its own `optimistic` replaces the
+// default (the two never both run), so it works — but if most call sites
+// override a default, keep the definition execute-only and pass effects per
+// call instead.
 
-// Wrong: no classifyFailure — every failure defaults to "rejected", so a
-// dropped connection rolls back a hold that may have actually succeeded
+// Wrong: classifying every failure as "rejected" — a dropped connection then
+// rolls back a hold that may have actually succeeded
 await runtime.mutate(
   PlaceHold,
   { slotId },
@@ -133,10 +132,12 @@ await runtime.mutate(
     optimistic: (effects, input) => {
       /* patch */
     },
-    // missing classifyFailure → ambiguous failures are treated as safe to
-    // roll back, which can silently discard a write that went through
+    classifyFailure: () => "rejected", // only return "rejected" with real evidence
   },
 );
+// Omitting classifyFailure is the safe default: every failure is treated as
+// "unknown", the optimistic value stays visible as unconfirmed, and the call
+// rejects with GraphMutationOutcomeUnknownError.
 
 // Wrong: treating abort as business error in UI
 // Aborted attempts should not become user-facing domain failures.

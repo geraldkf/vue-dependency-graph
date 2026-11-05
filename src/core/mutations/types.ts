@@ -14,18 +14,47 @@ export interface MutationExecuteContext<TInput> {
   readonly signal: AbortSignal;
 }
 
+/**
+ * The default effects stored on a {@link MutationDefinition}. Deliberately
+ * erased to `never` parameters: `defineMutation` has already type-checked
+ * them against the mutation's input and result types, and keeping the
+ * definition itself free of callback parameter types leaves
+ * `MutationDefinition` assignable exactly as it was before defaults
+ * existed (e.g. a mutation whose result is `never`). `runtime.mutate`
+ * restores the typed view internally.
+ */
+export interface MutationDefaults {
+  readonly optimistic?: (effects: MutationUpdateEffects, input: never) => void;
+  readonly onSuccess?: (effects: MutationSuccessEffects, result: never, input: never) => void;
+  readonly classifyFailure?: (error: unknown) => MutationFailureKind;
+}
+
 /** The definition returned by {@link defineMutation}. */
 export interface MutationDefinition<TInput, TResult> {
   readonly key: string;
   readonly execute: (context: MutationExecuteContext<TInput>) => Promise<TResult>;
+  /**
+   * Default `optimistic` / `onSuccess` / `classifyFailure` behavior supplied
+   * to {@link defineMutation}. Present only when at least one was given.
+   * {@link GraphRuntime.mutate} applies it unless the call supplies its own
+   * value for the same field.
+   */
+  readonly defaults?: MutationDefaults;
   /** Carries TInput for inference without storing runtime state. */
   readonly __inputType?: TInput;
   /** Carries TResult for inference without storing runtime state. */
   readonly __resultType?: TResult;
 }
 
-/** Options for {@link defineMutation}. */
-export interface DefineMutationOptions<TInput, TResult> {
+/**
+ * Options for {@link defineMutation}: the remote call (`execute`) plus,
+ * optionally, default graph effects. `optimistic`, `onSuccess` and
+ * `classifyFailure` have the same meaning as in {@link MutationOptions};
+ * they apply to every {@link GraphRuntime.mutate} call of this mutation,
+ * and a call that supplies the same field replaces the default for that
+ * call only.
+ */
+export interface DefineMutationOptions<TInput, TResult> extends MutationOptions<TInput, TResult> {
   /**
    * Unique identifier for this mutation. Used in diagnostics and error
    * messages (including every `GraphMutation*Error`'s `nodeKeys`/`mutationKey`).
@@ -130,7 +159,9 @@ export interface MutationSuccessEffects extends MutationUpdateEffects {
 /**
  * Per-call options for {@link GraphRuntime.mutate} - how this particular
  * call should affect the graph, separate from the mutation's own
- * `execute` ({@link defineMutation}).
+ * `execute` ({@link defineMutation}). Each field replaces the same field
+ * of the mutation's defaults (given to {@link defineMutation}), if it has
+ * any; fields you don't supply fall back to those defaults.
  *
  * @example
  * ```ts
@@ -167,18 +198,19 @@ export interface MutationOptions<TInput, TResult> {
    * reflects the write immediately. Rolled back automatically if `execute`
    * fails and the failure classifies as `"rejected"`.
    */
-  readonly optimistic?: (effects: MutationUpdateEffects, input: TInput) => void;
+  readonly optimistic?: ((effects: MutationUpdateEffects, input: TInput) => void) | undefined;
   /**
    * Runs once `execute` resolves successfully. Use it to invalidate
    * affected nodes, publish an event, or apply a final update using the
    * server's actual result (rather than the optimistic guess).
    */
-  readonly onSuccess?: (effects: MutationSuccessEffects, result: TResult, input: TInput) => void;
+  readonly onSuccess?:
+    ((effects: MutationSuccessEffects, result: TResult, input: TInput) => void) | undefined;
   /**
    * Classifies a thrown error as `"rejected"` (safe to roll back) or
    * `"unknown"` (outcome can't be determined - e.g. the request may have
    * reached the server before the connection dropped). Omitted, every
    * failure is treated as `"unknown"`.
    */
-  readonly classifyFailure?: (error: unknown) => MutationFailureKind;
+  readonly classifyFailure?: ((error: unknown) => MutationFailureKind) | undefined;
 }

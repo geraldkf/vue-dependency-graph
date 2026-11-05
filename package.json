@@ -1,6 +1,20 @@
 {
   "name": "vue-dependency-graph",
-  "version": "0.0.0",
+  "version": "0.1.0",
+  "description": "Declarative, dependency-graph data orchestration for Vue: typed nodes, automatic loading, atomic transactions, events, polling, mutations and diagnostics.",
+  "license": "MIT",
+  "keywords": [
+    "vue",
+    "vue3",
+    "dependency-graph",
+    "data-loading",
+    "state-management",
+    "cache",
+    "mutations",
+    "optimistic-updates",
+    "polling",
+    "typescript"
+  ],
   "private": true,
   "type": "module",
   "packageManager": "pnpm@12.4.1",

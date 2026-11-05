@@ -1,0 +1,70 @@
+name: Release
+
+# Pushing a tag such as `v0.1.0` validates the commit, builds the package,
+# and attaches the tarball to a GitHub Release. Nothing is published to npm.
+# See docs/maintenance/compatibility.md ("Releasing a 0.x version").
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    # The same gates as every pull request, on the tagged commit.
+    uses: ./.github/workflows/ci.yml
+
+  release:
+    needs: validate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Require the tagged commit to be on main
+        run: |
+          git fetch origin main
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "Tag $GITHUB_REF_NAME is not on main; refusing to release." >&2
+            exit 1
+          fi
+
+      - uses: pnpm/action-setup@v6
+        with:
+          run_install: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22.13.0"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Check tag, package.json and CHANGELOG agree
+        id: plan
+        run: node scripts/check-release.mjs plan --tag "$GITHUB_REF_NAME" --notes release-notes.md
+
+      - run: pnpm build
+      - run: pnpm check:consumer
+
+      - name: Pack and inspect the tarball
+        run: |
+          pnpm pack
+          node scripts/check-release.mjs tarball "${{ steps.plan.outputs.tarball }}"
+          sha256sum "${{ steps.plan.outputs.tarball }}" > SHA256SUMS
+
+      - name: Create the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PRERELEASE: ${{ steps.plan.outputs.prerelease }}
+        run: |
+          flags=()
+          if [ "$PRERELEASE" = "true" ]; then flags+=(--prerelease); fi
+          gh release create "$GITHUB_REF_NAME" \
+            "${{ steps.plan.outputs.tarball }}" SHA256SUMS \
+            --verify-tag \
+            --title "$GITHUB_REF_NAME" \
+            --notes-file release-notes.md \
+            "${flags[@]}"

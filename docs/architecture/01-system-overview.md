@@ -137,7 +137,7 @@ A sibling runtime-local release-policy controller, built on the same timer infra
 
 ## Why one package
 
-A single package is preferred during research and development because:
+A single package is preferred at this stage because:
 
 - Core, Vue integration, diagnostics, and playground evolve together.
 - There is no current need for independent publication or versioning.

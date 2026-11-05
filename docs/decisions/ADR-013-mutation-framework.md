@@ -4,6 +4,8 @@
 
 Accepted, implemented, and validated.
 
+**Amended:** `defineMutation` may now also carry default `optimistic`, `onSuccess` and `classifyFailure` effects, which a call-site field replaces. The alternative below that rejected effects on the definition was rejected as the _only_ option, not as an optional one; see [ADR-021](./ADR-021-mutation-default-effects.md). Everything else in this ADR is unchanged.
+
 ## Context
 
 The graph runtime owns server-backed read state, but applications also issue remote commands whose outcomes may need to update, invalidate, or reconcile that state.

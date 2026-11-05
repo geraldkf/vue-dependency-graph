@@ -1,6 +1,6 @@
 # Recipe 01 — Atomic cascade on parent context change
 
-**Status:** research-phase pattern  
+**Status:** pre-1.0 pattern  
 **Related:** [ADR-005 Atomic graph transactions](../decisions/ADR-005-atomic-graph-transactions.md), [Scheduler, transactions, and concurrency](../architecture/03-scheduler-transactions-and-concurrency.md)
 
 ## Failure mode

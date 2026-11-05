@@ -54,7 +54,7 @@ const AddToCart = defineMutation({
 });
 ```
 
-Each `runtime.mutate(...)` call owns one remote attempt and optional synchronous local effect callbacks. Mutation execution remains independent from graph transactions and from other runtime operations.
+Each `runtime.mutate(...)` call owns one remote attempt and optional synchronous local effect callbacks. Those callbacks (`optimistic`, `onSuccess`, `classifyFailure`) may be given per call, or once on `defineMutation` as defaults; a call-supplied field replaces the default for that field ([ADR-021](../decisions/ADR-021-mutation-default-effects.md)). Mutation execution remains independent from graph transactions and from other runtime operations.
 
 ## Confirmed-success effects
 

@@ -1,50 +1,169 @@
 # Vue Dependency Graph
 
-Vue Dependency Graph is a proposed TypeScript-first data orchestration framework for Vue applications. It models application data as a dependency graph and coordinates demand, loading, invalidation, transactions, polling, events, derived state, failures, and diagnostics.
-
-This repository begins as an isolated research and development project. The existing application implementation is reference material, not the new framework's architecture. Once the framework is stable and proven in the playground, it can be integrated into existing repositories through an explicit migration plan.
+Vue Dependency Graph is a TypeScript-first data orchestration library for Vue applications. You declare your application data as a dependency graph; the runtime coordinates demand, loading, invalidation, transactions, polling, events, derived state, failures, and diagnostics, so components just read what they need.
 
 ## Status
 
-The initial framework capabilities are implemented and validated. The runtime includes graph execution and scheduling, Vue integration, isolated atomic transaction sessions, typed events, query groups, refresh policies and polling, typed and optimistic mutations, diagnostics, devtools, automatic value release, retention hardening, and overlapping scheduler flushes.
+Version `0.1.0` is a pre-1.0 release. The runtime includes graph execution and scheduling, Vue integration, isolated atomic transaction sessions, typed events, query groups, refresh policies and polling, typed and optimistic mutations, diagnostics, devtools, automatic value release, retention hardening, and overlapping scheduler flushes. All of it is covered by the validation suite described under [Development](#development).
 
-The next active objective is a bounded existing-application migration trial. APIs remain subject to change until that trial establishes production-shaped compatibility and adoption guidance. See the [roadmap](docs/ROADMAP.md).
+While the version is `0.x`, the public API may change between minor versions; every release's changes are listed in the [changelog](CHANGELOG.md). API stabilization (1.0) and npm publication are gated on a bounded trial in an existing application. See the [roadmap](docs/ROADMAP.md) and [compatibility and release contract](docs/maintenance/compatibility.md).
 
-## Repository model
+## Install
 
-The project uses one repository and one package. Architectural areas remain logically separated by source folders rather than independently versioned workspace packages.
+Releases are distributed as tarballs on this repository's GitHub Releases page. Download `vue-dependency-graph-x.y.z.tgz` and install it:
 
-```text
-vue-dependency-graph/
-├── docs/
-├── src/
-│   ├── core/          Framework-agnostic graph engine
-│   ├── vue/           Vue 3.5 integration
-│   ├── devtools/      Optional diagnostics and inspector UI
-│   ├── playground/    Playground application source
-├── tests/
-├── index.html         Playground entry document
-├── package.json
-├── pnpm-lock.yaml
-├── tsconfig.json
-├── tsconfig.build.json
-└── vite.config.ts
+```bash
+pnpm add ./vue-dependency-graph-x.y.z.tgz
 ```
 
-The logical dependency direction remains:
+Requirements: Node 22.13 or newer for tooling, and Vue 3.5 or newer for the `/vue` and `/devtools` entry points. Vue is an optional peer dependency, so `/core` works without it. The package is ESM-only and has three entry points plus a stylesheet:
 
-```text
-core
-  ^
-  |
-vue
+| Import                                    | Contents                                                          |
+| ----------------------------------------- | ----------------------------------------------------------------- |
+| `vue-dependency-graph/core`               | Framework-agnostic graph engine, runtime, mutations, diagnostics. |
+| `vue-dependency-graph/vue`                | Vue plugin and the `useNode`, `useNodes`, `useQuery` composables. |
+| `vue-dependency-graph/devtools`           | Optional inspector panel and protocol transforms.                 |
+| `vue-dependency-graph/devtools/style.css` | The panel's stylesheet; import it once where you mount the panel. |
 
-core <--- devtools
+## Quickstart
 
-core + vue + devtools <--- playground
+The examples use a small fictional storefront, "Banksia", that the [user guide](docs/guides/00-user-guide.md) builds up in full.
+
+### 1. Declare the graph
+
+Context nodes are values you set, data nodes load from your API, derived nodes compute from other nodes, and mutations are writes. `get` only accepts a node's declared dependencies, and `signal` cancels a request that has become obsolete.
+
+```ts
+// graph.ts
+import {
+  createGraph,
+  createGraphRuntime,
+  defineContextNode,
+  defineDataNode,
+  defineDerivedNode,
+  defineMutation,
+  type MutationExecuteContext,
+} from "vue-dependency-graph/core";
+
+export interface Product {
+  readonly id: string;
+  readonly name: string;
+  readonly priceCents: number;
+}
+
+export interface CartState {
+  readonly items: readonly { readonly productId: string; readonly quantity: number }[];
+}
+
+// A context node is a value you set. Everything downstream reacts to it.
+export const CurrentProductId = defineContextNode<string>({
+  key: "currentProductId",
+  initialValue: "prod-1",
+});
+
+// A data node loads from your API. `get` only accepts declared dependencies,
+// and `signal` cancels the request if it becomes obsolete.
+export const ProductDetails = defineDataNode({
+  key: "productDetails",
+  dependencies: [CurrentProductId],
+  initialValue: null as Product | null,
+  load: async ({ get, signal }) => {
+    const response = await fetch(`/api/products/${get(CurrentProductId)}`, { signal });
+    return (await response.json()) as Product;
+  },
+});
+
+// A derived node is a pure, synchronous computation over other nodes.
+export const DisplayPrice = defineDerivedNode({
+  key: "displayPrice",
+  dependencies: [ProductDetails],
+  derive: ({ get }) => {
+    const product = get(ProductDetails);
+    return product ? `$${(product.priceCents / 100).toFixed(2)}` : "—";
+  },
+});
+
+export const Cart = defineDataNode({
+  key: "cart",
+  dependencies: [],
+  initialValue: { items: [] } as CartState,
+  load: async ({ signal }) => {
+    const response = await fetch("/api/cart", { signal });
+    return (await response.json()) as CartState;
+  },
+});
+
+// A mutation is a write. `onSuccess` here is a default for every call.
+export const AddToCart = defineMutation({
+  key: "cart.add",
+  execute: async ({
+    input,
+    signal,
+  }: MutationExecuteContext<{ productId: string; quantity: number }>) => {
+    const response = await fetch("/api/cart/items", {
+      method: "POST",
+      body: JSON.stringify(input),
+      signal,
+    });
+    return (await response.json()) as CartState;
+  },
+  onSuccess: (effects) => {
+    effects.invalidate([Cart]);
+  },
+});
+
+export const runtime = createGraphRuntime(
+  createGraph({ nodes: [CurrentProductId, ProductDetails, DisplayPrice, Cart] }),
+);
 ```
 
-`src/core` must not import Vue or any other project layer. The separation is enforced through folder boundaries, TypeScript configuration, tests, and review rather than separately published packages.
+### 2. Read it in a component
+
+Reading a node subscribes to it, which loads it and everything it depends on. Two components reading the same node share one request.
+
+```ts
+// main.ts
+import { createApp } from "vue";
+import { createGraphRuntimePlugin } from "vue-dependency-graph/vue";
+import App from "./App.vue";
+import { runtime } from "./graph";
+
+createApp(App).use(createGraphRuntimePlugin(runtime)).mount("#app");
+```
+
+```vue
+<!-- App.vue -->
+<script setup lang="ts">
+import { useNode } from "vue-dependency-graph/vue";
+import { AddToCart, CurrentProductId, DisplayPrice, ProductDetails, runtime } from "./graph";
+
+// Reading a node subscribes to it, which loads it and its dependencies.
+const { data: product, status, error } = useNode(ProductDetails);
+const { data: price } = useNode(DisplayPrice);
+
+const nextProduct = () => runtime.setContext(CurrentProductId, "prod-2");
+const addToCart = () => runtime.mutate(AddToCart, { productId: "prod-1", quantity: 1 });
+</script>
+
+<template>
+  <p v-if="status === 'loading'">Loading…</p>
+  <p v-else-if="error">Couldn't load the product: {{ error.message }}</p>
+  <template v-else>
+    <h1>{{ product?.name }}</h1>
+    <p>{{ price }}</p>
+  </template>
+  <button @click="nextProduct">Next product</button>
+  <button @click="addToCart">Add to cart</button>
+</template>
+```
+
+Calling `runtime.setContext(CurrentProductId, "prod-2")` invalidates everything downstream of it; whatever is currently subscribed reloads once. Calling `runtime.mutate(AddToCart, ...)` runs the write, and its default `onSuccess` marks the cart stale so it reloads.
+
+### 3. End the runtime's life
+
+A runtime owns timers and in-flight work. The Vue plugin calls `runtime.shutdown()` when the app unmounts. If you create a runtime yourself, call `shutdown()` when its owner ends; after that it rejects new work and aborts anything still pending.
+
+From here, the [user guide](docs/guides/00-user-guide.md) covers failure handling, events, refresh policies and polling, value release, optimistic mutations, transactions, and testing your graph.
 
 ## Primary goals
 
@@ -60,11 +179,11 @@ core + vue + devtools <--- playground
 - Provide strongly typed node definitions and consumer results.
 - Keep the core independent of Vue and Pinia.
 
-## Transaction ownership
-
-Transaction-owned context changes and event publications use the explicit callback handle:
+## Transactions
 
 These examples use the fictional Banksia storefront defined in the [user guide](docs/guides/00-user-guide.md).
+
+Transaction-owned context changes and event publications use the explicit callback handle:
 
 ```ts
 await runtime.transaction(async (transaction) => {
@@ -101,12 +220,65 @@ await runtime.transaction(async (transaction) => {
 
 - Replace Pinia as the application's general-purpose client state store.
 - Replace HTTP clients or backend SDKs.
-- Persist an offline database in the first release.
+- Persist an offline database.
 - Implement distributed transactions across backend services.
 - Couple one domain store directly to another domain store.
-- Publish multiple independently versioned packages during the research phase.
+- Publish multiple independently versioned packages: this is one package with one version.
 
-## Technology baseline
+## Documentation
+
+- User guide: [`docs/guides/00-user-guide.md`](docs/guides/00-user-guide.md)
+- Public API: [`docs/api/01-public-api.md`](docs/api/01-public-api.md)
+- Recipes: [`docs/recipes/`](docs/recipes/)
+- Architecture: [`docs/architecture/01-system-overview.md`](docs/architecture/01-system-overview.md)
+- Vue and Pinia integration: [`docs/architecture/07-vue-and-pinia-integration.md`](docs/architecture/07-vue-and-pinia-integration.md)
+- Architecture decision records: [`docs/decisions/`](docs/decisions/)
+- Roadmap: [`docs/ROADMAP.md`](docs/ROADMAP.md)
+- Test strategy: [`docs/testing/01-test-strategy.md`](docs/testing/01-test-strategy.md)
+- Compatibility and release contract: [`docs/maintenance/compatibility.md`](docs/maintenance/compatibility.md)
+- Performance measurements: [`docs/maintenance/performance.md`](docs/maintenance/performance.md)
+- Changelog: [`CHANGELOG.md`](CHANGELOG.md)
+- Staged maintenance record: [`MAINTENANCE.md`](MAINTENANCE.md)
+
+Historical implementation notes preserve point-in-time decisions and validation evidence. Use the documents above for the current architecture and API.
+
+## Development
+
+This repository contains the library (`src/core`, `src/vue`, `src/devtools`), a playground application that exercises it, and the documentation. It is one package; architectural areas are separated by source folders rather than independently versioned workspace packages.
+
+```text
+vue-dependency-graph/
+├── docs/
+├── src/
+│   ├── core/          Framework-agnostic graph engine
+│   ├── vue/           Vue 3.5 integration
+│   ├── devtools/      Optional diagnostics and inspector UI
+│   ├── playground/    Playground application source
+├── tests/
+├── index.html         Playground entry document
+├── package.json
+├── pnpm-lock.yaml
+├── tsconfig.json
+├── tsconfig.build.json
+└── vite.config.ts
+```
+
+The logical dependency direction is:
+
+```text
+core
+  ^
+  |
+vue
+
+core <--- devtools
+
+core + vue + devtools <--- playground
+```
+
+`src/core` must not import Vue or any other project layer. The separation is enforced through folder boundaries, TypeScript configuration, tests, and review rather than separately published packages.
+
+### Technology baseline
 
 - pnpm 12.4.1 for package management
 - TypeScript with strict mode
@@ -118,11 +290,7 @@ await runtime.transaction(async (transaction) => {
 
 Dependency versions are pinned in package.json and pnpm-lock.yaml. See the [dependency maintenance policy](docs/maintenance/dependencies.md).
 
-## Execution responsibility
-
-Run validation locally and in CI. Record commands and outcomes against the actual checkout. If an environment cannot execute a check, report it as pending; static inspection is not a passing test run. API compatibility and publication remain gated by the [application migration trial](docs/maintenance/migration-trial.md).
-
-## Bootstrap commands
+### Bootstrap commands
 
 Use Node 22.13 or newer, enable Corepack, and install the locked dependencies:
 
@@ -152,16 +320,12 @@ pnpm dev
 pnpm benchmark # requires a current build
 ```
 
-## Documentation
+### Execution responsibility
 
-- User guide: `docs/guides/00-user-guide.md`
-- Public API: `docs/api/01-public-api.md`
-- Architecture: `docs/architecture/01-system-overview.md`
-- Vue and Pinia integration: `docs/architecture/07-vue-and-pinia-integration.md`
-- Roadmap: `docs/ROADMAP.md`
-- Test strategy: `docs/testing/01-test-strategy.md`
-- Compatibility and lifecycle: `docs/maintenance/compatibility.md`
-- Performance measurements: `docs/maintenance/performance.md`
-- Staged maintenance record: `MAINTENANCE.md`
+Run validation locally and in CI. Record commands and outcomes against the actual checkout. If an environment cannot execute a check, report it as pending; static inspection is not a passing test run. API stability (1.0) and npm publication remain gated by the [application migration trial](docs/maintenance/migration-trial.md).
 
-Historical implementation notes preserve point-in-time decisions and validation evidence. Use the documents above for the current architecture and API.
+See [CONTRIBUTING.md](CONTRIBUTING.md) before changing the code, and [Releasing a 0.x version](docs/maintenance/compatibility.md#releasing-a-0x-version-github-release) to cut a release.
+
+## License
+
+[MIT](LICENSE)

@@ -1,6 +1,6 @@
 # Recipe 06 — Release when unused
 
-**Status:** research-phase pattern  
+**Status:** pre-1.0 pattern  
 **Related:** [ADR-016 Value release policies](../decisions/ADR-016-value-release-policies.md), [ADR-004 Subscription-driven loading](../decisions/ADR-004-subscription-driven-loading.md)
 
 ## Failure mode

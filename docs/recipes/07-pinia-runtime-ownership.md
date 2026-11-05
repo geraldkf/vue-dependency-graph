@@ -1,6 +1,6 @@
 # Recipe 07 — Pinia owns the runtime
 
-**Status:** research-phase / migration convention  
+**Status:** pre-1.0 / migration convention  
 **Related:** [UI, Pinia, and the dependency graph](../guides/01-ui-and-pinia-graph.md), [Vue and Pinia integration](../architecture/07-vue-and-pinia-integration.md)
 
 ## Failure mode

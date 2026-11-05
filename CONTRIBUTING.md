@@ -42,4 +42,4 @@ Core/tooling tests run in Node. Vue, playground, devtools, and retention tests r
 - [Performance baseline](docs/maintenance/performance.md)
 - [Application migration trial](docs/maintenance/migration-trial.md)
 
-Do not publish or mark the migration trial complete without its recorded exit evidence.
+Releases follow [Releasing a 0.x version](docs/maintenance/compatibility.md#releasing-a-0x-version-github-release). Do not publish to npm, tag 1.0, or mark the migration trial complete without its recorded exit evidence.

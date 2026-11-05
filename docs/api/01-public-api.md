@@ -521,6 +521,24 @@ const result = await runtime.mutate(AddToCart, {
 
 `defineMutation(...)` validates the key and execute function, returns a frozen definition, and retains input and asynchronous result types. `MutationInput<TMutation>` and `MutationResult<TMutation>` extract those types.
 
+`defineMutation` also accepts `optimistic`, `onSuccess` and `classifyFailure` - the same functions `runtime.mutate` takes as its options - as **defaults** for every call of that mutation:
+
+```ts
+const AddToCart = defineMutation({
+  key: "cart.add",
+  execute: async ({ input, signal }: MutationExecuteContext<AddToCartInput>) =>
+    api.addToCart(input, signal),
+  onSuccess: (effects, saved) => {
+    effects.update(Cart, () => saved);
+  },
+});
+
+await runtime.mutate(AddToCart, input); // runs the default onSuccess
+await runtime.mutate(AddToCart, input, { onSuccess: () => {} }); // replaces it for this call
+```
+
+Resolution is per field. A field supplied to `runtime.mutate` replaces the definition's value for that field and the two never both run; unsupplied fields keep their defaults; a field passed as `undefined` counts as unsupplied. A supplied default that is not a function throws when the mutation is defined. Defaults are stored on the definition's `defaults` property, present only when at least one was given. Because defaults reference graph nodes, keep shared remote contracts `execute`-only and supply effects per call.
+
 `runtime.mutate(...)` creates one caller-owned mutation attempt, passes the exact input and an attempt-scoped `AbortSignal`, and returns the remote result. Each call is independent. A basic call does not deduplicate, retry, reconcile graph data, invalidate nodes, publish events, apply optimistic state, or consume the data-load concurrency limit.
 
 A plain mutation call remains independent while a graph transaction is open. It cannot read staged transaction state and its result is not committed or rolled back by that transaction.

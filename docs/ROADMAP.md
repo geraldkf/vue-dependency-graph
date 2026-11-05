@@ -4,7 +4,7 @@
 
 The initial Vue Dependency Graph framework capabilities are implemented and validated. The runtime includes typed graph definitions, dependency-aware execution, subscription-driven scheduling, Vue and Pinia integration, isolated local graph transactions, typed event invalidation, query groups, refresh policies and polling, typed and optimistic mutations, diagnostics, snapshots, devtools, automatic value release, retention hardening, and overlapping scheduler flushes.
 
-The framework remains private and its public APIs may change based on evidence from the existing-application migration trial.
+The framework is pre-1.0 (`0.x`, distributed as GitHub Release tarballs) and its public APIs may change based on evidence from the existing-application migration trial. API stabilization (1.0) and npm publication are gated on that trial.
 
 The October 2026 maintenance pass adds context-protected mutation updates, generation-aware polling restart, diagnostic collector observation, explicit owner shutdown, parsed architecture boundaries, separate Node/DOM test projects, production Chromium smoke checks, and scale measurements. Dependency advisories were addressed and CI now covers Node 22/24. See [the staged maintenance record](../MAINTENANCE.md) and [application trial plan](./maintenance/migration-trial.md).
 
@@ -37,7 +37,7 @@ See [Execution, scheduling, transactions, and concurrency](./architecture/03-sch
 - Explicit or injected runtime resolution
 - Pinia-owned runtime integration without mirrored graph state
 - Browser lifecycle timer environment
-- Runtime disposal tied to the owning application or store
+- Runtime shutdown tied to the owning application or store
 
 See [Vue and Pinia integration](./architecture/07-vue-and-pinia-integration.md).
 

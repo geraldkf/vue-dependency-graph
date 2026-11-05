@@ -4,6 +4,8 @@ on:
   push:
     branches: [main]
   pull_request:
+  # Lets release.yml run these exact gates before it builds a release.
+  workflow_call:
 
 jobs:
   validate:

@@ -1,4 +1,4 @@
-# Recipes (research phase)
+# Recipes
 
 These recipes capture coordination patterns that are easy to get wrong when improvising.
 
@@ -27,4 +27,4 @@ They are **not** a complete cookbook and **not** a guarantee of API stability. P
 
 ## Status
 
-Research phase. Patterns here reflect the current runtime and playground scenarios. Revisit after the existing-application migration trial if real workflows force different shapes.
+Pre-1.0. Patterns here reflect the current runtime and playground scenarios. Revisit after the existing-application migration trial if real workflows force different shapes.

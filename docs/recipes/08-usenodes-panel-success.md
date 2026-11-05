@@ -1,6 +1,6 @@
 # Recipe 08 — Multi-node panels with `useNodes` / `isSuccess`
 
-**Status:** research-phase / migration convention  
+**Status:** pre-1.0 / migration convention  
 **Related:** [UI, Pinia, and the dependency graph](../guides/01-ui-and-pinia-graph.md) §6.3–§7, [Public API — Vue composables](../api/01-public-api.md)
 
 ## Failure mode

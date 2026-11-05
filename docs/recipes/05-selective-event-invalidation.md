@@ -1,6 +1,6 @@
 # Recipe 05 — Selective event invalidation
 
-**Status:** research-phase pattern  
+**Status:** pre-1.0 pattern  
 **Related:** [ADR-006 Domain events](../decisions/ADR-006-domain-events.md), [Events, refresh policies, and polling](../architecture/04-events-refresh-and-polling.md)
 
 ## Failure mode
