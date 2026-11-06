@@ -2,14 +2,14 @@ import type { NodeRuntimeState } from "../core";
 
 /**
  * Field-by-field comparison used to decide whether a `useNode`/`useNodes`
- * internal ref actually needs to change after a global `onChange`
+ * internal ref actually needs to change after its node's `onNodeChange`
  * notification.
  *
  * The core's `getSnapshot` allocates a new object on every call regardless
- * of whether anything changed, and `onChange` is a single global signal
- * with no indication of which node changed. Without this comparison, every
- * mounted composable would re-render on every unrelated state change
- * anywhere in the graph — see
+ * of whether anything changed, and a node notification fires when *any*
+ * field changed - including `generation`, which the composables do not
+ * read. Without this comparison, a composable would re-render on state
+ * changes it cannot observe - see
  * `docs/architecture/07-vue-and-pinia-integration.md` for the
  * empirical basis for this.
  *

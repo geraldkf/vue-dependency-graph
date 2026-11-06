@@ -285,6 +285,53 @@ export interface GraphRuntime {
    */
   readonly onChange: (listener: RuntimeListener) => () => void;
   /**
+   * Like {@link GraphRuntime.onChange}, but the listener is only called when
+   * *this node's* state changed (its value, status, freshness, error, or
+   * generation). Returns an unsubscribe function.
+   *
+   * Prefer this for anything that watches particular nodes. A global
+   * `onChange` listener runs on every change anywhere in the graph, so the
+   * cost of N such listeners grows with N times the number of changes;
+   * `onNodeChange` listeners cost time proportional to the nodes that
+   * actually changed. The Vue composables use it.
+   *
+   * Listeners run synchronously, once per notification, after the global
+   * `onChange` listeners, and read the latest state with
+   * {@link GraphRuntime.getState}. A listener that throws is isolated from
+   * the rest and reported as a `runtime.listener-failed` diagnostic.
+   * Subscription-count changes are not state changes: use `onChange` or
+   * {@link GraphRuntime.getSubscriptionState} for those.
+   *
+   * @throws {@link Error} if `node` is not registered in this graph, and
+   * {@link GraphRuntimeShutdownError} after {@link GraphRuntime.shutdown}.
+   *
+   * @example
+   * ```ts
+   * import {
+   *   createGraph,
+   *   createGraphRuntime,
+   *   defineContextNode,
+   *   defineDerivedNode,
+   * } from "vue-dependency-graph/core";
+   *
+   * const count = defineContextNode({ key: "count", initialValue: 0 });
+   * const doubled = defineDerivedNode({
+   *   key: "doubled",
+   *   dependencies: [count],
+   *   derive: ({ get }) => get(count) * 2,
+   * });
+   * const runtime = createGraphRuntime(createGraph({ nodes: [count, doubled] }));
+   *
+   * const stop = runtime.onNodeChange(count, () => {
+   *   console.log("count is now", runtime.getState(count).data);
+   * });
+   *
+   * runtime.setContext(count, 1); // logs; a change to any other node would not
+   * stop();
+   * ```
+   */
+  readonly onNodeChange: (node: AnyNodeDefinition, listener: RuntimeListener) => () => void;
+  /**
    * Captures a point-in-time snapshot of recorded diagnostic events, for
    * export or inspection. Only produces data when the runtime was created
    * with `diagnostics` enabled ({@link GraphRuntimeOptions.diagnostics});

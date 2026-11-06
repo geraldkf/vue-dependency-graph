@@ -21,6 +21,7 @@ import { toError } from "./execution/types";
 import type { AnyNodeDefinition, ContextNodeDefinition, Graph } from "./graph/types";
 import { createRuntimeMutationController } from "./mutations/mutation-controller";
 import type { MutationDefinition, MutationOptions } from "./mutations/types";
+import { createRuntimeNodeObserver } from "./observation/node-observer";
 import { createRuntimeObserver } from "./observation/observer";
 import { createRuntimeOperationsController } from "./operations/operations";
 import type { RefreshableNodeDefinition } from "./operations/types";
@@ -82,6 +83,7 @@ type RequestedOperation = Parameters<
  */
 export const createGraphRuntime = (graph: Graph, options?: GraphRuntimeOptions): GraphRuntime => {
   const releaseChanges = createNodeChangeTracker();
+  const refreshChanges = createNodeChangeTracker();
   const lifetime = new AbortController();
   const assertRunning = (): void => {
     if (lifetime.signal.aborted) throw lifetime.signal.reason;
@@ -100,23 +102,33 @@ export const createGraphRuntime = (graph: Graph, options?: GraphRuntimeOptions):
   // their diagnostics to it without threading it through every signature
   // in between. Correctly nests (and restores) via `runObserved`.
   const operationObservation = createOperationObservationTracker();
+  // A throwing listener (an app's `onChange` or `onNodeChange`, or one of the
+  // runtime's own policies, which listen the same way) is isolated from the
+  // rest; this keeps it visible. Attributed to the operation being committed,
+  // if any.
+  const reportListenerError = (error: unknown): void => {
+    const operationId = operationObservation.current()?.operationId;
+    diagnostics.emit({
+      type: "runtime.listener-failed",
+      ...(operationId ? { operationId } : {}),
+      error: diagnostics.toError(toError(error)),
+    });
+  };
   const {
-    notify: emitNotify,
+    notify: notifyGlobalListeners,
     onChange,
     dispose: disposeObserver,
-  } = createRuntimeObserver({
-    // A throwing listener (an app's `onChange`, or one of the runtime's own
-    // policies, which listen the same way) is isolated from the rest; this
-    // keeps it visible. Attributed to the operation being committed, if any.
-    onListenerError: (error) => {
-      const operationId = operationObservation.current()?.operationId;
-      diagnostics.emit({
-        type: "runtime.listener-failed",
-        ...(operationId ? { operationId } : {}),
-        error: diagnostics.toError(toError(error)),
-      });
-    },
+  } = createRuntimeObserver({ onListenerError: reportListenerError });
+  const nodeObserver = createRuntimeNodeObserver({
+    getNodeState,
+    onListenerError: reportListenerError,
   });
+  // One notification: global listeners first, then the listener of every node
+  // whose own state changed since the last one.
+  const emitNotify = (): void => {
+    notifyGlobalListeners();
+    nodeObserver.dispatch();
+  };
   const requireRegisteredNode = (node: AnyNodeDefinition, purpose: string): AnyNodeDefinition => {
     const registered = graph.getNode(node.key);
     if (!registered) {
@@ -144,7 +156,10 @@ export const createGraphRuntime = (graph: Graph, options?: GraphRuntimeOptions):
     schedulerRequest,
     operationObservation,
     maxConcurrentLoads: options?.maxConcurrentLoads,
-    onDemandChanged: releaseChanges.markDemandChanged,
+    onDemandChanged: (keys) => {
+      releaseChanges.markDemandChanged(keys);
+      refreshChanges.markDemandChanged(keys);
+    },
   });
 
   // Every caller-facing operation announces itself (`operation.<kind>.requested`)
@@ -221,6 +236,7 @@ export const createGraphRuntime = (graph: Graph, options?: GraphRuntimeOptions):
   const policies = createRuntimePolicyServices({
     graph,
     releaseChanges,
+    refreshChanges,
     diagnostics,
     timerEnvironment: options?.timerEnvironment,
     releaseAfterMs: options?.releaseAfterMs,
@@ -304,6 +320,13 @@ export const createGraphRuntime = (graph: Graph, options?: GraphRuntimeOptions):
       assertRunning();
       return onChange(listener);
     },
+    onNodeChange: (node: AnyNodeDefinition, listener: () => void) => {
+      assertRunning();
+      return nodeObserver.onNodeChange(
+        requireRegisteredNode(node, "node change listener").key,
+        listener,
+      );
+    },
     createDiagnosticSnapshot: () =>
       createDiagnosticSnapshot({
         graph,
@@ -332,6 +355,7 @@ export const createGraphRuntime = (graph: Graph, options?: GraphRuntimeOptions):
       if (lifetime.signal.aborted) return;
       policies.dispose();
       disposeObserver();
+      nodeObserver.dispose();
       execution.shutdown();
       scheduler.shutdown();
       lifetime.abort(new GraphRuntimeShutdownError());

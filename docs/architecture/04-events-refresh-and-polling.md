@@ -155,6 +155,10 @@ The optional Vue browser adapter combines document visibility and network availa
 
 Active requests continue during pause. Poll timeout uses active elapsed time and excludes paused duration.
 
+## Reconciliation
+
+Refresh and release policies each reconcile incrementally. State transitions record the changed node keys, and subscription changes record the affected direct and required keys, so each policy handles only the nodes whose state or demand changed since its last pass. The two policies keep separate change trackers. Initialization and resuming from a pause do one full pass; nothing else scans every policy node ([ADR-022](../decisions/ADR-022-per-node-notification-and-incremental-refresh.md)).
+
 ## Timer ownership and settlement
 
 Refresh and release policies share one `TimerEnvironment`, but remain separate controllers with separate policy semantics. Policy composition and disposal are runtime-local.

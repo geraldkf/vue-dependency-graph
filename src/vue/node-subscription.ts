@@ -9,9 +9,10 @@ export interface NodeSubscription<TNode extends AnyNodeDefinition> {
 
 /**
  * Subscribes to a single node and keeps `state` in sync with it via the
- * runtime's global `onChange` signal, only actually replacing the ref's
- * value when `statesEqual` says something the composable reads has
- * changed — see `states-equal.ts` for why that comparison exists at all.
+ * runtime's per-node `onNodeChange` signal, which only fires when this
+ * node's own state changed. The ref's value is still only replaced when
+ * `statesEqual` says something the composable reads has changed — see
+ * `states-equal.ts` for why that comparison exists at all.
  *
  * Deliberately does not check for an active effect scope and does not
  * register its own `onScopeDispose` cleanup — that's the calling
@@ -19,7 +20,7 @@ export interface NodeSubscription<TNode extends AnyNodeDefinition> {
  * this primitive makes no assumption that one subscription always maps
  * to exactly one Vue effect scope's dispose hook.
  *
- * `subscription.unsubscribe()` and the `onChange` unsubscribe function
+ * `subscription.unsubscribe()` and the `onNodeChange` unsubscribe function
  * are both verified idempotent directly against
  * `subscriptions/subscriptions.ts` and `observation/observer.ts` — each
  * guards itself with its own `active` flag — so calling `dispose()` more
@@ -39,7 +40,10 @@ export const createNodeSubscription = <TNode extends AnyNodeDefinition>(
   };
 
   const subscription = runtime.subscribeNodes([node]);
-  const stopWatching = runtime.onChange(sync);
+  const stopWatching = runtime.onNodeChange(node, sync);
+  // A node listener only hears about changes made after it registered, so
+  // catch up on anything that changed since `state` was first read.
+  sync();
 
   const dispose = (): void => {
     stopWatching();

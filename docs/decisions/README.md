@@ -25,6 +25,7 @@ Decision records capture choices that materially affect correctness, compatibili
 - ADR-019: Scheduler flushes overlap instead of queuing behind one another
 - [ADR-020: Runtime lifetime and mutation context protection](./ADR-020-runtime-lifetime-and-mutation-context.md)
 - [ADR-021: Mutation default effects](./ADR-021-mutation-default-effects.md)
+- [ADR-022: Per-node change notification, incremental refresh reconciliation, and a demand index](./ADR-022-per-node-notification-and-incremental-refresh.md)
 
 ADR-009 and ADR-010 are reserved numbers without separate files. By the time polling and observability were designed, each had grown beyond its original ADR-002 scope. Their decisions are recorded once in ADR-012 and ADR-014 respectively rather than duplicated.
 

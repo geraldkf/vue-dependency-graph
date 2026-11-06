@@ -69,7 +69,7 @@ These are synchronous Node workloads with primitive payloads, no API delay, no V
 
 Release policies now register their eligible runtime states with a change tracker. State transitions record changed keys without running policy work; subscription changes record affected direct and required keys before notification. Each synchronous release listener drains a deduplicated set and reconciles only those nodes. Initialization performs one full pass. Policy disposal clears the tracker and unregisters its states.
 
-Existing generation checks, timer cancellation, undemanded prefetch release, default/Infinity overrides, and notification order are preserved. Refresh-policy reconciliation still follows its existing rules.
+Existing generation checks, timer cancellation, undemanded prefetch release, default/Infinity overrides, and notification order are preserved. Refresh-policy reconciliation was made incremental afterwards; see [Refresh policies, per-node observation, and the demand index](#refresh-policies-per-node-observation-and-the-demand-index).
 
 The comparison against revision `f893a5d` used the same Windows host and Node 24.19.0, with timing runs outside concurrent validation jobs. For 1,000 data plus 1,000 derived nodes, one observer, diagnostics disabled, and release policies enabled:
 
@@ -80,3 +80,60 @@ The comparison against revision `f893a5d` used the same Windows host and Node 24
 | Single branch |        87.72 ms |            1.48 ms |
 
 All 72 configurations passed the existing correctness assertions and retained identical request, derivation, notification, and retained-event counts. Raw before/after results are in [benchmark-incremental-release.json](./benchmark-incremental-release.json). These local timings demonstrate removal of the repeated release scan; they do not predict application or browser performance.
+
+## Refresh policies, per-node observation, and the demand index
+
+A review that profiled the runtime beyond the benchmark's original scenarios found three costs that grew with graph size or with the number of mounted components rather than with the work being done. The design is recorded in [ADR-022](../decisions/ADR-022-per-node-notification-and-incremental-refresh.md):
+
+- Every notification reconciled every node with a refresh policy. The benchmark had no refresh policies, so this was not visible. Refresh reconciliation now handles only changed nodes, as release reconciliation does.
+- Every mounted `useNode` / `useNodes` re-read its node on every notification in the graph. The composables now use `runtime.onNodeChange`, which fires only for the node whose state changed.
+- Every scheduler flush scanned every graph node for direct subscribers. The subscription controller now keeps an index of them.
+
+`shutdown()` also stopped throwing a `RangeError` when one node holds on the order of 200,000 subscriptions.
+
+These measurements are from a different machine than the sections above (Linux, Node 22.23.4, a shared sandbox), so compare rows within a table, not against earlier tables. Medians of five cascades, diagnostics and release policies disabled, 1,000 data plus 1,000 derived nodes, full demand.
+
+**Refresh policy (`staleAfter`) on every data node, one observer** (`--refresh=on`):
+
+| Data nodes | Before median | After median |
+| ---------: | ------------: | -----------: |
+|        100 |      10.85 ms |      6.17 ms |
+|        500 |     216.87 ms |     26.78 ms |
+|      1,000 |   1,170.72 ms |     40.30 ms |
+
+**Mounted observers, one cascade** (each observer re-reads its own node; before: `onChange`, after: `onNodeChange`, `--observe=node`):
+
+| Observers | Before median | After median |
+| --------: | ------------: | -----------: |
+|       100 |      85.43 ms |     50.07 ms |
+|       500 |     234.88 ms |     38.04 ms |
+|     1,000 |     348.41 ms |     36.59 ms |
+
+**Mounting N components, each subscribing one node and listening to it** (synchronous mount, initial load until settled, unmount; before and after):
+
+| Components |               Mount |           Initial load |             Unmount |
+| ---------: | ------------------: | ---------------------: | ------------------: |
+|      1,000 |  79.3 ms to 24.6 ms |   527.3 ms to 102.4 ms |  44.2 ms to 12.4 ms |
+|      2,000 | 290.9 ms to 45.0 ms | 2,232.1 ms to 165.4 ms | 206.9 ms to 18.8 ms |
+
+**Subscribe and settle one node in a sparse graph** (100 repetitions, per repetition):
+
+| Graph nodes |   Before |   After |
+| ----------: | -------: | ------: |
+|       2,000 |  0.83 ms | 0.25 ms |
+|      10,000 |  3.51 ms | 0.13 ms |
+|      40,000 | 17.53 ms | 0.13 ms |
+
+The default benchmark workloads (full, sparse and single-branch demand, release policies enabled) are unchanged within run-to-run noise, with identical request, derivation and notification counts. Every mode passes the benchmark's existing correctness assertions.
+
+Reproduce:
+
+```bash
+pnpm build
+node scripts/benchmark.mjs --workload=full-demand --size=1000 --observers=1 --diagnostics=off --release=off --refresh=on
+node scripts/benchmark.mjs --workload=full-demand --size=1000 --observers=1000 --diagnostics=off --release=off --observe=node
+```
+
+`--observers=N` accepts any count, and without `--refresh` or `--observe` a run uses the original configuration. Note that the observer benchmark measures the listener mechanism with one observer per node; the application-level effect depends on how many components are mounted and which nodes they read.
+
+Costs not addressed here: enabling diagnostics still costs about 2.5 to 4 times at this scale because of event volume, children are ordered with `localeCompare` when a graph is created, and the mutation path scans graph nodes once per call.

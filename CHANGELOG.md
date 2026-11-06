@@ -6,6 +6,22 @@ Release steps are in [Releasing a 0.x version](docs/maintenance/compatibility.md
 
 ## [Unreleased]
 
+### Added
+
+- `runtime.onNodeChange(node, listener)`: like `onChange`, but the listener runs only when that node's own state changed. Cost follows the nodes that changed, not the number of listeners. See [ADR-022](docs/decisions/ADR-022-per-node-notification-and-incremental-refresh.md).
+- Benchmark options `--refresh=on`, `--observe=node` and `--observers=N`.
+
+### Changed
+
+- `useNode` and `useNodes` use `onNodeChange`. Behavior is unchanged. `useNodes` now replaces only the entries that changed, so unaffected results keep their identity.
+- Refresh-policy reconciliation is incremental, as release reconciliation already was. With a `staleAfter` policy on 1,000 nodes, one cascade drops from about 1,170 ms to 40 ms.
+- Scheduler flushes use an index of directly subscribed nodes instead of scanning the graph, and still select targets in graph order.
+- Anything that implements `GraphRuntime` itself (a test double, for example) must provide `onNodeChange`.
+
+### Fixed
+
+- `runtime.shutdown()` no longer throws a `RangeError` when a node has a very large number of subscriptions.
+
 ## [0.1.0] - 2026-11-04
 
 First tagged release, distributed as a tarball on GitHub Releases. Pre-1.0: the API may still change, and API stabilization (1.0) and npm publication are gated on the existing-application migration trial.

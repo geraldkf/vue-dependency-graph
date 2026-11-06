@@ -125,23 +125,25 @@ export const createGraphCoordination = ({
   });
 
   const getSubscribedTargetsNeedingWork = (): readonly AnyNodeDefinition[] =>
-    graph.getNodes().filter((node) => {
-      if (node.kind === "context") return false;
-      if (!subscriptionsBinding.get().hasDirectSubscribers(node)) return false;
-      // Flushes can now overlap (see scheduler.ts), so a node already being
-      // worked on by an earlier flush must not become a second flush's
-      // target: that would duplicate the "started"/"completed" attribution
-      // for work that is really one attempt. `executeNode` already reuses an
-      // attempt with a matching generation; this keeps the *scheduler* from
-      // treating that reuse as new work to schedule. An attempt whose signal
-      // has already been aborted no longer counts - it is on its way out and
-      // must not block the node from being picked up again.
-      const inFlight = getActiveAttempt(node.key);
-      if (inFlight !== undefined && !inFlight.controller.signal.aborted) {
-        return false;
-      }
-      return execution.needsExecution(node);
-    });
+    subscriptionsBinding
+      .get()
+      .getDirectlySubscribedNodes()
+      .filter((node) => {
+        if (node.kind === "context") return false;
+        // Flushes can now overlap (see scheduler.ts), so a node already being
+        // worked on by an earlier flush must not become a second flush's
+        // target: that would duplicate the "started"/"completed" attribution
+        // for work that is really one attempt. `executeNode` already reuses an
+        // attempt with a matching generation; this keeps the *scheduler* from
+        // treating that reuse as new work to schedule. An attempt whose signal
+        // has already been aborted no longer counts - it is on its way out and
+        // must not block the node from being picked up again.
+        const inFlight = getActiveAttempt(node.key);
+        if (inFlight !== undefined && !inFlight.controller.signal.aborted) {
+          return false;
+        }
+        return execution.needsExecution(node);
+      });
 
   const scheduler = createRuntimeSchedulerController({
     getTargetsNeedingWork: getSubscribedTargetsNeedingWork,

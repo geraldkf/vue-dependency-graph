@@ -18,6 +18,7 @@ import { createDefaultTimerEnvironment, type TimerEnvironment } from "../timer-e
 export interface RuntimePolicyServicesDependencies {
   readonly graph: Graph;
   readonly releaseChanges: NodeChangeTracker;
+  readonly refreshChanges: NodeChangeTracker;
   readonly diagnostics: RuntimeDiagnosticEmitter;
   /** The runtime's `timerEnvironment` option; the default is created here. */
   readonly timerEnvironment: TimerEnvironment | undefined;
@@ -43,7 +44,8 @@ export interface RuntimePolicyServices {
  *
  * Ordering is significant and preserved from the original inline wiring: the
  * refresh controller is created and hooked before the release controller, so
- * refresh reconciles before release on every change. Both share the one timer
+ * refresh reconciles before release on every change. Both reconcile only the
+ * nodes whose state or demand changed since their last pass. Both share the one timer
  * environment. The caller emits `runtime.created` *after* this returns.
  *
  * The policies only observe (`getNodeState`, `hasSubscribers`) and act
@@ -56,6 +58,7 @@ export const createRuntimePolicyServices = ({
   timerEnvironment,
   releaseAfterMs,
   releaseChanges,
+  refreshChanges,
   getNodeState,
   hasSubscribers,
   refreshPolicyNode,
@@ -67,6 +70,7 @@ export const createRuntimePolicyServices = ({
   const refreshPolicies = createRuntimeRefreshPolicyController({
     graph,
     environment,
+    changes: refreshChanges,
     getNodeState,
     hasSubscribers,
     refreshPolicyNode: (node) => {
@@ -107,7 +111,9 @@ export const createRuntimePolicyServices = ({
       });
     },
   });
-  const stopRefreshPolicyReconcile = onChange(refreshPolicies.reconcile);
+  const stopRefreshPolicyReconcile = onChange(() =>
+    refreshPolicies.reconcile(refreshChanges.takeChanges()),
+  );
 
   const releasePolicies = createRuntimeReleasePolicyController({
     graph,

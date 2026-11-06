@@ -113,6 +113,16 @@ stopObserving();
 
 A node subscription contributes direct ownership for its targets and required ownership for their ancestors. Registration schedules work in a microtask rather than invoking loaders synchronously. Cleanup functions are idempotent.
 
+`runtime.onChange(listener)` runs after any change anywhere in the runtime, including subscription counts. To watch particular nodes, prefer `runtime.onNodeChange(node, listener)`:
+
+```ts
+const stop = runtime.onNodeChange(ProductReviews, () => {
+  const state = runtime.getState(ProductReviews);
+});
+```
+
+It runs only when that node's own state changed (value, status, freshness, error or generation), so the cost of many listeners follows the nodes that changed instead of every listener times every change. Listeners run synchronously, once per notification, after the global `onChange` listeners, and read the latest state with `getState`. Failures are isolated and reported as `runtime.listener-failed`. A listener hears only about changes made after it registered; read the state once after registering if you need the current value. `onNodeChange` throws for a node that is not in the graph, and after `shutdown()`. The Vue composables use it.
+
 A listener that throws never breaks the runtime: the failure is isolated from the other listeners and from the code that triggered the change. When diagnostics are enabled it is reported as a `runtime.listener-failed` event (see below); with diagnostics disabled it is not reported anywhere.
 
 Inspect lifecycle and scheduler state:
@@ -689,7 +699,7 @@ The foundation event set includes:
 - `operation.query-prefetch.requested`;
 - `operation.query-refresh.requested`.
 
-`runtime.listener-failed` is emitted when a change listener throws while the runtime is notifying - an application's `onChange` subscriber, or one of the runtime's own background policies, which listen the same way (a refresh policy that cannot arm its timer, for example). It carries `error: { name, message }` and, when the notification happened while an operation was being committed, that operation's `operationId`. The failure itself stays isolated: other listeners still run and runtime state is unaffected. The devtools Timeline shows it as a failed runtime entry.
+`runtime.listener-failed` is emitted when a change listener throws while the runtime is notifying - an application's `onChange` or `onNodeChange` subscriber, or one of the runtime's own background policies, which listen the same way (a refresh policy that cannot arm its timer, for example). It carries `error: { name, message }` and, when the notification happened while an operation was being committed, that operation's `operationId`. The failure itself stays isolated: other listeners still run and runtime state is unaffected. The devtools Timeline shows it as a failed runtime entry.
 
 Operation-request events contain immutable requested node keys and a deterministic runtime-local operation ID. Query operation events also contain the query key. These events record caller intent; execution, scheduling, subscription, invalidation, reuse, skip, queue, and outcome events complete the causal trace.
 

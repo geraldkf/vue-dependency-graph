@@ -98,7 +98,9 @@ Calling a composable outside `setup()` or an active effect scope throws before i
 
 ## Update filtering
 
-The core currently emits one graph-level change signal. Runtime snapshots are newly allocated objects, so assigning every snapshot on every notification would create unnecessary Vue updates.
+The core emits one graph-level change signal (`onChange`) and a per-node one (`onNodeChange`, [ADR-022](../decisions/ADR-022-per-node-notification-and-incremental-refresh.md)). `useNode` and `useNodes` listen per node, so a notification only reaches the composables whose node changed; a graph-wide listener per mounted component would cost every component on every change. `useNodes` replaces only the changed entry, so unaffected results keep their identity. Each composable re-reads its state once after registering its listeners, since a node listener only hears about later changes.
+
+Runtime snapshots are newly allocated objects, and a node notification also fires for changes the composables cannot observe (a generation-only change), so assigning every snapshot would create unnecessary Vue updates.
 
 The adapter compares:
 

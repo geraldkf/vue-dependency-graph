@@ -23,11 +23,12 @@ export interface UseNodesResult<
 
 /**
  * Subscribes to several nodes for the lifetime of the calling effect
- * scope with a single combined subscription and a single `onChange`
- * listener — not `createNodeSubscription` called once per node, which
- * would mean N independent subscriptions and N listeners for what is
- * conceptually one query. `statesEqual` (V3A) is still reused, per node,
- * inside that single listener.
+ * scope with a single combined subscription — not `createNodeSubscription`
+ * called once per node, which would mean N independent subscriptions for
+ * what is conceptually one query. Each node gets its own `onNodeChange`
+ * listener, so a notification only re-reads the nodes that actually
+ * changed. `statesEqual` (V3A) is still reused, per node, inside each
+ * listener.
  *
  * `results[K]` preserves each node's own specific data type via a `const`
  * type parameter, the same mechanism `defineDataNode`'s `dependencies`
@@ -42,22 +43,27 @@ export const useNodes = <const TNodes extends readonly AnyNodeDefinition[]>(
 
   const state = shallowRef(nodes.map((node) => runtime.getState(node)));
 
-  const sync = (): void => {
-    const next = nodes.map((node) => runtime.getState(node));
-    const changed = next.some((nextState, index) => {
-      const previousState = state.value[index];
-      return previousState === undefined || !statesEqual(previousState, nextState);
-    });
-    if (changed) {
-      state.value = next;
-    }
+  const syncNode = (index: number): void => {
+    const node = nodes[index];
+    if (node === undefined) return;
+    const next = runtime.getState(node);
+    const previousState = state.value[index];
+    if (previousState !== undefined && statesEqual(previousState, next)) return;
+    const updated = [...state.value];
+    updated[index] = next;
+    state.value = updated;
   };
 
   const subscription = runtime.subscribeNodes(nodes);
-  const stopWatching = runtime.onChange(sync);
+  const stopWatching = nodes.map((node, index) =>
+    runtime.onNodeChange(node, () => syncNode(index)),
+  );
+  // A node listener only hears about changes made after it registered, so
+  // catch up on anything that changed since `state` was first read.
+  nodes.forEach((_, index) => syncNode(index));
 
   onScopeDispose(() => {
-    stopWatching();
+    for (const stop of stopWatching) stop();
     subscription.unsubscribe();
   });
 

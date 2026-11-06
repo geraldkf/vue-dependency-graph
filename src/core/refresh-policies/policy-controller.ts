@@ -4,6 +4,7 @@ import { GraphExecutionError, toError } from "../execution/types";
 
 import type { GraphDiagnosticRefreshPolicySnapshot } from "../diagnostics/snapshot";
 import type { AnyNodeDefinition, DataNodeDefinition, Graph } from "../graph/types";
+import type { NodeChangeTracker } from "../state/change-tracker";
 import type { NodeStateRecord } from "../state/state";
 import type { TimerEnvironment } from "../timer-environment";
 import {
@@ -30,7 +31,8 @@ interface RefreshPolicySession {
 }
 
 export interface RuntimeRefreshPolicyController {
-  readonly reconcile: () => void;
+  /** Reconciles changed keys, or every policy node when no keys are supplied. */
+  readonly reconcile: (keys?: Iterable<string>) => void;
   readonly getDiagnosticSnapshot: () => readonly GraphDiagnosticRefreshPolicySnapshot[];
   /**
    * Permanently stops the controller: clears every pending timer, detaches
@@ -44,6 +46,12 @@ export interface RuntimeRefreshPolicyController {
 export interface RuntimeRefreshPolicyDependencies {
   readonly graph: Graph;
   readonly environment: TimerEnvironment;
+  /**
+   * Records which policy nodes changed (their state, or their demand via the
+   * runtime) so `reconcile(keys)` can skip every other node. Without it the
+   * caller must pass keys or reconcile everything.
+   */
+  readonly changes?: NodeChangeTracker;
   readonly getNodeState: (key: string) => NodeStateRecord;
   readonly hasSubscribers: (node: AnyNodeDefinition) => boolean;
   readonly refreshPolicyNode: (node: PolicyDataNode) => Promise<void>;
@@ -96,6 +104,7 @@ const calculateRetryDelay = (
 export const createRuntimeRefreshPolicyController = ({
   graph,
   environment,
+  changes,
   getNodeState,
   hasSubscribers,
   refreshPolicyNode,
@@ -350,8 +359,17 @@ export const createRuntimeRefreshPolicyController = ({
   }
 
   const policyNodes = graph.getNodes().filter(isPolicyDataNode);
-  const reconcile = (): void => {
-    for (const node of policyNodes) reconcileNode(node);
+  const policyNodesByKey = new Map(policyNodes.map((node) => [node.key, node]));
+  for (const node of policyNodes) changes?.track(node.key, getNodeState(node.key));
+  const reconcile = (keys?: Iterable<string>): void => {
+    if (keys === undefined) {
+      for (const node of policyNodes) reconcileNode(node);
+      return;
+    }
+    for (const key of keys) {
+      const node = policyNodesByKey.get(key);
+      if (node) reconcileNode(node);
+    }
   };
 
   const unsubscribePauseChange = environment.onPauseChange((nextPaused) => {
@@ -396,6 +414,7 @@ export const createRuntimeRefreshPolicyController = ({
   const dispose = (): void => {
     if (disposed) return;
     disposed = true;
+    changes?.dispose();
     unsubscribePauseChange();
     for (const session of sessions.values()) session.timer.clear();
   };
