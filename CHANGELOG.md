@@ -13,6 +13,10 @@ Release steps are in [Releasing a 0.x version](docs/maintenance/compatibility.md
 
 ### Changed
 
+- **Sibling order is now locale-independent.** A node's children, and the per-node entries of a metrics snapshot, are ordered by UTF-16 code unit instead of with `localeCompare`, so the order no longer depends on the machine's locale ([ADR-023](docs/decisions/ADR-023-locale-independent-key-ordering.md)). For keys that mix case or punctuation, the order can differ from before (uppercase now precedes lowercase). This is the only behavior change in this group.
+- Enabling diagnostics is cheaper: events are built in one pass, retained events are not copied again, and the in-memory collector uses a ring buffer. With diagnostics on, a 2,000-node cascade is about 30% faster.
+- `mutate` no longer scans the graph for context nodes or walks ancestors when no context changed. Event matching skips unconditional candidates' dependency sets. Aborting a long queue of waiting loads is linear. `hasSubscribers` no longer allocates.
+
 - `useNode` and `useNodes` use `onNodeChange`. Behavior is unchanged. `useNodes` now replaces only the entries that changed, so unaffected results keep their identity.
 - Refresh-policy reconciliation is incremental, as release reconciliation already was. With a `staleAfter` policy on 1,000 nodes, one cascade drops from about 1,170 ms to 40 ms.
 - Scheduler flushes use an index of directly subscribed nodes instead of scanning the graph, and still select targets in graph order.

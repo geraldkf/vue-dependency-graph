@@ -32,7 +32,7 @@ export const emitExecution = (
     readonly error?: Error;
   } = {},
 ): void => {
-  if (!context) return;
+  if (!context || !diagnostics.isEnabled) return;
   diagnostics.emit({
     type,
     operationId: context.operationId,
@@ -47,6 +47,14 @@ export const emitExecution = (
   });
 };
 
+const noAttemptDiagnostics = Object.freeze({
+  queued: (): void => undefined,
+  started: (): void => undefined,
+  succeeded: (): void => undefined,
+  failed: (_error: Error): void => undefined,
+  obsolete: (_aborted: boolean): void => undefined,
+});
+
 /** Captures attempt timing and emits the matching load or derive lifecycle. */
 export const beginExecutionDiagnostics = (
   diagnostics: RuntimeDiagnosticEmitter,
@@ -54,7 +62,9 @@ export const beginExecutionDiagnostics = (
   generation: number,
   origin: ExecutionOrigin,
   context: ExecutionDiagnosticContext | undefined,
-) => {
+): typeof noAttemptDiagnostics => {
+  // Nothing would be emitted: skip the per-attempt timing and closures.
+  if (!context || !diagnostics.isEnabled) return noAttemptDiagnostics;
   const startedAt = diagnostics.now();
   const emit = (type: Parameters<typeof emitExecution>[1], error?: Error): void =>
     emitExecution(diagnostics, type, node, generation, origin, context, {

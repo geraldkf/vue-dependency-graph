@@ -1,3 +1,4 @@
+import { compareKeys } from "../util/compare-keys";
 import { isDataNode, isDerivedNode } from "../graph/node-guards";
 import { GraphValidationError } from "./errors";
 import { assertValidRefreshPolicy } from "../refresh-policies/policy";
@@ -254,7 +255,8 @@ export const createGraph = (options: CreateGraphOptions): Graph => {
 
   // Topology is computed once, here, from each node's resolved dependencies,
   // and stored as node references. Parents follow declaration order; children
-  // are sorted by key. Parent and child entries always point at the node
+  // are sorted by key in code-unit order, never by locale (see
+  // compare-keys.ts). Parent and child entries always point at the node
   // *registered* under that key (identity is key-based), even if a dependency
   // list holds a different object with the same key.
   const parentNodesByKey = new Map<string, readonly AnyNodeDefinition[]>();
@@ -293,7 +295,7 @@ export const createGraph = (options: CreateGraphOptions): Graph => {
   }
 
   for (const children of childNodesByKey.values()) {
-    children.sort((left, right) => left.key.localeCompare(right.key));
+    children.sort((left, right) => compareKeys(left.key, right.key));
     Object.freeze(children);
   }
 

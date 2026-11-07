@@ -136,4 +136,36 @@ node scripts/benchmark.mjs --workload=full-demand --size=1000 --observers=1000 -
 
 `--observers=N` accepts any count, and without `--refresh` or `--observe` a run uses the original configuration. Note that the observer benchmark measures the listener mechanism with one observer per node; the application-level effect depends on how many components are mounted and which nodes they read.
 
-Costs not addressed here: enabling diagnostics still costs about 2.5 to 4 times at this scale because of event volume, children are ordered with `localeCompare` when a graph is created, and the mutation path scans graph nodes once per call.
+Diagnostics cost, the `localeCompare` ordering, and a few smaller per-call scans are covered in the next section.
+
+## Diagnostics, key ordering, and smaller per-call scans
+
+A second pass over what remained. Same machine and conditions as the previous section (Linux, Node 22.23.4, shared sandbox); compare within a table only.
+
+**Diagnostics enabled.** A profile showed about 30% of the time with diagnostics on in event construction and freezing, and a further share in the garbage collection it caused. Each event was rebuilt three times with `Object.fromEntries(Object.entries(...))`: once in the emitter, once spread into the envelope, and once more when the in-memory collector froze its copy. The emitter now builds each event in one pass, the collector keeps events the runtime already froze instead of copying them again (events handed to it directly are still copied and frozen), the retained events live in a ring buffer instead of being shifted on every event once full, and per-attempt timing and closures are skipped entirely when diagnostics are off.
+
+Full demand, 1,000 data plus 1,000 derived nodes, one observer, release disabled, median of five cascades, three alternating runs:
+
+| Diagnostics |   Before median |                             After median |
+| ----------- | --------------: | ---------------------------------------: |
+| On          | 44.4 to 45.5 ms |                          30.1 to 33.3 ms |
+| Off         | 21.1 to 24.1 ms | 20.1 to 28.2 ms (unchanged within noise) |
+
+The cost of turning diagnostics on drops from about 2 times to about 1.4 times. The remainder is the volume of events themselves, which is inherent.
+
+**Key ordering.** [ADR-023](../decisions/ADR-023-locale-independent-key-ordering.md) replaces `localeCompare` with code-unit order. This was originally listed here as a cost of graph creation. Measurement showed that was wrong: once warm, sorting 50,000 keys takes about 21 ms with `localeCompare` and 15 ms without. What remains is a one-time collator initialization (in isolation, the first sort of 50,000 keys in a process took about 160 ms) and, more importantly, an order that depends on the machine's locale. In a fresh process, the first `createGraph` on a 20,000-child fan-out went from about 111 ms to about 102 ms, so the real-world saving is small. Treat this change as a determinism fix, not a performance one.
+
+**Per-call scans.**
+
+| Path                                              |   Before |    After |
+| ------------------------------------------------- | -------: | -------: |
+| `mutate` on a graph with 40,000 other nodes       |  4.19 ms | 0.010 ms |
+| `mutate` on a graph with 10,000 other nodes       |  0.98 ms | 0.011 ms |
+| `publish` reaching 8,000 unconditional candidates |  11.8 ms |  10.1 ms |
+| One `setContext` aborting 30,000 queued loads     | 1,170 ms |   707 ms |
+
+A mutation now finds a graph's context nodes once, and checks whether any context changed (a handful of comparisons) before walking any ancestors, instead of scanning the whole graph and walking every target's ancestors on each check. Event matching no longer builds a dependency set for candidates that have no predicate, and caches the set for those that do. The concurrency limiter keeps its waiters in a `Set`, so aborting a long queue removes each waiter in constant time instead of searching the array. `hasSubscribers`, which runs for every invalidated descendant, no longer builds a snapshot object per call.
+
+Aborting a long queue is still dominated by the per-load abort handling (rejecting each promise, diagnostics), which is why 30,000 aborts still take hundreds of milliseconds.
+
+Not addressed: the cost of each event reaching an in-memory collector and the metrics reducer when diagnostics are on, and the per-node promise work of loading itself.

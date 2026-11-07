@@ -115,7 +115,7 @@ The graph privately maintains:
 - Parent keys by node key
 - Child keys by node key
 
-Every registered node is represented, including roots, leaves, and disconnected nodes. Parent order follows dependency declaration order. Children use deterministic key order.
+Every registered node is represented, including roots, leaves, and disconnected nodes. Parent order follows dependency declaration order. Children use deterministic key order: UTF-16 code-unit order, independent of the host locale ([ADR-023](../decisions/ADR-023-locale-independent-key-ordering.md)).
 
 Graph identity is key-based. Duplicate node keys are invalid even when the definitions are otherwise identical.
 
@@ -144,7 +144,7 @@ const nodes = graph.getNodes();
 
 Unknown keys return `undefined` from `getNode`, `false` from `hasNode`, and empty collections from parent or child inspection.
 
-`getNodes` preserves registration order. Parents follow dependency declaration order and children are sorted by key. Returned collections are immutable and stable for the lifetime of the graph: repeated calls return the same frozen array, so it is safe to hold or compare them. Parents and children are always the nodes registered under those keys.
+`getNodes` preserves registration order. Parents follow dependency declaration order and children are sorted by key in code-unit order (so `B` precedes `a`). Returned collections are immutable and stable for the lifetime of the graph: repeated calls return the same frozen array, so it is safe to hold or compare them. Parents and children are always the nodes registered under those keys.
 
 ## State transitions
 

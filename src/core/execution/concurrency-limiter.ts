@@ -21,7 +21,9 @@ export const createExecutionConcurrencyLimiter = (
   }
 
   let active = 0;
-  const queue: QueuedAcquisition[] = [];
+  // A Set keeps insertion order and removes in constant time, so aborting a
+  // long queue of waiters is linear, not quadratic.
+  const queue = new Set<QueuedAcquisition>();
 
   const acquire = (signal: AbortSignal, onQueued?: () => void): Promise<void> => {
     if (signal.aborted) {
@@ -37,15 +39,10 @@ export const createExecutionConcurrencyLimiter = (
     return new Promise<void>((resolve, reject) => {
       let queued = true;
 
-      const removeFromQueue = (): void => {
-        const index = queue.indexOf(entry);
-        if (index !== -1) queue.splice(index, 1);
-      };
-
       const onAbort = (): void => {
         if (!queued) return;
         queued = false;
-        removeFromQueue();
+        queue.delete(entry);
         reject(createAbortError("Aborted while waiting for a concurrency slot."));
       };
 
@@ -68,7 +65,7 @@ export const createExecutionConcurrencyLimiter = (
       };
 
       signal.addEventListener("abort", onAbort, { once: true });
-      queue.push(entry);
+      queue.add(entry);
     });
   };
 
@@ -79,9 +76,9 @@ export const createExecutionConcurrencyLimiter = (
 
     active -= 1;
 
-    while (queue.length > 0) {
-      const next = queue.shift();
-      if (next?.grant()) return;
+    for (const next of queue) {
+      queue.delete(next);
+      if (next.grant()) return;
     }
   };
 

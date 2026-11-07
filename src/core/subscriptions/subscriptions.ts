@@ -73,7 +73,13 @@ export const createRuntimeSubscriptionController = ({
     });
   };
 
-  const hasSubscribers = (node: AnyNodeDefinition): boolean => getSubscriptionState(node).total > 0;
+  // Called on hot paths (every invalidated descendant, every reconcile), so
+  // it reads the counts directly instead of building a snapshot object.
+  const hasSubscribers = (node: AnyNodeDefinition): boolean => {
+    const registered = resolveRegisteredNode(node, "subscription inspection");
+    const state = requireSubscriptionState(registered.key);
+    return state.direct + state.required > 0;
+  };
 
   const hasDirectSubscribers = (node: AnyNodeDefinition): boolean =>
     requireSubscriptionState(node.key).direct > 0;

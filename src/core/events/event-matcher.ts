@@ -30,6 +30,19 @@ export const createRuntimeEventMatcher = ({
   graph,
   getNodeState,
 }: RuntimeEventMatcherDependencies): RuntimeEventMatcher => {
+  // Topology comes from the graph, which resolved each node's dependencies
+  // once at creation; never from the node definition. Built on first use,
+  // and only for nodes with a conditional predicate.
+  const dependencyKeysByNode = new Map<string, ReadonlySet<string>>();
+  const getDependencyKeys = (node: AnyNodeDefinition): ReadonlySet<string> => {
+    let keys = dependencyKeysByNode.get(node.key);
+    if (!keys) {
+      keys = new Set(graph.getParents(node).map((dependency) => dependency.key));
+      dependencyKeysByNode.set(node.key, keys);
+    }
+    return keys;
+  };
+
   const matchPublications = (
     publications: readonly EventPublication[],
     options?: EventMatchOptions,
@@ -41,13 +54,14 @@ export const createRuntimeEventMatcher = ({
 
     for (const { event, payload } of publications) {
       for (const candidate of getEventInvalidationCandidates(graph, event)) {
-        // Topology comes from the graph, which resolved each node's
-        // dependencies once at creation; never from the node definition.
-        const dependencyKeys = new Set(
-          graph.getParents(candidate.node).map((dependency) => dependency.key),
-        );
+        // An unconditional candidate matches without running any code.
+        if (!candidate.when) {
+          matchedNodes.set(candidate.node.key, candidate.node);
+          continue;
+        }
+
         const get = (dependency: AnyNodeDefinition): unknown => {
-          if (!dependencyKeys.has(dependency.key)) {
+          if (!getDependencyKeys(candidate.node).has(dependency.key)) {
             throw new Error(
               `Node "${candidate.node.key}" event predicate cannot read undeclared dependency "${dependency.key}".`,
             );
@@ -70,7 +84,7 @@ export const createRuntimeEventMatcher = ({
           return state.data;
         };
 
-        if (!candidate.when || candidate.when({ payload, get })) {
+        if (candidate.when({ payload, get })) {
           matchedNodes.set(candidate.node.key, candidate.node);
         }
       }

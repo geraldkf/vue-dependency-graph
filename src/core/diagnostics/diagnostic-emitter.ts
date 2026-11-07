@@ -92,18 +92,17 @@ export const createRuntimeDiagnosticEmitter = (
   };
 
   const emit = (input: DiagnosticEventInput): void => {
-    const event = Object.fromEntries(
-      Object.entries(input).map(([key, value]) => [key, freezeValue(value)]),
-    ) as unknown as DiagnosticEventInput;
-    dispatch(
-      Object.freeze({
-        schemaVersion: 1,
-        sequence: ++sequence,
-        timestamp: now(),
-        runtimeId,
-        ...event,
-      }) as GraphDiagnosticEvent,
-    );
+    // One object, built in one pass: the envelope, then each field of the
+    // input (arrays and objects are copied and frozen one level deep).
+    const event: Record<string, unknown> = {
+      schemaVersion: 1,
+      sequence: ++sequence,
+      timestamp: now(),
+      runtimeId,
+    };
+    const fields = input as unknown as Readonly<Record<string, unknown>>;
+    for (const key of Object.keys(fields)) event[key] = freezeValue(fields[key]);
+    dispatch(Object.freeze(event) as unknown as GraphDiagnosticEvent);
   };
 
   const createOperationId = (): string => `${runtimeId}:operation-${++operationSequence}`;

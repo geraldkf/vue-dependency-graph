@@ -1,3 +1,4 @@
+import { compareKeys } from "../util/compare-keys";
 import type { GraphDiagnosticEvent, GraphDiagnosticOperationKind } from "./types";
 
 export interface GraphDurationMetrics {
@@ -387,7 +388,7 @@ export const createGraphMetricsReducer = (): GraphMetricsReducer => {
       operationCounts: Object.freeze({ ...state.operationCounts }),
       nodeAttempts: Object.freeze(
         [...nodeAttempts.entries()]
-          .sort(([left], [right]) => left.localeCompare(right))
+          .sort(([left], [right]) => compareKeys(left, right))
           .map(([nodeKey, attempt]) =>
             Object.freeze({ nodeKey, ...attempt, duration: snapshotDuration(attempt.duration) }),
           ),
