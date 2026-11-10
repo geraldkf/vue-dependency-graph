@@ -6,6 +6,8 @@ Release steps are in [Releasing a 0.x version](docs/maintenance/compatibility.md
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-11-10
+
 ### Added
 
 - Release packaging now supports npm publication through GitHub Actions trusted publishing after an initial interactive package bootstrap.
