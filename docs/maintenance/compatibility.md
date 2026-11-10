@@ -1,8 +1,8 @@
 # Compatibility and release contract
 
-The package is pre-1.0. Releases are distributed as tarballs attached to GitHub Releases, built by the release workflow from a version tag. `package.json` keeps `"private": true` so the package cannot be published to npm by accident. While the version is `0.x`, the public API may change between minor versions; breaking changes are recorded in the [changelog](../../CHANGELOG.md).
+The package is pre-1.0. GitHub Releases remain the source of versioned tarballs. The first npm release may precede the bounded application migration trial planned for Helix; the trial will inform API stabilization at 1.0. While the version is `0.x`, the public API may change between minor versions; breaking changes are recorded in the [changelog](../../CHANGELOG.md).
 
-API stabilization (1.0) and npm publication remain gated on the existing-application trial in the roadmap. A `0.x` GitHub release does not require the trial.
+The release workflow publishes the inspected tarball to npm only after the `NPM_PUBLISH_ENABLED` repository variable is set to `true` and npm trusted publishing is configured. Until then, it creates GitHub Releases without publishing to npm.
 
 ## Supported consumption
 
@@ -30,8 +30,12 @@ An optimistic draft whose context changes before remote execution rejects with `
 
 Do not tag as a side effect of ordinary maintenance.
 
-## Before 1.0 or npm publication
+## npm publishing
 
-1. Complete and record the bounded application trial, including rollback evidence.
-2. Everything in the 0.x list above.
-3. Add `repository`, `homepage` and `bugs` to `package.json`, remove `"private": true`, and decide the npm access and provenance settings. Publishing is a separate, deliberate step from the GitHub release.
+1. For each release, update `package.json` and `CHANGELOG.md` to the same new version. The existing `v0.1.0` GitHub tag is already released and will not run the updated workflow.
+2. For the first npm version, leave `NPM_PUBLISH_ENABLED` unset or set to `false`. Push the new version tag; the workflow validates, builds and inspects the tarball, then creates the GitHub Release without publishing to npm.
+3. Publish that GitHub Release tarball once from an authenticated machine with npm 2FA enabled, using `npm publish vue-dependency-graph-x.y.z.tgz --access public`. This creates the package so its npm settings are available.
+4. In the npm package settings, add a GitHub Actions trusted publisher for user `geraldkf`, repository `vue-dependency-graph`, workflow filename `release.yml`. Allow `npm publish`. The workflow uses Node 24, npm CLI latest, the repository's matching `repository.url`, and OIDC; npm generates provenance for public releases.
+5. npm requires the trusted publisher's first successful publish within two days of configuration. Have the next version and changelog ready; set the GitHub repository variable `NPM_PUBLISH_ENABLED=true` and push that new version tag promptly. Later version tags will publish to npm and create the matching GitHub Release from the same inspected tarball. If the publisher configuration expires, recreate it before the next release.
+
+Do not enable the repository variable before the package exists and the npm trusted publisher has completed a successful publish. The application migration trial remains planned for Helix and informs API stabilization at 1.0; it is not a prerequisite for this initial 0.x npm release.

@@ -1,7 +1,9 @@
 name: Release
 
-# Pushing a tag such as `v0.1.0` validates the commit, builds the package,
-# and attaches the tarball to a GitHub Release. Nothing is published to npm.
+# Pushing a version tag validates the commit, builds the package, and attaches a
+# tarball to a GitHub Release. Once the package exists and npm trusted publishing
+# is configured, set the NPM_PUBLISH_ENABLED repository variable to "true" to
+# also publish each release to npm with OIDC and provenance.
 # See docs/maintenance/compatibility.md ("Releasing a 0.x version").
 on:
   push:
@@ -20,6 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      id-token: write
     steps:
       - uses: actions/checkout@v6
         with:
@@ -38,8 +41,9 @@ jobs:
           run_install: false
       - uses: actions/setup-node@v6
         with:
-          node-version: "22.13.0"
-          cache: pnpm
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+          package-manager-cache: false
       - run: pnpm install --frozen-lockfile
 
       - name: Check tag, package.json and CHANGELOG agree
@@ -54,6 +58,16 @@ jobs:
           pnpm pack
           node scripts/check-release.mjs tarball "${{ steps.plan.outputs.tarball }}"
           sha256sum "${{ steps.plan.outputs.tarball }}" > SHA256SUMS
+
+      - name: Publish to npm
+        if: vars.NPM_PUBLISH_ENABLED == 'true'
+        run: |
+          npm install --global npm@latest
+          npm publish "${{ steps.plan.outputs.tarball }}" --access public
+
+      - name: Explain skipped npm publication
+        if: vars.NPM_PUBLISH_ENABLED != 'true'
+        run: echo "::notice::npm publication is disabled. Bootstrap the package, configure the npm trusted publisher, then set NPM_PUBLISH_ENABLED=true."
 
       - name: Create the GitHub Release
         env:

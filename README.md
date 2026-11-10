@@ -6,15 +6,17 @@ Vue Dependency Graph is a TypeScript-first data orchestration library for Vue ap
 
 Version `0.1.0` is a pre-1.0 release. The runtime includes graph execution and scheduling, Vue integration, isolated atomic transaction sessions, typed events, query groups, refresh policies and polling, typed and optimistic mutations, diagnostics, devtools, automatic value release, retention hardening, and overlapping scheduler flushes. All of it is covered by the validation suite described under [Development](#development).
 
-While the version is `0.x`, the public API may change between minor versions; every release's changes are listed in the [changelog](CHANGELOG.md). API stabilization (1.0) and npm publication are gated on a bounded trial in an existing application. See the [roadmap](docs/ROADMAP.md) and [compatibility and release contract](docs/maintenance/compatibility.md).
+While the version is `0.x`, the public API may change between minor versions; every release's changes are listed in the [changelog](CHANGELOG.md). A bounded application trial is planned for Helix, but the first npm release may precede its completion. See the [roadmap](docs/ROADMAP.md) and [compatibility and release contract](docs/maintenance/compatibility.md).
 
 ## Install
 
-Releases are distributed as tarballs on this repository's GitHub Releases page. Download `vue-dependency-graph-x.y.z.tgz` and install it:
+Once the first npm release is available, install with:
 
 ```bash
-pnpm add ./vue-dependency-graph-x.y.z.tgz
+npm install vue-dependency-graph
 ```
+
+Until then, releases remain available as tarballs on this repository's GitHub Releases page. Download `vue-dependency-graph-x.y.z.tgz` and install it with `pnpm add ./vue-dependency-graph-x.y.z.tgz`.
 
 Requirements: Node 22.13 or newer for tooling, and Vue 3.5 or newer for the `/vue` and `/devtools` entry points. Vue is an optional peer dependency, so `/core` works without it. The package is ESM-only and has three entry points plus a stylesheet:
 
@@ -322,7 +324,7 @@ pnpm benchmark # requires a current build
 
 ### Execution responsibility
 
-Run validation locally and in CI. Record commands and outcomes against the actual checkout. If an environment cannot execute a check, report it as pending; static inspection is not a passing test run. API stability (1.0) and npm publication remain gated by the [application migration trial](docs/maintenance/migration-trial.md).
+Run validation locally and in CI. Record commands and outcomes against the actual checkout. If an environment cannot execute a check, report it as pending; static inspection is not a passing test run. The Helix application migration trial is planned; npm publication may precede its completion, while API stabilization at 1.0 will be informed by its results.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) before changing the code, and [Releasing a 0.x version](docs/maintenance/compatibility.md#releasing-a-0x-version-github-release) to cut a release.
 

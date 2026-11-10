@@ -3,6 +3,14 @@
   "version": "0.1.0",
   "description": "Declarative, dependency-graph data orchestration for Vue: typed nodes, automatic loading, atomic transactions, events, polling, mutations and diagnostics.",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/geraldkf/vue-dependency-graph.git"
+  },
+  "homepage": "https://github.com/geraldkf/vue-dependency-graph#readme",
+  "bugs": {
+    "url": "https://github.com/geraldkf/vue-dependency-graph/issues"
+  },
   "keywords": [
     "vue",
     "vue3",
@@ -15,7 +23,6 @@
     "polling",
     "typescript"
   ],
-  "private": true,
   "type": "module",
   "packageManager": "pnpm@12.4.1",
   "engines": {
