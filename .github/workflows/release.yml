@@ -1,7 +1,8 @@
 name: Release
 
-# Pushing a tag such as `v0.1.0` validates the commit, builds the package,
-# and attaches the tarball to a GitHub Release. Nothing is published to npm.
+# Pushing a tag such as `v0.2.0` validates the commit, builds and publishes the
+# package to npm with trusted publishing, then attaches the same tarball to a
+# GitHub Release. Configure npm's trusted publisher for this workflow first.
 # See docs/maintenance/compatibility.md ("Releasing a 0.x version").
 on:
   push:
@@ -20,6 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      id-token: write
     steps:
       - uses: actions/checkout@v6
         with:
@@ -38,8 +40,9 @@ jobs:
           run_install: false
       - uses: actions/setup-node@v6
         with:
-          node-version: "22.13.0"
-          cache: pnpm
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+          package-manager-cache: false
       - run: pnpm install --frozen-lockfile
 
       - name: Check tag, package.json and CHANGELOG agree
@@ -54,6 +57,11 @@ jobs:
           pnpm pack
           node scripts/check-release.mjs tarball "${{ steps.plan.outputs.tarball }}"
           sha256sum "${{ steps.plan.outputs.tarball }}" > SHA256SUMS
+
+      - name: Publish to npm
+        run: |
+          npm install --global npm@latest
+          npm publish "${{ steps.plan.outputs.tarball }}" --access public
 
       - name: Create the GitHub Release
         env:
