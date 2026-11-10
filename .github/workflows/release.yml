@@ -69,16 +69,21 @@ jobs:
         if: vars.NPM_PUBLISH_ENABLED != 'true'
         run: echo "::notice::npm publication is disabled. Bootstrap the package, configure the npm trusted publisher, then set NPM_PUBLISH_ENABLED=true."
 
-      - name: Create the GitHub Release
+      - name: Create or update the GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
           PRERELEASE: ${{ steps.plan.outputs.prerelease }}
         run: |
-          flags=()
-          if [ "$PRERELEASE" = "true" ]; then flags+=(--prerelease); fi
-          gh release create "$GITHUB_REF_NAME" \
-            "${{ steps.plan.outputs.tarball }}" SHA256SUMS \
-            --verify-tag \
-            --title "$GITHUB_REF_NAME" \
-            --notes-file release-notes.md \
-            "${flags[@]}"
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" \
+              "${{ steps.plan.outputs.tarball }}" SHA256SUMS --clobber
+          else
+            flags=()
+            if [ "$PRERELEASE" = "true" ]; then flags+=(--prerelease); fi
+            gh release create "$GITHUB_REF_NAME" \
+              "${{ steps.plan.outputs.tarball }}" SHA256SUMS \
+              --verify-tag \
+              --title "$GITHUB_REF_NAME" \
+              --notes-file release-notes.md \
+              "${flags[@]}"
+          fi
