@@ -8,6 +8,7 @@ Release steps are in [Releasing a 0.x version](docs/maintenance/compatibility.md
 
 ### Added
 
+- Release packaging now supports npm publication through GitHub Actions trusted publishing after an initial interactive package bootstrap.
 - `runtime.onNodeChange(node, listener)`: like `onChange`, but the listener runs only when that node's own state changed. Cost follows the nodes that changed, not the number of listeners. See [ADR-022](docs/decisions/ADR-022-per-node-notification-and-incremental-refresh.md).
 - Benchmark options `--refresh=on`, `--observe=node` and `--observers=N`.
 
